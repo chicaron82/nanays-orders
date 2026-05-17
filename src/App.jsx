@@ -298,6 +298,35 @@ export default function App() {
     setSelectedOrder(null);
   }
 
+  function handleExport() {
+    const data = { orders, stock, prefs, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nanay-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.orders) setOrders(data.orders);
+        if (data.stock) { setStock(data.stock); setStockEdit(data.stock); }
+        if (data.prefs) setPrefs(data.prefs);
+      } catch {
+        alert("Could not read backup file. Make sure it's a Nanay's Orders backup.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
   // ─── DERIVED ───────────────────────────────────────────────────────────────
   const avail = getAvailable(stock, orders);
   const reserved = getReserved(orders);
@@ -602,6 +631,18 @@ export default function App() {
             </button>
             <div style={{ fontFamily: "'Lato', sans-serif", fontSize: 11, color: "#AAA", textAlign: "center", marginTop: 8 }}>
               Stock goes down automatically when orders are marked Ready
+            </div>
+          </div>
+
+          <div className="stock-card">
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, color: "#2A0E04", marginBottom: 6 }}>💾 Backup</div>
+            <div style={{ fontFamily: "'Lato', sans-serif", fontSize: 12, color: "#888", marginBottom: 14 }}>Save a copy of all orders, stock, and customer info to your device. Restore anytime from a backup file.</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button className="btn-primary" style={{ flex: 1 }} onClick={handleExport}>⬇️ Save Backup</button>
+              <label style={{ flex: 1, margin: 0 }}>
+                <div className="btn-primary" style={{ textAlign: "center", cursor: "pointer" }}>⬆️ Restore</div>
+                <input type="file" accept=".json" onChange={handleImport} style={{ display: "none" }} />
+              </label>
             </div>
           </div>
         </div>
