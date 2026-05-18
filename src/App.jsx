@@ -130,12 +130,13 @@ function MainApp({ onLogout }) {
       </main>
 
       {/* Modals */}
-      <OrderFormModal 
-        isOpen={showForm} 
-        onClose={() => { setShowForm(false); setEditOrder(null); }} 
-        onSave={handleSaveOrder} 
+      <OrderFormModal
+        isOpen={showForm}
+        onClose={() => { setShowForm(false); setEditOrder(null); }}
+        onSave={handleSaveOrder}
         editOrder={editOrder}
         allOrders={orders}
+        stock={stock}
       />
 
       <OrderDetailsModal 

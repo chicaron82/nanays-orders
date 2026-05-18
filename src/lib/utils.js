@@ -153,3 +153,80 @@ export function formatDate(s) {
 export function fmt(n) { return "$" + Number(n).toFixed(2); }
 
 export const ORDER_STATUS = ["Pending", "Ready", "Fulfilled", "Cancelled"];
+
+// ─── FULFILLABILITY WARNINGS ─────────────────────────────────────────────────
+export function getIngredientWarnings(form, stock) {
+  if (!stock) return [];
+  const warnings = [];
+  const hasLumpia = !!form.lumpia?.enabled;
+  const hasPancit = !!form.pancit?.enabled;
+  if (!hasLumpia && !hasPancit) return [];
+
+  const porkFrozen = stock.pork_frozen || 0;
+  const porkThawed = stock.pork_thawed || 0;
+  const days = form.needed_date ? getDaysUntil(form.needed_date) : null;
+  const dateLabel = form.needed_date ? formatDate(form.needed_date) : '';
+
+  // Only hour-precise when pickup_time is set — otherwise warnings are day-granularity
+  const pickupDt = (form.needed_date && form.pickup_time)
+    ? new Date(`${form.needed_date}T${form.pickup_time}:00`)
+    : null;
+  const hoursUntil = pickupDt ? (pickupDt - Date.now()) / 3600000 : null;
+  const timeLabel = form.pickup_time ? ` at ${form.pickup_time}` : '';
+
+  // ── Shared consumables (carrots + celery) ─────────────────────────────────
+  const carrotsCtx = hasLumpia && hasPancit ? 'lumpia filling and pancit'
+    : hasLumpia ? 'lumpia filling' : 'pancit';
+  const celeryCtx = hasLumpia && hasPancit ? 'lumpia filling and pancit'
+    : hasLumpia ? 'lumpia filling' : 'pancit';
+
+  if (stock.carrots_status === 'out') {
+    warnings.push(`⚠️ Out of carrots — needed for ${carrotsCtx}. May need a store run.`);
+  } else if (stock.carrots_status === 'low') {
+    warnings.push('⚠️ Running low on carrots — worth grabbing more soon.');
+  }
+
+  if (stock.celery_status === 'out') {
+    warnings.push(`⚠️ Out of Chinese celery — needed for ${celeryCtx}.`);
+  } else if (stock.celery_status === 'low') {
+    warnings.push('⚠️ Running low on Chinese celery.');
+  }
+
+  // ── Lumpia timeline warnings ───────────────────────────────────────────────
+  if (hasLumpia && form.needed_date) {
+    const lumpiaNeeded = form.lumpia.sets || 0;
+    const lumpiaReady = stock.lumpia_sets || 0;
+
+    if (lumpiaNeeded > lumpiaReady) {
+      if (porkThawed === 0 && porkFrozen > 0) {
+        // Only frozen pork — defrost takes ~1 day before filling can start
+        if (days !== null && days <= 2) {
+          warnings.push(`⚠️ Pork is frozen — needs a day to defrost before filling can be made. Tight timeline for ${dateLabel}.`);
+        }
+      } else if (porkThawed > 0) {
+        // Pork is thawed but filling + rolling still needed (~2hrs total)
+        const isTight = hoursUntil !== null ? hoursUntil <= 4 : days !== null && days <= 0;
+        if (isTight) {
+          warnings.push(`⚠️ Filling still needs to be made (~1hr) + rolling (~1hr). Tight for ${dateLabel}${timeLabel}.`);
+        }
+      }
+    }
+  }
+
+  // ── Pancit warnings ────────────────────────────────────────────────────────
+  if (hasPancit) {
+    const packsNeeded = (form.pancit.full || 0) + Math.ceil((form.pancit.half || 0) / 2);
+    const packsOnHand = stock.noodle_packs || 0;
+
+    if (packsNeeded > packsOnHand) {
+      warnings.push(`⚠️ Not enough noodle packs. Need ${packsNeeded}, have ${packsOnHand}.`);
+    }
+
+    // 30-minute check — only meaningful when a specific pickup time is set
+    if (form.needed_date && hoursUntil !== null && hoursUntil > 0 && hoursUntil <= 0.5) {
+      warnings.push(`⚠️ Pancit takes ~30 mins to make. Very tight for ${dateLabel}${timeLabel}.`);
+    }
+  }
+
+  return warnings;
+}

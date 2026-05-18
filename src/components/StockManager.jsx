@@ -95,6 +95,95 @@ export default function StockManager({ stock, orders, updateStock }) {
         );
       })}
 
+      {/* Ingredients */}
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-md border border-stone-200">
+        <h3 className="font-playfair text-xl font-bold text-stone-800 mb-5 flex items-center gap-2">
+          <ChefHat className="text-orange-500" /> Ingredients
+        </h3>
+
+        {/* Shared consumables */}
+        <div className="mb-6">
+          <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-3">Shared — Carrots &amp; Chinese Celery</div>
+          {[
+            { key: 'carrots_status', label: '🥕 Carrots' },
+            { key: 'celery_status',  label: '🌿 Chinese Celery' },
+          ].map(({ key, label }) => (
+            <div key={key} className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-stone-700">{label}</span>
+              <div className="flex rounded-lg overflow-hidden border border-stone-200 text-xs font-bold">
+                {[
+                  { value: 'plenty', label: 'Plenty', active: 'bg-emerald-500 text-white', inactive: 'bg-white text-stone-400 hover:bg-stone-50' },
+                  { value: 'low',    label: 'Low',    active: 'bg-amber-400 text-amber-900', inactive: 'bg-white text-stone-400 hover:bg-stone-50' },
+                  { value: 'out',    label: 'Out',    active: 'bg-red-500 text-white',   inactive: 'bg-white text-stone-400 hover:bg-stone-50' },
+                ].map(({ value, label: optLabel, active, inactive }) => (
+                  <button
+                    key={value}
+                    onClick={() => setStockEdit(s => ({ ...s, [key]: value }))}
+                    className={`px-3 py-1.5 transition-colors ${stockEdit[key] === value ? active : inactive}`}
+                  >
+                    {optLabel}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Lumpia prep chain */}
+        <div className="mb-6">
+          <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-3">🥟 Lumpia — Ground Pork</div>
+          <div className="text-xs text-stone-400 mb-3">1 portion (5lb) = 400 pcs = 4 batches · Frozen needs ~1 day to defrost</div>
+          {[
+            { key: 'pork_frozen', label: 'Frozen portions' },
+            { key: 'pork_thawed', label: 'Thawed portions' },
+          ].map(({ key, label }) => (
+            <div key={key} className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-stone-700">{label}</span>
+              <div className="flex items-center gap-2">
+                <button className="w-8 h-8 rounded-lg border-2 border-orange-200 text-orange-600 font-bold hover:bg-orange-50 transition-colors" onClick={() => setStockEdit(s => ({ ...s, [key]: Math.max(0, (s[key] || 0) - 1) }))}>−</button>
+                <span className="text-base font-bold w-6 text-center text-stone-800">{stockEdit[key] ?? 0}</span>
+                <button className="w-8 h-8 rounded-lg border-2 border-orange-200 text-orange-600 font-bold hover:bg-orange-50 transition-colors" onClick={() => setStockEdit(s => ({ ...s, [key]: (s[key] || 0) + 1 }))}>+</button>
+              </div>
+            </div>
+          ))}
+          {/* Prep chain status */}
+          {(() => {
+            const frozen = stockEdit.pork_frozen || 0;
+            const thawed = stockEdit.pork_thawed || 0;
+            if (frozen === 0 && thawed === 0 && (stockEdit.lumpia_sets || 0) === 0) {
+              return <div className="text-xs font-bold text-red-600 flex items-center gap-1 mt-1"><AlertTriangle size={13}/> No pork and no ready batches — can't fill lumpia orders</div>;
+            }
+            if (frozen > 0 && thawed === 0) {
+              return <div className="text-xs text-amber-700 mt-1">🕐 Frozen pork needs ~1 day to defrost before filling can be made</div>;
+            }
+            if (thawed > 0) {
+              return <div className="text-xs text-emerald-700 mt-1">✅ Ready to make filling (~1hr per 400 pcs / 4 batches)</div>;
+            }
+            return null;
+          })()}
+        </div>
+
+        {/* Pancit noodles */}
+        <div>
+          <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-3">🍜 Pancit — Noodle Packs</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-medium text-stone-700">Apo Q Bihon packs</span>
+              <div className="text-xs text-stone-400 mt-0.5">1 pack = 1 full tray · 2 half orders</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="w-8 h-8 rounded-lg border-2 border-orange-200 text-orange-600 font-bold hover:bg-orange-50 transition-colors" onClick={() => setStockEdit(s => ({ ...s, noodle_packs: Math.max(0, (s.noodle_packs || 0) - 1) }))}>−</button>
+              <span className="text-base font-bold w-6 text-center text-stone-800">{stockEdit.noodle_packs ?? 0}</span>
+              <button className="w-8 h-8 rounded-lg border-2 border-orange-200 text-orange-600 font-bold hover:bg-orange-50 transition-colors" onClick={() => setStockEdit(s => ({ ...s, noodle_packs: (s.noodle_packs || 0) + 1 }))}>+</button>
+            </div>
+          </div>
+        </div>
+
+        <button onClick={handleUpdate} className="w-full mt-6 bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-orange-500/30 transition-all active:scale-[0.98]">
+          Save Ingredients ✓
+        </button>
+      </div>
+
       <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-md border border-stone-200 mt-6">
         <h3 className="font-playfair text-xl font-bold text-stone-800 mb-4 flex items-center gap-2"><Package className="text-orange-500"/> Update Stock</h3>
         <div className="space-y-4">

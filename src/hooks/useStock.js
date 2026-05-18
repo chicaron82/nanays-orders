@@ -2,7 +2,17 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 
-const initialStock = { lumpia_sets: 0, wrapper_packs: 0, pancit_full: 0, pancit_half: 0 };
+const initialStock = {
+  lumpia_sets: 0,
+  wrapper_packs: 0,
+  pancit_full: 0,
+  pancit_half: 0,
+  pork_frozen: 0,
+  pork_thawed: 0,
+  noodle_packs: 0,
+  carrots_status: 'plenty',
+  celery_status: 'plenty',
+};
 
 export function useStock() {
   const [stock, setStock] = useState(initialStock);

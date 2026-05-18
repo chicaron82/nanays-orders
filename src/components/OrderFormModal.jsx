@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, ChefHat, CheckSquare, User, CalendarDays, MapPin, PenLine } from 'lucide-react';
-import { fuzzyMatch, calcTotal } from '../lib/utils';
+import { fuzzyMatch, calcTotal, getIngredientWarnings } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
 const initialForm = {
@@ -13,7 +13,7 @@ const initialForm = {
   order_status: "Pending", saveCustomer: false,
 };
 
-export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = null, allOrders = [] }) {
+export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = null, allOrders = [], stock = null }) {
   const [form, setForm] = useState(initialForm);
   const [showSuggestions, setShowSuggestions] = useState(false);
   
@@ -170,6 +170,19 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                 )}
               </div>
             </div>
+
+            {/* Fulfillability warnings */}
+            {(() => {
+              const warnings = getIngredientWarnings(form, stock);
+              if (!warnings.length) return null;
+              return (
+                <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 space-y-1.5">
+                  {warnings.map((w, i) => (
+                    <div key={i} className="text-sm text-amber-900">{w}</div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* Logistics */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
