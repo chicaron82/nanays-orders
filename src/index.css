@@ -1,1 +1,23 @@
-/* App manages all styles inline */
+@import "tailwindcss";
+
+@theme {
+  --font-playfair: 'Playfair Display', serif;
+  --font-lato: 'Lato', sans-serif;
+}
+
+body {
+  font-family: var(--font-lato);
+  background: linear-gradient(135deg, #7C1D0A 0%, #B5350F 40%, #E8651A 75%, #F4A435 100%);
+  min-height: 100vh;
+  margin: 0;
+}
+
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

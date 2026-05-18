@@ -1,0 +1,126 @@
+import { useState } from 'react';
+import { getAvailable, getReserved, getMakeMoreNeeds } from '../lib/utils';
+import { AlertTriangle, Package, ChefHat, CheckCircle2 } from 'lucide-react';
+
+export default function StockManager({ stock, orders, updateStock }) {
+  const [stockEdit, setStockEdit] = useState({ ...stock });
+  const avail = getAvailable(stock, orders);
+  const reserved = getReserved(orders);
+  const makeMore = getMakeMoreNeeds(orders, stock);
+
+  const handleUpdate = () => {
+    updateStock(stockEdit);
+  };
+
+  const hasShortage = makeMore.lumpia.need > 0 || makeMore.pancitFull.need > 0 || makeMore.pancitHalf.need > 0;
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 pb-12 space-y-4">
+      {hasShortage ? (
+        <div className="bg-gradient-to-br from-orange-50 to-amber-100 border border-amber-300 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-amber-900 font-bold mb-3 font-playfair text-lg">
+            <ChefHat className="text-amber-600" /> Make More — Pending Orders Need:
+          </div>
+          <div className="space-y-2 text-sm text-amber-800">
+            {makeMore.lumpia.need > 0 && (
+              <div className="flex items-center gap-2">
+                🥟 <strong>{makeMore.lumpia.need} more lumpia batch{makeMore.lumpia.need !== 1 ? 'es' : ''}</strong>
+                <span className="text-xs opacity-75">({makeMore.lumpia.avail} avail, {makeMore.lumpia.total} needed)</span>
+                {stock.wrapper_packs > 0 ? (
+                  <span className={`ml-2 text-xs font-bold ${makeMore.lumpia.need <= stock.wrapper_packs ? 'text-emerald-600' : 'text-red-600'}`}>
+                    · {stock.wrapper_packs} packs on hand
+                  </span>
+                ) : (
+                  <span className="ml-2 text-xs font-bold text-red-600">· No wrappers on hand! 🚨</span>
+                )}
+              </div>
+            )}
+            {makeMore.pancitFull.need > 0 && (
+              <div>🍜 <strong>{makeMore.pancitFull.need} more full tray{makeMore.pancitFull.need !== 1 ? 's' : ''}</strong></div>
+            )}
+            {makeMore.pancitHalf.need > 0 && (
+              <div>🍜 <strong>{makeMore.pancitHalf.need} more half tray{makeMore.pancitHalf.need !== 1 ? 's' : ''}</strong></div>
+            )}
+          </div>
+        </div>
+      ) : (
+        orders.filter(o => o.order_status === "Pending").length > 0 && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 shadow-sm flex items-center gap-3 text-emerald-800">
+            <CheckCircle2 className="text-emerald-600" />
+            <span className="font-bold text-sm">All pending orders are covered by current stock!</span>
+          </div>
+        )
+      )}
+
+      {[
+        { key: "lumpia_sets", label: "🥟 Lumpia Ready", avail: avail.lumpiaSets, reserved: reserved.lumpiaSets, total: stock.lumpia_sets || 0 },
+        { key: "wrapper_packs", label: "📦 Wrapper Packs on Hand", avail: stock.wrapper_packs || 0, reserved: 0, total: Math.max(stock.wrapper_packs || 1, 1), isWrapper: true },
+        { key: "pancit_full", label: "🍜 Pancit Full Trays", avail: avail.pancitFull, reserved: reserved.pancitFull, total: stock.pancit_full || 0 },
+        { key: "pancit_half", label: "🍜 Pancit Half Trays", avail: avail.pancitHalf, reserved: reserved.pancitHalf, total: stock.pancit_half || 0 },
+      ].map(item => {
+        const { label, avail: a, reserved: r, total: t, isWrapper } = item;
+        const level = a <= 0 ? "danger" : a <= 2 ? "warn" : "ok";
+        const pct = t > 0 ? Math.min(100, Math.max(0, (a / t) * 100)) : 0;
+        
+        return (
+          <div key={label} className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-sm border border-stone-200">
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="font-bold text-stone-800 text-sm">{label}</div>
+                <div className="text-xs text-stone-500 mt-1">
+                  {!isWrapper && r > 0 ? `${r} reserved · ` : ""}{isWrapper ? "" : `${t} on hand`}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className={`font-playfair text-3xl font-black leading-none ${level === 'danger' ? 'text-red-500' : level === 'warn' ? 'text-orange-500' : 'text-emerald-500'}`}>
+                  {a}
+                </div>
+                <div className="text-[10px] text-stone-400 font-bold uppercase mt-1">{isWrapper ? 'packs' : 'avail'}</div>
+              </div>
+            </div>
+            
+            {!isWrapper && (
+              <div className="h-2 bg-stone-100 rounded-full overflow-hidden mt-3">
+                <div className={`h-full rounded-full transition-all duration-500 ${level === 'danger' ? 'bg-red-500' : level === 'warn' ? 'bg-orange-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
+              </div>
+            )}
+            
+            <div className="mt-2 text-xs font-bold">
+              {isWrapper && stock.wrapper_packs > 0 && <span className="text-emerald-600">✅ Can make {stock.wrapper_packs} more batch{stock.wrapper_packs !== 1 ? 'es' : ''}</span>}
+              {isWrapper && stock.wrapper_packs === 0 && <span className="text-red-600 flex items-center gap-1"><AlertTriangle size={14}/> Need to buy wrappers!</span>}
+              {!isWrapper && level === "danger" && <span className="text-red-600 flex items-center gap-1"><AlertTriangle size={14}/> Out of stock!</span>}
+              {!isWrapper && level === "warn" && <span className="text-orange-600 flex items-center gap-1"><AlertTriangle size={14}/> Running low</span>}
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-md border border-stone-200 mt-6">
+        <h3 className="font-playfair text-xl font-bold text-stone-800 mb-4 flex items-center gap-2"><Package className="text-orange-500"/> Update Stock</h3>
+        <div className="space-y-4">
+          {[
+            { key: "lumpia_sets", label: "🥟 Lumpia Ready (batches × 100 pcs)" },
+            { key: "wrapper_packs", label: "📦 Wrapper Packs on Hand" },
+            { key: "pancit_full", label: "🍜 Pancit Full Trays" },
+            { key: "pancit_half", label: "🍜 Pancit Half Trays" },
+          ].map(({ key, label }) => (
+            <div key={key}>
+              <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">{label}</label>
+              <div className="flex items-center gap-3">
+                <button className="w-10 h-10 rounded-lg border-2 border-orange-200 text-orange-600 font-bold text-xl hover:bg-orange-50 transition-colors" onClick={() => setStockEdit(s => ({ ...s, [key]: Math.max(0, (s[key] || 0) - 1) }))}>−</button>
+                <span className="text-lg font-bold w-8 text-center text-stone-800">{stockEdit[key] ?? 0}</span>
+                <button className="w-10 h-10 rounded-lg border-2 border-orange-200 text-orange-600 font-bold text-xl hover:bg-orange-50 transition-colors" onClick={() => setStockEdit(s => ({ ...s, [key]: (s[key] || 0) + 1 }))}>+</button>
+                <input type="number" min={0} value={stockEdit[key] ?? 0}
+                  onChange={e => setStockEdit(s => ({ ...s, [key]: Math.max(0, parseInt(e.target.value) || 0) }))}
+                  className="w-20 text-center border-2 border-stone-200 rounded-lg py-2 focus:border-orange-500 outline-none transition-colors" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <button onClick={handleUpdate} className="w-full mt-6 bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-orange-500/30 transition-all active:scale-[0.98]">
+          Save Stock ✓
+        </button>
+      </div>
+    </div>
+  );
+}
