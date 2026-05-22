@@ -31,6 +31,13 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
     ? [] 
     : existingNames.filter(n => fuzzyMatch(n, form.customer_name) && n.toLowerCase() !== form.customer_name.toLowerCase()).slice(0, 4);
 
+  const formatPhone = (raw) => {
+    const d = raw.replace(/\D/g, '').slice(0, 10);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
+    return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+  };
+
   const setField = (path, value) => {
     setForm(f => {
       const clone = JSON.parse(JSON.stringify(f));
@@ -57,7 +64,11 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
     if (!form.customer_name.trim() || !form.needed_date) return;
     if (!form.lumpia.enabled && !form.pancit.enabled) return;
     
-    const finalOrder = { ...form, total: calcTotal(form) };
+    const finalOrder = {
+      ...form,
+      total: calcTotal(form),
+      deposit_amount: form.deposit_amount === '' ? null : Number(form.deposit_amount),
+    };
     if (finalOrder.saveCustomer) {
       supabase.from('customers').upsert({ name: finalOrder.customer_name, contact: finalOrder.contact, preferences: finalOrder.preferences }).then();
     }
@@ -100,7 +111,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
               </div>
               <div>
                 <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><PenLine size={14}/> Contact</label>
-                <input value={form.contact} onChange={e => setField("contact", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" placeholder="204-555-0100" />
+                <input value={form.contact} onChange={e => setField("contact", formatPhone(e.target.value))} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" placeholder="204-555-0100" />
               </div>
             </div>
 
@@ -199,6 +210,14 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                 </select>
               </div>
             </div>
+
+            {/* Delivery address — shown when delivery type is not pickup */}
+            {form.delivery_type !== 'pickup' && (
+              <div>
+                <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><MapPin size={14}/> Delivery Address *</label>
+                <input value={form.address} onChange={e => setField("address", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" placeholder="123 Main St, Winnipeg" />
+              </div>
+            )}
 
             {/* Preferences & Notes */}
             <div className="space-y-4">

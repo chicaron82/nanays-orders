@@ -45,6 +45,7 @@ export function useOrders() {
     try {
       const { data, error } = await supabase.from('orders').insert([orderData]).select();
       if (error) throw error;
+      setOrders(prev => [data[0], ...prev]);
       toast.success('Order added! 🎉');
       return data[0];
     } catch (err) {
@@ -56,8 +57,9 @@ export function useOrders() {
 
   async function updateOrder(id, updates) {
     try {
-      const { error } = await supabase.from('orders').update(updates).eq('id', id);
+      const { data, error } = await supabase.from('orders').update(updates).eq('id', id).select();
       if (error) throw error;
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, ...data[0] } : o));
       toast.success('Order updated! ✓');
     } catch (err) {
       console.error('Error updating order:', err.message);
@@ -70,6 +72,7 @@ export function useOrders() {
     try {
       const { error } = await supabase.from('orders').delete().eq('id', id);
       if (error) throw error;
+      setOrders(prev => prev.filter(o => o.id !== id));
       toast.success('Order deleted 🗑️');
     } catch (err) {
       console.error('Error deleting order:', err.message);

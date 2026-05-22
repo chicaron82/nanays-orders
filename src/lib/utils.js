@@ -10,7 +10,7 @@ export function calcTotal(order) {
     t += PANCIT_PRICE.full * (order.pancit.full || 0);
     t += PANCIT_PRICE.half * (order.pancit.half || 0);
   }
-  t += DELIVERY_FEE[order.deliveryType] || 0;
+  t += DELIVERY_FEE[order.delivery_type] || 0;
   return t;
 }
 
