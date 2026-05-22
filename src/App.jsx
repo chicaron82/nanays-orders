@@ -6,7 +6,7 @@ import { useStock } from './hooks/useStock';
 import { useAuth } from './hooks/useAuth';
 
 import Dashboard from './components/Dashboard';
-import KanbanBoard from './components/KanbanBoard';
+import CalendarView from './components/CalendarView';
 import StockManager from './components/StockManager';
 import OrderFormModal from './components/OrderFormModal';
 import OrderDetailsModal from './components/OrderDetailsModal';
@@ -21,6 +21,7 @@ function MainApp({ onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [editOrder, setEditOrder] = useState(null);
+  const [newOrderDate, setNewOrderDate] = useState(null);
 
   const repeatMap = getRepeatCustomers(orders);
   const repeatCount = Object.values(repeatMap).filter(count => count >= 2).length;
@@ -32,6 +33,13 @@ function MainApp({ onLogout }) {
     }
   };
 
+  const handlePaymentChange = (id, patch) => {
+    updateOrder(id, patch);
+    if (selectedOrder?.id === id) {
+      setSelectedOrder({ ...selectedOrder, ...patch });
+    }
+  };
+
   const handleSaveOrder = async (orderData) => {
     if (orderData.id) {
       await updateOrder(orderData.id, orderData);
@@ -40,11 +48,19 @@ function MainApp({ onLogout }) {
     }
     setShowForm(false);
     setEditOrder(null);
+    setNewOrderDate(null);
   };
 
   const openEdit = (order) => {
     setEditOrder(order);
+    setNewOrderDate(null);
     setSelectedOrder(null);
+    setShowForm(true);
+  };
+
+  const handleNewOrderForDate = (ymd) => {
+    setEditOrder(null);
+    setNewOrderDate(ymd);
     setShowForm(true);
   };
 
@@ -71,8 +87,8 @@ function MainApp({ onLogout }) {
         </div>
         <div className="flex items-center gap-3">
           {tab === 'orders' && (
-            <button 
-              onClick={() => { setEditOrder(null); setShowForm(true); }}
+            <button
+              onClick={() => { setEditOrder(null); setNewOrderDate(null); setShowForm(true); }}
               className="bg-white text-orange-600 px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2"
             >
               <Plus size={20} /> New Order
@@ -100,7 +116,7 @@ function MainApp({ onLogout }) {
             onClick={() => setTab('orders')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${tab === 'orders' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
           >
-            <ClipboardList size={18} /> Kitchen Board
+            <ClipboardList size={18} /> Calendar
           </button>
           <button 
             onClick={() => setTab('stock')}
@@ -114,11 +130,10 @@ function MainApp({ onLogout }) {
       {/* Main Content */}
       <main>
         {tab === 'orders' ? (
-          <KanbanBoard 
-            orders={orders} 
-            stock={stock} 
-            updateOrderStatus={handleStatusChange} 
-            onOrderClick={setSelectedOrder} 
+          <CalendarView
+            orders={orders}
+            onOrderClick={setSelectedOrder}
+            onNewOrderForDate={handleNewOrderForDate}
           />
         ) : (
           <StockManager 
@@ -132,14 +147,16 @@ function MainApp({ onLogout }) {
       {/* Modals */}
       <OrderFormModal
         isOpen={showForm}
-        onClose={() => { setShowForm(false); setEditOrder(null); }}
+        onClose={() => { setShowForm(false); setEditOrder(null); setNewOrderDate(null); }}
         onSave={handleSaveOrder}
         editOrder={editOrder}
         allOrders={orders}
         stock={stock}
+        initialDate={newOrderDate}
       />
 
-      <OrderDetailsModal 
+      <OrderDetailsModal
+        key={selectedOrder?.id || 'none'}
         isOpen={!!selectedOrder}
         order={selectedOrder}
         stock={stock}
@@ -148,6 +165,7 @@ function MainApp({ onLogout }) {
         onEdit={openEdit}
         onDelete={deleteOrder}
         onStatusChange={handleStatusChange}
+        onPaymentChange={handlePaymentChange}
       />
     </div>
   );

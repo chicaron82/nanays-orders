@@ -1,11 +1,15 @@
 // ─── PRICING ─────────────────────────────────────────────────────────────────
 export const LUMPIA_PRICE = { uncooked: 30, cooked: 35 };
+export const LUMPIA_HALF_PRICE = { uncooked: 15, cooked: 20 };
 export const PANCIT_PRICE = { full: 35, half: 17.50 };
 export const DELIVERY_FEE = { pickup: 0, city: 5, outside: 10 };
 
 export function calcTotal(order) {
   let t = 0;
-  if (order.lumpia?.enabled) t += LUMPIA_PRICE[order.lumpia.style] * (order.lumpia.sets || 1);
+  if (order.lumpia?.enabled) {
+    t += LUMPIA_PRICE[order.lumpia.style] * (order.lumpia.sets || 0);
+    t += LUMPIA_HALF_PRICE[order.lumpia.style] * (order.lumpia.halves || 0);
+  }
   if (order.pancit?.enabled) {
     t += PANCIT_PRICE.full * (order.pancit.full || 0);
     t += PANCIT_PRICE.half * (order.pancit.half || 0);
@@ -16,7 +20,13 @@ export function calcTotal(order) {
 
 export function orderSummary(order) {
   const parts = [];
-  if (order.lumpia?.enabled) parts.push(`Lumpia ×${order.lumpia.sets} (${order.lumpia.style === "cooked" ? "Cooked" : "Uncooked / Frozen"})`);
+  if (order.lumpia?.enabled) {
+    const ls = [];
+    if ((order.lumpia.sets || 0) > 0) ls.push(`${order.lumpia.sets} full`);
+    if ((order.lumpia.halves || 0) > 0) ls.push(`${order.lumpia.halves} half`);
+    const styleLabel = order.lumpia.style === "cooked" ? "Cooked" : "Uncooked / Frozen";
+    parts.push(`Lumpia ${ls.join(" + ") || "—"} (${styleLabel})`);
+  }
   if (order.pancit?.enabled) {
     const ps = [];
     if (order.pancit.full > 0) ps.push(`${order.pancit.full} Full`);
@@ -48,7 +58,7 @@ export function urgencyLabel(days) {
 export function getReserved(orders) {
   const reserved = { lumpiaSets: 0, pancitFull: 0, pancitHalf: 0 };
   orders.filter(o => o.order_status === "Ready").forEach(o => {
-    if (o.lumpia?.enabled) reserved.lumpiaSets += o.lumpia.sets || 0;
+    if (o.lumpia?.enabled) reserved.lumpiaSets += (o.lumpia.sets || 0) + (o.lumpia.halves || 0) * 0.5;
     if (o.pancit?.enabled) {
       reserved.pancitFull += o.pancit.full || 0;
       reserved.pancitHalf += o.pancit.half || 0;
@@ -71,7 +81,7 @@ export function checkShortage(order, stock, orders, excludeId = null) {
   const avail = getAvailable(stock, filtered);
   const warnings = [];
   if (order.lumpia?.enabled) {
-    const needed = order.lumpia.sets || 0;
+    const needed = (order.lumpia.sets || 0) + (order.lumpia.halves || 0) * 0.5;
     if (needed > avail.lumpiaSets) warnings.push(`Lumpia: need ${needed} batch${needed !== 1 ? "es" : ""}, only ${Math.max(0, avail.lumpiaSets)} available`);
   }
   if (order.pancit?.enabled) {
@@ -88,7 +98,7 @@ export function getMakeMoreNeeds(orders, stock) {
   const avail = getAvailable(stock, orders);
   let needLumpia = 0, needFull = 0, needHalf = 0;
   pending.forEach(o => {
-    if (o.lumpia?.enabled) needLumpia += o.lumpia.sets || 0;
+    if (o.lumpia?.enabled) needLumpia += (o.lumpia.sets || 0) + (o.lumpia.halves || 0) * 0.5;
     if (o.pancit?.enabled) {
       needFull += o.pancit.full || 0;
       needHalf += o.pancit.half || 0;
@@ -153,6 +163,7 @@ export function formatDate(s) {
 export function fmt(n) { return "$" + Number(n).toFixed(2); }
 
 export const ORDER_STATUS = ["Pending", "Ready", "Fulfilled", "Cancelled"];
+export const PAYMENT_STATUS = ["Unpaid", "Deposit", "Prepaid"];
 
 // ─── FULFILLABILITY WARNINGS ─────────────────────────────────────────────────
 export function getIngredientWarnings(form, stock) {
@@ -194,7 +205,7 @@ export function getIngredientWarnings(form, stock) {
 
   // ── Lumpia timeline warnings ───────────────────────────────────────────────
   if (hasLumpia && form.needed_date) {
-    const lumpiaNeeded = form.lumpia.sets || 0;
+    const lumpiaNeeded = (form.lumpia.sets || 0) + (form.lumpia.halves || 0) * 0.5;
     const lumpiaReady = stock.lumpia_sets || 0;
 
     if (lumpiaNeeded > lumpiaReady) {
@@ -229,4 +240,67 @@ export function getIngredientWarnings(form, stock) {
   }
 
   return warnings;
+}
+
+// ─── CALENDAR ────────────────────────────────────────────────────────────────
+// YYYY-MM-DD from a Date's *local* parts. needed_date is stored as a local YMD
+// string, so toISOString() would shift evening dates a day forward.
+export function localYMD(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// 7 YMD strings for the week containing anchorDate, Sunday start.
+export function getWeekDays(anchorDate) {
+  const start = new Date(anchorDate);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - start.getDay());
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return localYMD(d);
+  });
+}
+
+// Weeks × 7 YMD strings covering the month containing anchorDate, padded with
+// adjacent-month days so every row is a full week (Sunday start).
+export function getMonthGrid(anchorDate) {
+  const first = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
+  const last = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0);
+  const gridStart = new Date(first);
+  gridStart.setDate(first.getDate() - first.getDay());
+  const weekCount = Math.ceil((first.getDay() + last.getDate()) / 7);
+  const weeks = [];
+  for (let w = 0; w < weekCount; w++) {
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(gridStart);
+      day.setDate(gridStart.getDate() + w * 7 + i);
+      week.push(localYMD(day));
+    }
+    weeks.push(week);
+  }
+  return weeks;
+}
+
+// Heuristic capacity model — tunable, later liftable into a StockManager setting.
+export const LOAD_THRESHOLDS = { medium: 3, heavy: 5 };
+
+// Work units for a day's orders: lumpia batch ×1, pancit full ×1, half ×0.5.
+export function dayLoad(ordersForDay) {
+  let units = 0;
+  ordersForDay.forEach(o => {
+    if (o.order_status === "Cancelled") return;
+    if (o.lumpia?.enabled) units += (o.lumpia.sets || 0) + (o.lumpia.halves || 0) * 0.5;
+    if (o.pancit?.enabled) {
+      units += o.pancit.full || 0;
+      units += (o.pancit.half || 0) * 0.5;
+    }
+  });
+  let level = "light";
+  if (units >= LOAD_THRESHOLDS.heavy) level = "heavy";
+  else if (units >= LOAD_THRESHOLDS.medium) level = "medium";
+  return { units, level };
 }

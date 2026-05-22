@@ -1,9 +1,15 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Edit2, AlertTriangle, Calendar, MapPin, Phone, MessageSquare } from 'lucide-react';
-import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil } from '../lib/utils';
-import { ORDER_STATUS } from '../lib/utils';
+import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, ORDER_STATUS, PAYMENT_STATUS } from '../lib/utils';
 
-export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onClose, onEdit, onDelete, onStatusChange }) {
+// Keyed by order id in App.jsx, so a lazy initializer is enough — a different
+// order remounts the modal with a fresh deposit input.
+export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onClose, onEdit, onDelete, onStatusChange, onPaymentChange }) {
+  const [depositInput, setDepositInput] = useState(
+    () => (order?.deposit_amount != null ? String(order.deposit_amount) : '')
+  );
+
   if (!isOpen || !order) return null;
 
   const total = order.total ?? 0;
@@ -55,7 +61,13 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
               {order.lumpia?.enabled && (
                 <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
                   <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">🥟 Lumpia</div>
-                  <div className="font-medium text-stone-800">{order.lumpia.sets} batch{order.lumpia.sets !== 1 ? 'es' : ''} <span className="text-stone-500 text-sm">({order.lumpia.style})</span></div>
+                  <div className="font-medium text-stone-800">
+                    {[
+                      (order.lumpia.sets || 0) > 0 && `${order.lumpia.sets} full batch${order.lumpia.sets !== 1 ? 'es' : ''}`,
+                      (order.lumpia.halves || 0) > 0 && `${order.lumpia.halves} half batch${order.lumpia.halves !== 1 ? 'es' : ''}`,
+                    ].filter(Boolean).join(' · ') || '—'}
+                    <span className="text-stone-500 text-sm"> ({order.lumpia.style})</span>
+                  </div>
                 </div>
               )}
               {order.pancit?.enabled && (
@@ -69,7 +81,7 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
               
               <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
                 <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Calendar size={12}/> Needed By</div>
-                <div className="font-medium text-stone-800">{formatDate(order.needed_date)}{order.delivery_type === 'pickup' && order.pickup_time ? ` @ ${order.pickup_time}` : ''}</div>
+                <div className="font-medium text-stone-800">{formatDate(order.needed_date)}{order.pickup_time ? ` @ ${order.pickup_time}` : ''}</div>
               </div>
               
               <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
@@ -115,6 +127,42 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
                   );
                 })}
               </div>
+            </div>
+
+            <div className="border-t border-stone-200 pt-6">
+              <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-3">Payment</label>
+              <div className="flex flex-wrap gap-2">
+                {PAYMENT_STATUS.map(p => {
+                  const isActive = order.payment_status === p;
+                  return (
+                    <button key={p} onClick={() => onPaymentChange(order.id, {
+                      payment_status: p,
+                      deposit_amount: p === 'Deposit' ? (order.deposit_amount ?? null) : null,
+                    })}
+                      className={`px-4 py-2 rounded-full font-bold text-xs transition-all ${
+                        isActive ? 'bg-stone-800 text-white shadow-md' :
+                        'bg-white border-2 border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300'
+                      }`}
+                    >
+                      {p === 'Prepaid' ? 'Paid ✓' : p}
+                    </button>
+                  );
+                })}
+              </div>
+              {order.payment_status === 'Deposit' && (
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="text-xs font-medium text-stone-500">Deposit received:</span>
+                  <input type="number" min={0} step="0.01" value={depositInput}
+                    onChange={e => setDepositInput(e.target.value)}
+                    onBlur={() => onPaymentChange(order.id, {
+                      payment_status: 'Deposit',
+                      deposit_amount: depositInput === '' ? null : Number(depositInput),
+                    })}
+                    placeholder="0.00"
+                    className="w-28 border-2 border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:border-orange-500 outline-none transition-colors"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 pt-4">

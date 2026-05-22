@@ -1,30 +1,30 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, ChefHat, CheckSquare, User, CalendarDays, MapPin, PenLine } from 'lucide-react';
-import { fuzzyMatch, calcTotal, getIngredientWarnings } from '../lib/utils';
+import { X, Save, ChefHat, CheckSquare, User, CalendarDays, MapPin, PenLine, Clock } from 'lucide-react';
+import { fuzzyMatch, calcTotal, getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
 const initialForm = {
   customer_name: "", contact: "",
-  lumpia: { enabled: false, style: "uncooked", sets: 1 },
+  lumpia: { enabled: false, style: "uncooked", sets: 1, halves: 0 },
   pancit: { enabled: false, full: 1, half: 0 },
   needed_date: "", pickup_time: "", delivery_type: "pickup", address: "",
   payment_status: "Unpaid", deposit_amount: "", notes: "", preferences: "",
   order_status: "Pending", saveCustomer: false,
 };
 
-export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = null, allOrders = [], stock = null }) {
+export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = null, allOrders = [], stock = null, initialDate = null }) {
   const [form, setForm] = useState(initialForm);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  
+
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => {
         if (editOrder) setForm({ ...editOrder, saveCustomer: false });
-        else setForm({ ...initialForm, needed_date: new Date().toISOString().split('T')[0] });
+        else setForm({ ...initialForm, needed_date: initialDate || new Date().toISOString().split('T')[0] });
       }, 0);
     }
-  }, [isOpen, editOrder]);
+  }, [isOpen, editOrder, initialDate]);
 
   const existingNames = [...new Set(allOrders.map(o => o.customer_name))];
   const nameSuggestions = (!form.customer_name || form.customer_name.length < 2) 
@@ -126,23 +126,37 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                     {form.lumpia.enabled && <CheckSquare size={16} />}
                   </div>
                   <div className="flex-1">
-                    <div className="font-bold text-stone-800">🥟 Lumpia (100 pcs/batch)</div>
-                    <div className="text-xs text-stone-500">Uncooked $30 · Cooked $35</div>
+                    <div className="font-bold text-stone-800">🥟 Lumpia</div>
+                    <div className="text-xs text-stone-500">Full batch 100 pcs · Half batch 50 pcs</div>
                   </div>
                 </div>
                 {form.lumpia.enabled && (
-                  <div className="p-4 bg-white border-t border-stone-100 flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
-                      <select value={form.lumpia.style} onChange={e => setField("lumpia.style", e.target.value)} className="w-full border-2 border-stone-200 rounded-lg px-3 py-2 outline-none focus:border-orange-500">
-                        <option value="uncooked">Uncooked / Frozen</option>
-                        <option value="cooked">Cooked</option>
-                      </select>
+                  <div className="p-4 bg-white border-t border-stone-100 flex flex-col gap-4">
+                    <select value={form.lumpia.style} onChange={e => setField("lumpia.style", e.target.value)} className="w-full border-2 border-stone-200 rounded-lg px-3 py-2 outline-none focus:border-orange-500">
+                      <option value="uncooked">Uncooked / Frozen</option>
+                      <option value="cooked">Cooked</option>
+                    </select>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-medium text-stone-700">Full Batch</span>
+                        <div className="text-xs text-stone-400">100 pcs · {fmt(LUMPIA_PRICE[form.lumpia.style])}</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("lumpia.sets", Math.max(0, form.lumpia.sets - 1))}>−</button>
+                        <span className="font-bold w-6 text-center">{form.lumpia.sets}</span>
+                        <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("lumpia.sets", form.lumpia.sets + 1)}>+</button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-bold text-stone-500">Batches:</span>
-                      <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("lumpia.sets", Math.max(1, form.lumpia.sets - 1))}>−</button>
-                      <span className="font-bold w-6 text-center">{form.lumpia.sets}</span>
-                      <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("lumpia.sets", form.lumpia.sets + 1)}>+</button>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-medium text-stone-700">Half Batch</span>
+                        <div className="text-xs text-stone-400">50 pcs · {fmt(LUMPIA_HALF_PRICE[form.lumpia.style])}</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("lumpia.halves", Math.max(0, (form.lumpia.halves || 0) - 1))}>−</button>
+                        <span className="font-bold w-6 text-center">{form.lumpia.halves || 0}</span>
+                        <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("lumpia.halves", (form.lumpia.halves || 0) + 1)}>+</button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -196,10 +210,14 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
             })()}
 
             {/* Logistics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><CalendarDays size={14}/> Date Needed *</label>
                 <input type="date" value={form.needed_date} onChange={e => setField("needed_date", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" />
+              </div>
+              <div>
+                <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><Clock size={14}/> {form.delivery_type === 'pickup' ? 'Pickup Time' : 'Delivery Time'}</label>
+                <input type="time" value={form.pickup_time} onChange={e => setField("pickup_time", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" />
               </div>
               <div>
                 <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><MapPin size={14}/> Delivery Type</label>
@@ -227,7 +245,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
               </div>
               <label className="flex items-center gap-2 cursor-pointer bg-stone-50 p-3 rounded-xl border border-stone-200">
                 <input type="checkbox" checked={form.saveCustomer} onChange={e => setField("saveCustomer", e.target.checked)} className="w-5 h-5 rounded text-orange-500 focus:ring-orange-500" />
-                <span className="text-sm font-medium text-stone-700">Save preferences for next time</span>
+                <span className="text-sm font-medium text-stone-700">Save customer for next time</span>
               </label>
             </div>
 
