@@ -1,7 +1,7 @@
 // ─── PRICING ─────────────────────────────────────────────────────────────────
 export const LUMPIA_PRICE = { uncooked: 30, cooked: 35 };
-export const LUMPIA_HALF_PRICE = { uncooked: 15, cooked: 20 };
-export const PANCIT_PRICE = { full: 35, half: 17.50 };
+export const LUMPIA_HALF_PRICE = { uncooked: 15, cooked: 17.50 };
+export const PANCIT_PRICE = { full: 25, half: 12.50 };
 export const DELIVERY_FEE = { pickup: 0, city: 5, outside: 10 };
 
 export function calcTotal(order) {
