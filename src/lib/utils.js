@@ -4,11 +4,18 @@ export const LUMPIA_HALF_PRICE = { uncooked: 15, cooked: 17.50 };
 export const PANCIT_PRICE = { full: 25, half: 12.50 };
 export const DELIVERY_FEE = { pickup: 0, city: 5, outside: 10 };
 
+// Resolve cooked/uncooked for a lumpia batch — handles both old (style) and new (setsCooked/halvesCooked) formats
+function lumpiaStyleFor(lumpia, key) {
+  const cooked = key === 'sets' ? lumpia.setsCooked : lumpia.halvesCooked;
+  if (cooked != null) return cooked ? 'cooked' : 'uncooked';
+  return lumpia.style || 'uncooked';
+}
+
 export function calcTotal(order) {
   let t = 0;
   if (order.lumpia?.enabled) {
-    t += LUMPIA_PRICE[order.lumpia.style] * (order.lumpia.sets || 0);
-    t += LUMPIA_HALF_PRICE[order.lumpia.style] * (order.lumpia.halves || 0);
+    t += LUMPIA_PRICE[lumpiaStyleFor(order.lumpia, 'sets')] * (order.lumpia.sets || 0);
+    t += LUMPIA_HALF_PRICE[lumpiaStyleFor(order.lumpia, 'halves')] * (order.lumpia.halves || 0);
   }
   if (order.pancit?.enabled) {
     t += PANCIT_PRICE.full * (order.pancit.full || 0);
@@ -22,18 +29,23 @@ export function orderSummary(order) {
   const parts = [];
   if (order.lumpia?.enabled) {
     const ls = [];
-    if ((order.lumpia.sets || 0) > 0) ls.push(`${order.lumpia.sets} full`);
-    if ((order.lumpia.halves || 0) > 0) ls.push(`${order.lumpia.halves} half`);
-    const styleLabel = order.lumpia.style === "cooked" ? "Cooked" : "Uncooked / Frozen";
-    parts.push(`Lumpia ${ls.join(" + ") || "—"} (${styleLabel})`);
+    if ((order.lumpia.sets || 0) > 0) {
+      const cooked = order.lumpia.setsCooked != null ? order.lumpia.setsCooked : order.lumpia.style === 'cooked';
+      ls.push(`${order.lumpia.sets}× full (${cooked ? 'Cooked' : 'Uncooked'})`);
+    }
+    if ((order.lumpia.halves || 0) > 0) {
+      const cooked = order.lumpia.halvesCooked != null ? order.lumpia.halvesCooked : order.lumpia.style === 'cooked';
+      ls.push(`${order.lumpia.halves}× half (${cooked ? 'Cooked' : 'Uncooked'})`);
+    }
+    parts.push(`Lumpia ${ls.join(' + ') || '—'}`);
   }
   if (order.pancit?.enabled) {
     const ps = [];
     if (order.pancit.full > 0) ps.push(`${order.pancit.full} Full`);
     if (order.pancit.half > 0) ps.push(`${order.pancit.half} Half`);
-    if (ps.length) parts.push(`Pancit: ${ps.join(" + ")}`);
+    if (ps.length) parts.push(`Pancit: ${ps.join(' + ')}`);
   }
-  return parts.join(" · ") || "No items";
+  return parts.join(' · ') || 'No items';
 }
 
 // ─── URGENCY ─────────────────────────────────────────────────────────────────

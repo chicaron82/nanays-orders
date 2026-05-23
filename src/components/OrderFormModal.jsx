@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, ChefHat, CheckSquare, User, CalendarDays, MapPin, PenLine, Clock } from 'lucide-react';
-import { fuzzyMatch, calcTotal, getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE } from '../lib/utils';
+import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock } from 'lucide-react';
+import { fuzzyMatch, calcTotal, getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
 const initialForm = {
   customer_name: "", contact: "",
-  lumpia: { enabled: false, style: "uncooked", sets: 1, halves: 0 },
+  lumpia: { enabled: false, sets: 1, setsCooked: true, halves: 0, halvesCooked: true },
   pancit: { enabled: false, full: 1, half: 0 },
   needed_date: "", pickup_time: "", delivery_type: "pickup", address: "",
   payment_status: "Unpaid", deposit_amount: "", notes: "", preferences: "",
   order_status: "Pending", saveCustomer: false,
 };
+
+const ROW_BTN = "w-7 h-7 rounded border-2 border-stone-200 text-orange-600 font-bold hover:bg-orange-50 flex items-center justify-center text-sm transition-colors";
 
 export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = null, allOrders = [], stock = null, initialDate = null }) {
   const [form, setForm] = useState(initialForm);
@@ -20,15 +22,23 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => {
-        if (editOrder) setForm({ ...editOrder, saveCustomer: false });
-        else setForm({ ...initialForm, needed_date: initialDate || new Date().toISOString().split('T')[0] });
+        if (editOrder) {
+          // Migrate old lumpia.style → per-batch setsCooked/halvesCooked
+          const lumpia = editOrder.lumpia;
+          const migratedLumpia = lumpia?.style != null
+            ? { ...lumpia, setsCooked: lumpia.style === 'cooked', halvesCooked: lumpia.style === 'cooked' }
+            : lumpia;
+          setForm({ ...editOrder, lumpia: migratedLumpia, saveCustomer: false });
+        } else {
+          setForm({ ...initialForm, needed_date: initialDate || new Date().toISOString().split('T')[0] });
+        }
       }, 0);
     }
   }, [isOpen, editOrder, initialDate]);
 
   const existingNames = [...new Set(allOrders.map(o => o.customer_name))];
-  const nameSuggestions = (!form.customer_name || form.customer_name.length < 2) 
-    ? [] 
+  const nameSuggestions = (!form.customer_name || form.customer_name.length < 2)
+    ? []
     : existingNames.filter(n => fuzzyMatch(n, form.customer_name) && n.toLowerCase() !== form.customer_name.toLowerCase()).slice(0, 4);
 
   const formatPhone = (raw) => {
@@ -62,8 +72,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
 
   const handleSubmit = () => {
     if (!form.customer_name.trim() || !form.needed_date) return;
-    if (!form.lumpia.enabled && !form.pancit.enabled) return;
-    
+    if (!hasItems) return;
     const finalOrder = {
       ...form,
       total: calcTotal(form),
@@ -76,14 +85,16 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
     onSave(finalOrder);
   };
 
-  const hasItems = form.lumpia.enabled || form.pancit.enabled;
+  const hasItems =
+    (form.lumpia.enabled && ((form.lumpia.sets || 0) + (form.lumpia.halves || 0) > 0)) ||
+    (form.pancit.enabled && ((form.pancit.full || 0) + (form.pancit.half || 0) > 0));
 
   if (!isOpen) return null;
 
   return (
     <AnimatePresence>
       <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center sm:p-4">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -117,45 +128,82 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
 
             {/* Order Items */}
             <div className="space-y-4">
-              <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><ChefHat size={14}/> Menu Items</label>
-              
+              <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider"><ChefHat size={14}/> Menu Items</label>
+
               {/* Lumpia */}
               <div className={`border-2 rounded-xl overflow-hidden transition-colors ${form.lumpia.enabled ? 'border-orange-400 shadow-sm' : 'border-stone-200'}`}>
-                <div className="p-4 bg-orange-50/50 flex items-center cursor-pointer gap-4" onClick={() => setField("lumpia.enabled", !form.lumpia.enabled)}>
-                  <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${form.lumpia.enabled ? 'bg-orange-500 border-orange-500 text-white' : 'border-stone-300'}`}>
-                    {form.lumpia.enabled && <CheckSquare size={16} />}
+                <div
+                  className="p-4 bg-orange-50/50 flex items-center cursor-pointer gap-4"
+                  onClick={() => {
+                    if (!form.lumpia.enabled) {
+                      setField("lumpia", { enabled: true, sets: 1, setsCooked: true, halves: 0, halvesCooked: true });
+                    } else {
+                      setField("lumpia.enabled", false);
+                    }
+                  }}
+                >
+                  <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${form.lumpia.enabled ? 'bg-orange-500 border-orange-500' : 'border-stone-300'}`}>
+                    {form.lumpia.enabled && <Check size={14} className="text-white" />}
                   </div>
                   <div className="flex-1">
                     <div className="font-bold text-stone-800">🥟 Lumpia</div>
                     <div className="text-xs text-stone-500">Full batch 100 pcs · Half batch 50 pcs</div>
                   </div>
                 </div>
+
                 {form.lumpia.enabled && (
-                  <div className="p-4 bg-white border-t border-stone-100 flex flex-col gap-4">
-                    <select value={form.lumpia.style} onChange={e => setField("lumpia.style", e.target.value)} className="w-full border-2 border-stone-200 rounded-lg px-3 py-2 outline-none focus:border-orange-500">
-                      <option value="uncooked">Uncooked / Frozen</option>
-                      <option value="cooked">Cooked</option>
-                    </select>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <span className="font-medium text-stone-700">Full Batch</span>
-                        <div className="text-xs text-stone-400">100 pcs · {fmt(LUMPIA_PRICE[form.lumpia.style])}</div>
+                  <div className="px-4 py-3 bg-white border-t border-stone-100 space-y-3">
+                    {/* Full batch row */}
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setField("lumpia.sets", form.lumpia.sets > 0 ? 0 : 1)}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${form.lumpia.sets > 0 ? 'bg-orange-500 border-orange-500' : 'border-stone-300 hover:border-orange-300'}`}
+                      >
+                        {form.lumpia.sets > 0 && <Check size={11} className="text-white" />}
+                      </button>
+                      <div className="flex-1">
+                        <span className="text-sm font-semibold text-stone-700">Full batch</span>
+                        <span className="text-xs text-stone-400 ml-1.5">100 pcs · {fmt(LUMPIA_PRICE[form.lumpia.setsCooked ? 'cooked' : 'uncooked'])}</span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("lumpia.sets", Math.max(0, form.lumpia.sets - 1))}>−</button>
-                        <span className="font-bold w-6 text-center">{form.lumpia.sets}</span>
-                        <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("lumpia.sets", form.lumpia.sets + 1)}>+</button>
+                      <div className={`flex items-center gap-2 transition-opacity ${form.lumpia.sets === 0 ? 'opacity-30 pointer-events-none' : ''}`}>
+                        <button type="button" onClick={() => setField("lumpia.sets", Math.max(1, form.lumpia.sets - 1))} className={ROW_BTN}>−</button>
+                        <span className="font-bold text-sm w-4 text-center">{form.lumpia.sets}</span>
+                        <button type="button" onClick={() => setField("lumpia.sets", form.lumpia.sets + 1)} className={ROW_BTN}>+</button>
+                        <button
+                          type="button"
+                          onClick={() => setField("lumpia.setsCooked", !form.lumpia.setsCooked)}
+                          className={`ml-1 px-2.5 py-1 rounded-full border text-xs font-semibold transition-colors ${form.lumpia.setsCooked ? 'bg-amber-50 border-amber-400 text-amber-700' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
+                        >
+                          cooked
+                        </button>
                       </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <span className="font-medium text-stone-700">Half Batch</span>
-                        <div className="text-xs text-stone-400">50 pcs · {fmt(LUMPIA_HALF_PRICE[form.lumpia.style])}</div>
+
+                    {/* Half batch row */}
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setField("lumpia.halves", form.lumpia.halves > 0 ? 0 : 1)}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${form.lumpia.halves > 0 ? 'bg-orange-500 border-orange-500' : 'border-stone-300 hover:border-orange-300'}`}
+                      >
+                        {form.lumpia.halves > 0 && <Check size={11} className="text-white" />}
+                      </button>
+                      <div className="flex-1">
+                        <span className="text-sm font-semibold text-stone-700">Half batch</span>
+                        <span className="text-xs text-stone-400 ml-1.5">50 pcs · {fmt(LUMPIA_HALF_PRICE[form.lumpia.halvesCooked ? 'cooked' : 'uncooked'])}</span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("lumpia.halves", Math.max(0, (form.lumpia.halves || 0) - 1))}>−</button>
-                        <span className="font-bold w-6 text-center">{form.lumpia.halves || 0}</span>
-                        <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("lumpia.halves", (form.lumpia.halves || 0) + 1)}>+</button>
+                      <div className={`flex items-center gap-2 transition-opacity ${form.lumpia.halves === 0 ? 'opacity-30 pointer-events-none' : ''}`}>
+                        <button type="button" onClick={() => setField("lumpia.halves", Math.max(1, form.lumpia.halves - 1))} className={ROW_BTN}>−</button>
+                        <span className="font-bold text-sm w-4 text-center">{form.lumpia.halves}</span>
+                        <button type="button" onClick={() => setField("lumpia.halves", form.lumpia.halves + 1)} className={ROW_BTN}>+</button>
+                        <button
+                          type="button"
+                          onClick={() => setField("lumpia.halvesCooked", !form.lumpia.halvesCooked)}
+                          className={`ml-1 px-2.5 py-1 rounded-full border text-xs font-semibold transition-colors ${form.lumpia.halvesCooked ? 'bg-amber-50 border-amber-400 text-amber-700' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
+                        >
+                          cooked
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -164,37 +212,80 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
 
               {/* Pancit */}
               <div className={`border-2 rounded-xl overflow-hidden transition-colors ${form.pancit.enabled ? 'border-orange-400 shadow-sm' : 'border-stone-200'}`}>
-                <div className="p-4 bg-orange-50/50 flex items-center cursor-pointer gap-4" onClick={() => setField("pancit.enabled", !form.pancit.enabled)}>
-                  <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${form.pancit.enabled ? 'bg-orange-500 border-orange-500 text-white' : 'border-stone-300'}`}>
-                    {form.pancit.enabled && <CheckSquare size={16} />}
+                <div
+                  className="p-4 bg-orange-50/50 flex items-center cursor-pointer gap-4"
+                  onClick={() => {
+                    if (!form.pancit.enabled) {
+                      setField("pancit", { enabled: true, full: 1, half: 0 });
+                    } else {
+                      setField("pancit.enabled", false);
+                    }
+                  }}
+                >
+                  <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${form.pancit.enabled ? 'bg-orange-500 border-orange-500' : 'border-stone-300'}`}>
+                    {form.pancit.enabled && <Check size={14} className="text-white" />}
                   </div>
                   <div className="flex-1">
                     <div className="font-bold text-stone-800">🍜 Pancit Tray</div>
-                    <div className="text-xs text-stone-500">Full $35 · Half $17.50</div>
+                    <div className="text-xs text-stone-500">Full {fmt(PANCIT_PRICE.full)} · Half {fmt(PANCIT_PRICE.half)}</div>
                   </div>
                 </div>
+
                 {form.pancit.enabled && (
-                  <div className="p-4 bg-white border-t border-stone-100 flex flex-col gap-4">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-stone-700">Full Trays</span>
-                      <div className="flex items-center gap-3">
-                        <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("pancit.full", Math.max(0, form.pancit.full - 1))}>−</button>
-                        <span className="font-bold w-6 text-center">{form.pancit.full}</span>
-                        <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("pancit.full", form.pancit.full + 1)}>+</button>
+                  <div className="px-4 py-3 bg-white border-t border-stone-100 space-y-3">
+                    {/* Full tray row */}
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setField("pancit.full", form.pancit.full > 0 ? 0 : 1)}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${form.pancit.full > 0 ? 'bg-orange-500 border-orange-500' : 'border-stone-300 hover:border-orange-300'}`}
+                      >
+                        {form.pancit.full > 0 && <Check size={11} className="text-white" />}
+                      </button>
+                      <div className="flex-1">
+                        <span className="text-sm font-semibold text-stone-700">Full tray</span>
+                        <span className="text-xs text-stone-400 ml-1.5">{fmt(PANCIT_PRICE.full)}</span>
+                      </div>
+                      <div className={`flex items-center gap-2 transition-opacity ${form.pancit.full === 0 ? 'opacity-30 pointer-events-none' : ''}`}>
+                        <button type="button" onClick={() => setField("pancit.full", Math.max(1, form.pancit.full - 1))} className={ROW_BTN}>−</button>
+                        <span className="font-bold text-sm w-4 text-center">{form.pancit.full}</span>
+                        <button type="button" onClick={() => setField("pancit.full", form.pancit.full + 1)} className={ROW_BTN}>+</button>
                       </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-stone-700">Half / Small Trays</span>
-                      <div className="flex items-center gap-3">
-                        <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("pancit.half", Math.max(0, form.pancit.half - 1))}>−</button>
-                        <span className="font-bold w-6 text-center">{form.pancit.half}</span>
-                        <button className="w-8 h-8 rounded-lg border-2 text-orange-600 font-bold hover:bg-orange-50" onClick={() => setField("pancit.half", form.pancit.half + 1)}>+</button>
+
+                    {/* Half tray row */}
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setField("pancit.half", form.pancit.half > 0 ? 0 : 1)}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${form.pancit.half > 0 ? 'bg-orange-500 border-orange-500' : 'border-stone-300 hover:border-orange-300'}`}
+                      >
+                        {form.pancit.half > 0 && <Check size={11} className="text-white" />}
+                      </button>
+                      <div className="flex-1">
+                        <span className="text-sm font-semibold text-stone-700">Half tray</span>
+                        <span className="text-xs text-stone-400 ml-1.5">{fmt(PANCIT_PRICE.half)}</span>
+                      </div>
+                      <div className={`flex items-center gap-2 transition-opacity ${form.pancit.half === 0 ? 'opacity-30 pointer-events-none' : ''}`}>
+                        <button type="button" onClick={() => setField("pancit.half", Math.max(1, form.pancit.half - 1))} className={ROW_BTN}>−</button>
+                        <span className="font-bold text-sm w-4 text-center">{form.pancit.half}</span>
+                        <button type="button" onClick={() => setField("pancit.half", form.pancit.half + 1)} className={ROW_BTN}>+</button>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Running subtotal */}
+            {(form.lumpia.enabled || form.pancit.enabled) && (
+              <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+                <span className="text-sm font-semibold text-stone-600">
+                  {form.delivery_type !== 'pickup' ? 'Total (incl. delivery)' : 'Total'}
+                </span>
+                <span className="text-xl font-black text-orange-600">{fmt(calcTotal(form))}</span>
+              </div>
+            )}
 
             {/* Fulfillability warnings */}
             {(() => {
@@ -229,7 +320,6 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
               </div>
             </div>
 
-            {/* Delivery address — shown when delivery type is not pickup */}
             {form.delivery_type !== 'pickup' && (
               <div>
                 <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><MapPin size={14}/> Delivery Address *</label>
@@ -240,8 +330,8 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
             {/* Preferences & Notes */}
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 block">Customer Preferences</label>
-                <input value={form.preferences} onChange={e => setField("preferences", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none" placeholder="Sweet chili sauce, no onions..." />
+                <label className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 block">Customer Preferences / Notes</label>
+                <input value={form.preferences} onChange={e => setField("preferences", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none" placeholder="Sweet chili sauce, buzz code #405, message on arrival…" />
               </div>
               <label className="flex items-center gap-2 cursor-pointer bg-stone-50 p-3 rounded-xl border border-stone-200">
                 <input type="checkbox" checked={form.saveCustomer} onChange={e => setField("saveCustomer", e.target.checked)} className="w-5 h-5 rounded text-orange-500 focus:ring-orange-500" />
