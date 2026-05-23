@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Toaster } from 'sonner';
-import { ChefHat, ClipboardList, PackageOpen, Plus, LogOut } from 'lucide-react';
+import { ChefHat, ClipboardList, PackageOpen, Plus, LogOut, Check, X } from 'lucide-react';
 import { useOrders } from './hooks/useOrders';
 import { useStock } from './hooks/useStock';
 import { useAuth } from './hooks/useAuth';
+import { useBackGuard } from './hooks/useBackGuard';
 
 import Dashboard from './components/Dashboard';
 import CalendarView from './components/CalendarView';
@@ -22,6 +23,12 @@ function MainApp({ onLogout }) {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [editOrder, setEditOrder] = useState(null);
   const [newOrderDate, setNewOrderDate] = useState(null);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+
+  useBackGuard([
+    { isActive: showForm,        onBack: () => { setShowForm(false); setEditOrder(null); setNewOrderDate(null); } },
+    { isActive: !!selectedOrder, onBack: () => setSelectedOrder(null) },
+  ]);
 
   const repeatMap = getRepeatCustomers(orders);
   const repeatCount = Object.values(repeatMap).filter(count => count >= 2).length;
@@ -94,13 +101,33 @@ function MainApp({ onLogout }) {
               <Plus size={20} /> New Order
             </button>
           )}
-          <button 
-            onClick={onLogout}
-            className="bg-black/20 text-white/90 p-3 rounded-full hover:bg-black/40 transition-colors"
-            title="Lock Kitchen"
-          >
-            <LogOut size={20} />
-          </button>
+          {confirmLogout ? (
+            <div className="flex items-center gap-1.5 bg-black/30 rounded-full px-3 py-2">
+              <span className="text-white/90 text-sm font-semibold mr-1">Sign out?</span>
+              <button
+                onClick={onLogout}
+                className="bg-white/20 hover:bg-white/30 text-white p-1.5 rounded-full transition-colors"
+                title="Confirm sign out"
+              >
+                <Check size={15} />
+              </button>
+              <button
+                onClick={() => setConfirmLogout(false)}
+                className="bg-white/20 hover:bg-white/30 text-white p-1.5 rounded-full transition-colors"
+                title="Cancel"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmLogout(true)}
+              className="bg-black/20 text-white/90 p-3 rounded-full hover:bg-black/40 transition-colors"
+              title="Lock Kitchen"
+            >
+              <LogOut size={20} />
+            </button>
+          )}
         </div>
       </header>
 
