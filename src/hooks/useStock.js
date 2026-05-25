@@ -44,11 +44,11 @@ export function useStock() {
     }
   }
 
-  async function updateStock(newStock) {
+  async function updateStock(newStock, { silent = false } = {}) {
     try {
       const { error } = await supabase.from('stock').upsert({ id: 1, ...newStock });
       if (error) throw error;
-      toast.success('Stock updated! 📦');
+      if (!silent) toast.success('Stock updated! 📦');
       setStock(prev => ({ ...prev, ...newStock }));
     } catch (err) {
       console.error('Error updating stock:', err.message);

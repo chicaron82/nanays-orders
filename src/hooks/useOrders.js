@@ -9,12 +9,16 @@ export function useOrders() {
   useEffect(() => {
     fetchOrders();
     
-    // Optional: Set up realtime subscription
     const subscription = supabase
       .channel('orders_channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-        // Refresh orders on any change
-        fetchOrders();
+        if (payload.eventType === 'INSERT') {
+          setOrders(prev => prev.some(o => o.id === payload.new.id) ? prev : [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new : o));
+        } else if (payload.eventType === 'DELETE') {
+          setOrders(prev => prev.filter(o => o.id !== payload.old.id));
+        }
       })
       .subscribe();
 

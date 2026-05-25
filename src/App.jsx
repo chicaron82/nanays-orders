@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { Toaster } from 'sonner';
-import { ChefHat, ClipboardList, PackageOpen, Plus, LogOut, Check, X } from 'lucide-react';
+import { ChefHat, ClipboardList, PackageOpen, Receipt, Plus, LogOut, Check, X } from 'lucide-react';
 import { useOrders } from './hooks/useOrders';
 import { useStock } from './hooks/useStock';
 import { useAuth } from './hooks/useAuth';
+import { useExpenses } from './hooks/useExpenses';
 import { useBackGuard } from './hooks/useBackGuard';
 
 import Dashboard from './components/Dashboard';
 import CalendarView from './components/CalendarView';
 import StockManager from './components/StockManager';
+import ExpenseLog from './components/ExpenseLog';
 import OrderFormModal from './components/OrderFormModal';
 import OrderDetailsModal from './components/OrderDetailsModal';
 import LoginScreen from './components/LoginScreen';
@@ -17,6 +19,7 @@ import { getRepeatCustomers } from './lib/utils';
 function MainApp({ onLogout }) {
   const { orders, loading: ordersLoading, addOrder, updateOrder, deleteOrder } = useOrders();
   const { stock, loading: stockLoading, updateStock } = useStock();
+  const { expenses, addExpense, deleteExpense } = useExpenses();
 
   const [tab, setTab] = useState('orders');
   const [showForm, setShowForm] = useState(false);
@@ -37,6 +40,24 @@ function MainApp({ onLogout }) {
     updateOrder(id, { order_status: newStatus });
     if (selectedOrder?.id === id) {
       setSelectedOrder({ ...selectedOrder, order_status: newStatus });
+    }
+
+    if (newStatus === 'Fulfilled') {
+      const order = orders.find(o => o.id === id);
+      if (order) {
+        const deductions = {};
+        if (order.lumpia?.enabled) {
+          const sets = (order.lumpia.sets || 0) + (order.lumpia.halves || 0) * 0.5;
+          if (sets > 0) deductions.lumpia_sets = Math.max(0, (stock.lumpia_sets || 0) - sets);
+        }
+        if (order.pancit?.enabled) {
+          if ((order.pancit.full || 0) > 0) deductions.pancit_full = Math.max(0, (stock.pancit_full || 0) - order.pancit.full);
+          if ((order.pancit.half || 0) > 0) deductions.pancit_half = Math.max(0, (stock.pancit_half || 0) - order.pancit.half);
+        }
+        if (Object.keys(deductions).length > 0) {
+          updateStock({ ...stock, ...deductions }, { silent: true });
+        }
+      }
     }
   };
 
@@ -133,40 +154,54 @@ function MainApp({ onLogout }) {
 
       {/* Dashboard Summary */}
       <div className="px-6">
-        <Dashboard orders={orders} repeatCount={repeatCount} />
+        <Dashboard orders={orders} repeatCount={repeatCount} expenses={expenses} />
       </div>
 
       {/* Tabs */}
       <div className="px-6 mb-6 sticky top-4 z-40">
-        <div className="bg-black/40 backdrop-blur-xl p-1.5 rounded-2xl flex max-w-sm border border-white/20 mx-auto sm:mx-0 shadow-lg">
-          <button 
+        <div className="bg-black/40 backdrop-blur-xl p-1.5 rounded-2xl flex max-w-md border border-white/20 mx-auto sm:mx-0 shadow-lg">
+          <button
             onClick={() => setTab('orders')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${tab === 'orders' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
           >
             <ClipboardList size={18} /> Calendar
           </button>
-          <button 
+          <button
             onClick={() => setTab('stock')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${tab === 'stock' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
           >
             <PackageOpen size={18} /> Stock & Prep
+          </button>
+          <button
+            onClick={() => setTab('expenses')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${tab === 'expenses' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+          >
+            <Receipt size={18} /> Expenses
           </button>
         </div>
       </div>
 
       {/* Main Content */}
       <main>
-        {tab === 'orders' ? (
+        {tab === 'orders' && (
           <CalendarView
             orders={orders}
             onOrderClick={setSelectedOrder}
             onNewOrderForDate={handleNewOrderForDate}
           />
-        ) : (
-          <StockManager 
-            stock={stock} 
-            orders={orders} 
-            updateStock={updateStock} 
+        )}
+        {tab === 'stock' && (
+          <StockManager
+            stock={stock}
+            orders={orders}
+            updateStock={updateStock}
+          />
+        )}
+        {tab === 'expenses' && (
+          <ExpenseLog
+            expenses={expenses}
+            onAdd={addExpense}
+            onDelete={deleteExpense}
           />
         )}
       </main>

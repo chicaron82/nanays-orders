@@ -1,8 +1,15 @@
 import { getRevenue, fmt } from '../lib/utils';
-import { Repeat, DollarSign, Clock } from 'lucide-react';
+import { Repeat, DollarSign, Clock, TrendingUp } from 'lucide-react';
 
-export default function Dashboard({ orders, repeatCount }) {
+export default function Dashboard({ orders, repeatCount, expenses = [] }) {
   const revenue = getRevenue(orders);
+
+  const now = new Date();
+  const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthlySpend = expenses
+    .filter(e => e.date.startsWith(monthPrefix))
+    .reduce((sum, e) => sum + Number(e.amount), 0);
+  const net = revenue.month - monthlySpend;
 
   const counts = ["Pending", "Ready"].reduce((acc, s) => {
     acc[s] = orders.filter(o => o.order_status === s).length;
@@ -16,6 +23,13 @@ export default function Dashboard({ orders, repeatCount }) {
         <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">Revenue This Month</div>
         <div className="font-playfair text-3xl font-black leading-tight">{fmt(revenue.month)}</div>
         <div className="text-xs text-white/70 mt-1">All time: {fmt(revenue.total)} · from paid & fulfilled</div>
+      </div>
+
+      <div className="col-span-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-20"><TrendingUp size={48} /></div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">This Month — Net</div>
+        <div className={`font-playfair text-3xl font-black leading-tight ${net >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>{fmt(net)}</div>
+        <div className="text-xs text-white/70 mt-1">{fmt(revenue.month)} revenue · {fmt(monthlySpend)} expenses</div>
       </div>
 
       <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
