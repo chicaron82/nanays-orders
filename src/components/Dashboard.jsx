@@ -1,5 +1,5 @@
 import { getRevenue, fmt } from '../lib/utils';
-import { Repeat, DollarSign, Clock, TrendingUp } from 'lucide-react';
+import { Repeat, DollarSign, Clock, TrendingUp, Wallet } from 'lucide-react';
 
 export default function Dashboard({ orders, repeatCount, expenses = [] }) {
   const revenue = getRevenue(orders);
@@ -15,6 +15,9 @@ export default function Dashboard({ orders, repeatCount, expenses = [] }) {
     acc[s] = orders.filter(o => o.order_status === s).length;
     return acc;
   }, {});
+
+  const unpaidOrders = orders.filter(o => o.payment_status === 'Unpaid' && o.order_status !== 'Cancelled');
+  const outstanding = unpaidOrders.reduce((sum, o) => sum + (o.total || 0), 0);
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
@@ -49,6 +52,13 @@ export default function Dashboard({ orders, repeatCount, expenses = [] }) {
           <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">Ready</div>
           <div className="font-playfair text-2xl font-black leading-tight text-emerald-300">{counts.Ready || 0}</div>
         </div>
+      </div>
+
+      <div className="col-span-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-20"><Wallet size={48} /></div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">Outstanding Balance</div>
+        <div className={`font-playfair text-3xl font-black leading-tight ${outstanding > 0 ? 'text-amber-300' : 'text-emerald-300'}`}>{fmt(outstanding)}</div>
+        <div className="text-xs text-white/70 mt-1">{unpaidOrders.length} unpaid order{unpaidOrders.length !== 1 ? 's' : ''}</div>
       </div>
     </div>
   );
