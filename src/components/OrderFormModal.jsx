@@ -50,7 +50,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
 
   const setField = (path, value) => {
     setForm(f => {
-      const clone = JSON.parse(JSON.stringify(f));
+      const clone = structuredClone(f);
       const keys = path.split(".");
       let cur = clone;
       for (let i = 0; i < keys.length - 1; i++) cur = cur[keys[i]];
