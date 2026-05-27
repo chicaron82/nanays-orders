@@ -12,7 +12,7 @@ export default function StockManager({ stock, orders, updateStock }) {
     updateStock(stockEdit);
   };
 
-  const hasShortage = makeMore.lumpia.need > 0 || makeMore.pancitFull.need > 0 || makeMore.pancitHalf.need > 0;
+  const hasShortage = makeMore.lumpia.need > 0 || makeMore.pancitFull.need > 0 || makeMore.pancitHalf.need > 0 || makeMore.pancitLarge.need > 0;
 
   return (
     <div className="max-w-2xl mx-auto px-4 pb-12 space-y-4">
@@ -41,6 +41,9 @@ export default function StockManager({ stock, orders, updateStock }) {
             {makeMore.pancitHalf.need > 0 && (
               <div>🍜 <strong>{makeMore.pancitHalf.need} more small tray{makeMore.pancitHalf.need !== 1 ? 's' : ''}</strong></div>
             )}
+            {makeMore.pancitLarge.need > 0 && (
+              <div>🍜 <strong>{makeMore.pancitLarge.need} more large tray{makeMore.pancitLarge.need !== 1 ? 's' : ''}</strong></div>
+            )}
           </div>
         </div>
       ) : (
@@ -57,6 +60,7 @@ export default function StockManager({ stock, orders, updateStock }) {
         { key: "wrapper_packs", label: "📦 Wrapper Packs on Hand", avail: stock.wrapper_packs || 0, reserved: 0, total: Math.max(stock.wrapper_packs || 1, 1), isWrapper: true },
         { key: "pancit_full", label: "🍜 Pancit Regular Trays", avail: avail.pancitFull, reserved: reserved.pancitFull, total: stock.pancit_full || 0 },
         { key: "pancit_half", label: "🍜 Pancit Small Trays", avail: avail.pancitHalf, reserved: reserved.pancitHalf, total: stock.pancit_half || 0 },
+        { key: "pancit_large", label: "🍜 Pancit Large Trays", avail: avail.pancitLarge, reserved: reserved.pancitLarge, total: stock.pancit_large || 0 },
       ].map(item => {
         const { label, avail: a, reserved: r, total: t, isWrapper } = item;
         const level = a <= 0 ? "danger" : a <= 2 ? "warn" : "ok";
@@ -188,17 +192,24 @@ export default function StockManager({ stock, orders, updateStock }) {
         <h3 className="font-playfair text-xl font-bold text-stone-800 mb-4 flex items-center gap-2"><Package className="text-orange-500"/> Update Stock</h3>
         <div className="space-y-4">
           {[
-            { key: "lumpia_sets", label: "🥟 Lumpia Ready (batches × 100 pcs)" },
+            {
+              key: "lumpia_sets", label: "🥟 Lumpia Ready (batches × 100 pcs)",
+              onInc: s => ({ ...s, lumpia_sets: (s.lumpia_sets || 0) + 1, wrapper_packs: Math.max(0, (s.wrapper_packs || 0) - 1) }),
+              onDec: s => ({ ...s, lumpia_sets: Math.max(0, (s.lumpia_sets || 0) - 1), wrapper_packs: (s.wrapper_packs || 0) + 1 }),
+            },
             { key: "wrapper_packs", label: "📦 Wrapper Packs on Hand" },
-            { key: "pancit_full", label: "🍜 Pancit Full Trays" },
-            { key: "pancit_half", label: "🍜 Pancit Half Trays" },
-          ].map(({ key, label }) => (
+            { key: "pancit_full", label: "🍜 Pancit Regular Trays" },
+            { key: "pancit_half", label: "🍜 Pancit Small Trays" },
+            { key: "pancit_large", label: "🍜 Pancit Large Trays" },
+          ].map(({ key, label, onInc, onDec }) => (
             <div key={key}>
               <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">{label}</label>
               <div className="flex items-center gap-3">
-                <button className="w-10 h-10 rounded-lg border-2 border-orange-200 text-orange-600 font-bold text-xl hover:bg-orange-50 transition-colors" onClick={() => setStockEdit(s => ({ ...s, [key]: Math.max(0, (s[key] || 0) - 1) }))}>−</button>
+                <button className="w-10 h-10 rounded-lg border-2 border-orange-200 text-orange-600 font-bold text-xl hover:bg-orange-50 transition-colors"
+                  onClick={() => setStockEdit(onDec || (s => ({ ...s, [key]: Math.max(0, (s[key] || 0) - 1) })))}>−</button>
                 <span className="text-lg font-bold w-8 text-center text-stone-800">{stockEdit[key] ?? 0}</span>
-                <button className="w-10 h-10 rounded-lg border-2 border-orange-200 text-orange-600 font-bold text-xl hover:bg-orange-50 transition-colors" onClick={() => setStockEdit(s => ({ ...s, [key]: (s[key] || 0) + 1 }))}>+</button>
+                <button className="w-10 h-10 rounded-lg border-2 border-orange-200 text-orange-600 font-bold text-xl hover:bg-orange-50 transition-colors"
+                  onClick={() => setStockEdit(onInc || (s => ({ ...s, [key]: (s[key] || 0) + 1 })))}>+</button>
                 <input type="number" min={0} value={stockEdit[key] ?? 0}
                   onChange={e => setStockEdit(s => ({ ...s, [key]: Math.max(0, parseInt(e.target.value) || 0) }))}
                   className="w-20 text-center border-2 border-stone-200 rounded-lg py-2 focus:border-orange-500 outline-none transition-colors" />

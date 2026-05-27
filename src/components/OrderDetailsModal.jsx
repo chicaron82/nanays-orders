@@ -88,6 +88,9 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
                       (order.pancit.large || 0) > 0 && `${order.pancit.large} Large`,
                     ].filter(Boolean).join(" · ")}
                   </div>
+                  {order.pancit.extraMeat && (
+                    <div className="text-xs text-stone-500 mt-1">🥩 Extra meat &amp; veggies</div>
+                  )}
                 </div>
               )}
               {order.rush_order && (

@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock } from 'lucide-react';
-import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, RUSH_ORDER_FEE } from '../lib/utils';
+import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE } from '../lib/utils';
 import { useOrderForm } from '../hooks/useOrderForm';
 
 const ROW_BTN = "w-7 h-7 rounded border-2 border-stone-200 text-orange-600 font-bold hover:bg-orange-50 flex items-center justify-center text-sm transition-colors";
@@ -165,7 +165,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                   className="p-4 bg-orange-50/50 flex items-center cursor-pointer gap-4"
                   onClick={() => {
                     if (!form.pancit.enabled) {
-                      setField("pancit", { enabled: true, full: 1, half: 0, large: 0 });
+                      setField("pancit", { enabled: true, full: 1, half: 0, large: 0, extraMeat: false });
                     } else {
                       setField("pancit.enabled", false);
                     }
@@ -240,6 +240,17 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                         <span className="font-bold text-sm w-4 text-center">{form.pancit.large || 0}</span>
                         <button type="button" onClick={() => setField("pancit.large", (form.pancit.large || 0) + 1)} className={ROW_BTN}>+</button>
                       </div>
+                    </div>
+
+                    {/* Extra meat/veggies */}
+                    <div className="pt-1 border-t border-stone-100">
+                      <button
+                        type="button"
+                        onClick={() => setField('pancit.extraMeat', !form.pancit.extraMeat)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${form.pancit.extraMeat ? 'bg-orange-500 border-orange-500 text-white' : 'border-stone-200 text-stone-500 hover:border-orange-300'}`}
+                      >
+                        🥩 Extra meat &amp; veggies · +{fmt(PANCIT_EXTRA_MEAT_PRICE)}
+                      </button>
                     </div>
 
                   </div>

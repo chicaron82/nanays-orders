@@ -51,9 +51,9 @@ function MainApp({ onLogout }) {
           if (sets > 0) deductions.lumpia_sets = Math.max(0, (stock.lumpia_sets || 0) - sets);
         }
         if (order.pancit?.enabled) {
-          const fullEquiv = (order.pancit.full || 0) + (order.pancit.large || 0) * 2;
-          if (fullEquiv > 0) deductions.pancit_full = Math.max(0, (stock.pancit_full || 0) - fullEquiv);
+          if ((order.pancit.full || 0) > 0) deductions.pancit_full = Math.max(0, (stock.pancit_full || 0) - order.pancit.full);
           if ((order.pancit.half || 0) > 0) deductions.pancit_half = Math.max(0, (stock.pancit_half || 0) - order.pancit.half);
+          if ((order.pancit.large || 0) > 0) deductions.pancit_large = Math.max(0, (stock.pancit_large || 0) - order.pancit.large);
         }
         if (Object.keys(deductions).length > 0) {
           updateStock({ ...stock, ...deductions }, { silent: true });

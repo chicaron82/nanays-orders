@@ -3,6 +3,7 @@ export const LUMPIA_PRICE = { uncooked: 30, cooked: 35 };
 export const LUMPIA_HALF_PRICE = { uncooked: 15, cooked: 17.50 };
 export const PANCIT_PRICE = { full: 25, half: 12.50, large: 50 };
 export const PANCIT_SAUCE_PRICE = { sweet_and_sour: 2, sweet_chili: 2 };
+export const PANCIT_EXTRA_MEAT_PRICE = 5;
 export const RUSH_ORDER_FEE = 10;
 export const DELIVERY_FEE = { pickup: 0, city: 5, outside: 10 };
 
@@ -24,6 +25,7 @@ export function calcTotal(order) {
     t += PANCIT_PRICE.full * (order.pancit.full || 0);
     t += PANCIT_PRICE.half * (order.pancit.half || 0);
     t += PANCIT_PRICE.large * (order.pancit.large || 0);
+    if (order.pancit.extraMeat) t += PANCIT_EXTRA_MEAT_PRICE;
   }
   t += order.rush_order ? RUSH_ORDER_FEE : 0;
   t += DELIVERY_FEE[order.delivery_type] || 0;
@@ -51,6 +53,7 @@ export function orderSummary(order) {
     if (order.pancit.full > 0) ps.push(`${order.pancit.full} Regular`);
     if (order.pancit.half > 0) ps.push(`${order.pancit.half} Small`);
     if ((order.pancit.large || 0) > 0) ps.push(`${order.pancit.large} Large`);
+    if (order.pancit.extraMeat) ps.push('Extra meat/veggies');
     if (ps.length) parts.push(`Pancit: ${ps.join(' + ')}`);
   }
   if (order.rush_order) parts.push('Rush order');
@@ -77,12 +80,13 @@ export function urgencyLabel(days) {
 
 // ─── STOCK ───────────────────────────────────────────────────────────────────
 export function getReserved(orders) {
-  const reserved = { lumpiaSets: 0, pancitFull: 0, pancitHalf: 0 };
+  const reserved = { lumpiaSets: 0, pancitFull: 0, pancitHalf: 0, pancitLarge: 0 };
   orders.filter(o => o.order_status === "Ready").forEach(o => {
     if (o.lumpia?.enabled) reserved.lumpiaSets += (o.lumpia.sets || 0) + (o.lumpia.halves || 0) * 0.5;
     if (o.pancit?.enabled) {
-      reserved.pancitFull += (o.pancit.full || 0) + (o.pancit.large || 0) * 2;
+      reserved.pancitFull += o.pancit.full || 0;
       reserved.pancitHalf += o.pancit.half || 0;
+      reserved.pancitLarge += o.pancit.large || 0;
     }
   });
   return reserved;
@@ -94,6 +98,7 @@ export function getAvailable(stock, orders) {
     lumpiaSets: (stock?.lumpia_sets || 0) - reserved.lumpiaSets,
     pancitFull: (stock?.pancit_full || 0) - reserved.pancitFull,
     pancitHalf: (stock?.pancit_half || 0) - reserved.pancitHalf,
+    pancitLarge: (stock?.pancit_large || 0) - reserved.pancitLarge,
   };
 }
 
@@ -106,9 +111,10 @@ export function checkShortage(order, stock, orders, excludeId = null) {
     if (needed > avail.lumpiaSets) warnings.push(`Lumpia: need ${needed} batch${needed !== 1 ? "es" : ""}, only ${Math.max(0, avail.lumpiaSets)} available`);
   }
   if (order.pancit?.enabled) {
-    const nf = (order.pancit.full || 0) + (order.pancit.large || 0) * 2, nh = order.pancit.half || 0;
-    if (nf > avail.pancitFull) warnings.push(`Pancit regular/large trays: need ${nf} tray equiv., only ${Math.max(0, avail.pancitFull)} available`);
+    const nf = order.pancit.full || 0, nh = order.pancit.half || 0, nl = order.pancit.large || 0;
+    if (nf > avail.pancitFull) warnings.push(`Pancit regular trays: need ${nf}, only ${Math.max(0, avail.pancitFull)} available`);
     if (nh > avail.pancitHalf) warnings.push(`Pancit small trays: need ${nh}, only ${Math.max(0, avail.pancitHalf)} available`);
+    if (nl > avail.pancitLarge) warnings.push(`Pancit large trays: need ${nl}, only ${Math.max(0, avail.pancitLarge)} available`);
   }
   return warnings;
 }
@@ -117,18 +123,20 @@ export function checkShortage(order, stock, orders, excludeId = null) {
 export function getMakeMoreNeeds(orders, stock) {
   const pending = orders.filter(o => o.order_status === "Pending");
   const avail = getAvailable(stock, orders);
-  let needLumpia = 0, needFull = 0, needHalf = 0;
+  let needLumpia = 0, needFull = 0, needHalf = 0, needLarge = 0;
   pending.forEach(o => {
     if (o.lumpia?.enabled) needLumpia += (o.lumpia.sets || 0) + (o.lumpia.halves || 0) * 0.5;
     if (o.pancit?.enabled) {
-      needFull += (o.pancit.full || 0) + (o.pancit.large || 0) * 2;
+      needFull += o.pancit.full || 0;
       needHalf += o.pancit.half || 0;
+      needLarge += o.pancit.large || 0;
     }
   });
   return {
     lumpia: { need: Math.max(0, needLumpia - avail.lumpiaSets), avail: avail.lumpiaSets, total: needLumpia },
     pancitFull: { need: Math.max(0, needFull - avail.pancitFull), avail: avail.pancitFull, total: needFull },
     pancitHalf: { need: Math.max(0, needHalf - avail.pancitHalf), avail: avail.pancitHalf, total: needHalf },
+    pancitLarge: { need: Math.max(0, needLarge - avail.pancitLarge), avail: avail.pancitLarge, total: needLarge },
   };
 }
 

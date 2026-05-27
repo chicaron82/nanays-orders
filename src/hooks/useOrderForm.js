@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 const initialForm = {
   customer_name: "", contact: "",
   lumpia: { enabled: false, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] },
-  pancit: { enabled: false, full: 1, half: 0, large: 0 },
+  pancit: { enabled: false, full: 1, half: 0, large: 0, extraMeat: false },
   needed_date: "", pickup_time: "", delivery_type: "pickup", address: "",
   payment_status: "Unpaid", deposit_amount: "", notes: "", preferences: "",
   rush_order: false, order_status: "Pending", saveCustomer: false,
