@@ -4,11 +4,11 @@ import { supabase } from '../lib/supabase';
 
 const initialForm = {
   customer_name: "", contact: "",
-  lumpia: { enabled: false, sets: 1, setsCooked: true, halves: 0, halvesCooked: true },
-  pancit: { enabled: false, full: 1, half: 0 },
+  lumpia: { enabled: false, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] },
+  pancit: { enabled: false, full: 1, half: 0, large: 0 },
   needed_date: "", pickup_time: "", delivery_type: "pickup", address: "",
   payment_status: "Unpaid", deposit_amount: "", notes: "", preferences: "",
-  order_status: "Pending", saveCustomer: false,
+  rush_order: false, order_status: "Pending", saveCustomer: false,
 };
 
 export function useOrderForm({ isOpen, editOrder, allOrders, stock: _stock, initialDate, onSave }) {
@@ -69,7 +69,7 @@ export function useOrderForm({ isOpen, editOrder, allOrders, stock: _stock, init
 
   const hasItems =
     (form.lumpia.enabled && ((form.lumpia.sets || 0) + (form.lumpia.halves || 0) > 0)) ||
-    (form.pancit.enabled && ((form.pancit.full || 0) + (form.pancit.half || 0) > 0));
+    (form.pancit.enabled && ((form.pancit.full || 0) + (form.pancit.half || 0) + (form.pancit.large || 0) > 0));
 
   const total = calcTotal(form);
 

@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock } from 'lucide-react';
-import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE } from '../lib/utils';
+import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, RUSH_ORDER_FEE } from '../lib/utils';
 import { useOrderForm } from '../hooks/useOrderForm';
 
 const ROW_BTN = "w-7 h-7 rounded border-2 border-stone-200 text-orange-600 font-bold hover:bg-orange-50 flex items-center justify-center text-sm transition-colors";
@@ -59,7 +59,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                   className="p-4 bg-orange-50/50 flex items-center cursor-pointer gap-4"
                   onClick={() => {
                     if (!form.lumpia.enabled) {
-                      setField("lumpia", { enabled: true, sets: 1, setsCooked: true, halves: 0, halvesCooked: true });
+                      setField("lumpia", { enabled: true, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] });
                     } else {
                       setField("lumpia.enabled", false);
                     }
@@ -129,6 +129,32 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                         </button>
                       </div>
                     </div>
+
+                    {/* Sauces */}
+                    <div className="pt-1 border-t border-stone-100">
+                      <p className="text-xs text-stone-400 mb-2">Sauces (optional · {fmt(PANCIT_SAUCE_PRICE.sweet_and_sour)} each)</p>
+                      <div className="flex gap-2">
+                        {[
+                          { key: 'sweet_and_sour', label: 'Sweet & Sour' },
+                          { key: 'sweet_chili',    label: 'Sweet Chili' },
+                        ].map(sauce => {
+                          const selected = (form.lumpia.sauces || []).includes(sauce.key);
+                          return (
+                            <button
+                              key={sauce.key}
+                              type="button"
+                              onClick={() => {
+                                const current = form.lumpia.sauces || [];
+                                setField('lumpia.sauces', selected ? current.filter(s => s !== sauce.key) : [...current, sauce.key]);
+                              }}
+                              className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${selected ? 'bg-orange-500 border-orange-500 text-white' : 'border-stone-200 text-stone-500 hover:border-orange-300'}`}
+                            >
+                              {sauce.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -139,7 +165,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                   className="p-4 bg-orange-50/50 flex items-center cursor-pointer gap-4"
                   onClick={() => {
                     if (!form.pancit.enabled) {
-                      setField("pancit", { enabled: true, full: 1, half: 0 });
+                      setField("pancit", { enabled: true, full: 1, half: 0, large: 0 });
                     } else {
                       setField("pancit.enabled", false);
                     }
@@ -150,13 +176,13 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                   </div>
                   <div className="flex-1">
                     <div className="font-bold text-stone-800">🍜 Pancit Tray</div>
-                    <div className="text-xs text-stone-500">Full {fmt(PANCIT_PRICE.full)} · Half {fmt(PANCIT_PRICE.half)}</div>
+                    <div className="text-xs text-stone-500">Regular {fmt(PANCIT_PRICE.full)} · Small {fmt(PANCIT_PRICE.half)} · Large {fmt(PANCIT_PRICE.large)}</div>
                   </div>
                 </div>
 
                 {form.pancit.enabled && (
                   <div className="px-4 py-3 bg-white border-t border-stone-100 space-y-3">
-                    {/* Full tray row */}
+                    {/* Regular tray row */}
                     <div className="flex items-center gap-2.5">
                       <button
                         type="button"
@@ -166,7 +192,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                         {form.pancit.full > 0 && <Check size={11} className="text-white" />}
                       </button>
                       <div className="flex-1">
-                        <span className="text-sm font-semibold text-stone-700">Full tray</span>
+                        <span className="text-sm font-semibold text-stone-700">Regular</span>
                         <span className="text-xs text-stone-400 ml-1.5">{fmt(PANCIT_PRICE.full)}</span>
                       </div>
                       <div className={`flex items-center gap-2 transition-opacity ${form.pancit.full === 0 ? 'opacity-30 pointer-events-none' : ''}`}>
@@ -176,7 +202,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                       </div>
                     </div>
 
-                    {/* Half tray row */}
+                    {/* Small tray row */}
                     <div className="flex items-center gap-2.5">
                       <button
                         type="button"
@@ -186,7 +212,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                         {form.pancit.half > 0 && <Check size={11} className="text-white" />}
                       </button>
                       <div className="flex-1">
-                        <span className="text-sm font-semibold text-stone-700">Half tray</span>
+                        <span className="text-sm font-semibold text-stone-700">Small</span>
                         <span className="text-xs text-stone-400 ml-1.5">{fmt(PANCIT_PRICE.half)}</span>
                       </div>
                       <div className={`flex items-center gap-2 transition-opacity ${form.pancit.half === 0 ? 'opacity-30 pointer-events-none' : ''}`}>
@@ -195,6 +221,27 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                         <button type="button" onClick={() => setField("pancit.half", form.pancit.half + 1)} className={ROW_BTN}>+</button>
                       </div>
                     </div>
+
+                    {/* Large tray row */}
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setField("pancit.large", (form.pancit.large || 0) > 0 ? 0 : 1)}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${(form.pancit.large || 0) > 0 ? 'bg-orange-500 border-orange-500' : 'border-stone-300 hover:border-orange-300'}`}
+                      >
+                        {(form.pancit.large || 0) > 0 && <Check size={11} className="text-white" />}
+                      </button>
+                      <div className="flex-1">
+                        <span className="text-sm font-semibold text-stone-700">Large</span>
+                        <span className="text-xs text-stone-400 ml-1.5">{fmt(PANCIT_PRICE.large)}</span>
+                      </div>
+                      <div className={`flex items-center gap-2 transition-opacity ${(form.pancit.large || 0) === 0 ? 'opacity-30 pointer-events-none' : ''}`}>
+                        <button type="button" onClick={() => setField("pancit.large", Math.max(1, (form.pancit.large || 0) - 1))} className={ROW_BTN}>−</button>
+                        <span className="font-bold text-sm w-4 text-center">{form.pancit.large || 0}</span>
+                        <button type="button" onClick={() => setField("pancit.large", (form.pancit.large || 0) + 1)} className={ROW_BTN}>+</button>
+                      </div>
+                    </div>
+
                   </div>
                 )}
               </div>
@@ -222,6 +269,20 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                 </div>
               );
             })()}
+
+            {/* Rush order */}
+            <label className={`flex items-center gap-3 cursor-pointer p-3 rounded-xl border-2 transition-colors ${form.rush_order ? 'border-orange-400 bg-orange-50/50' : 'border-stone-200'}`}>
+              <div
+                onClick={() => setField('rush_order', !form.rush_order)}
+                className={`w-6 h-6 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${form.rush_order ? 'bg-orange-500 border-orange-500' : 'border-stone-300'}`}
+              >
+                {form.rush_order && <Check size={14} className="text-white" />}
+              </div>
+              <div className="flex-1" onClick={() => setField('rush_order', !form.rush_order)}>
+                <div className="font-bold text-stone-800 text-sm">⚡ Rush Order</div>
+                <div className="text-xs text-stone-500">Priority handling · +{fmt(RUSH_ORDER_FEE)}</div>
+              </div>
+            </label>
 
             {/* Logistics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

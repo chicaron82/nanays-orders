@@ -1,7 +1,9 @@
 // ─── PRICING ─────────────────────────────────────────────────────────────────
 export const LUMPIA_PRICE = { uncooked: 30, cooked: 35 };
 export const LUMPIA_HALF_PRICE = { uncooked: 15, cooked: 17.50 };
-export const PANCIT_PRICE = { full: 25, half: 12.50 };
+export const PANCIT_PRICE = { full: 25, half: 12.50, large: 50 };
+export const PANCIT_SAUCE_PRICE = { sweet_and_sour: 2, sweet_chili: 2 };
+export const RUSH_ORDER_FEE = 10;
 export const DELIVERY_FEE = { pickup: 0, city: 5, outside: 10 };
 
 // Resolve cooked/uncooked for a lumpia batch — handles both old (style) and new (setsCooked/halvesCooked) formats
@@ -16,11 +18,14 @@ export function calcTotal(order) {
   if (order.lumpia?.enabled) {
     t += LUMPIA_PRICE[lumpiaStyleFor(order.lumpia, 'sets')] * (order.lumpia.sets || 0);
     t += LUMPIA_HALF_PRICE[lumpiaStyleFor(order.lumpia, 'halves')] * (order.lumpia.halves || 0);
+    t += (order.lumpia.sauces || []).reduce((s, sauce) => s + (PANCIT_SAUCE_PRICE[sauce] || 0), 0);
   }
   if (order.pancit?.enabled) {
     t += PANCIT_PRICE.full * (order.pancit.full || 0);
     t += PANCIT_PRICE.half * (order.pancit.half || 0);
+    t += PANCIT_PRICE.large * (order.pancit.large || 0);
   }
+  t += order.rush_order ? RUSH_ORDER_FEE : 0;
   t += DELIVERY_FEE[order.delivery_type] || 0;
   return t;
 }
@@ -38,13 +43,17 @@ export function orderSummary(order) {
       ls.push(`${order.lumpia.halves}× half (${cooked ? 'Cooked' : 'Uncooked'})`);
     }
     parts.push(`Lumpia ${ls.join(' + ') || '—'}`);
+    const sauces = order.lumpia.sauces || [];
+    if (sauces.length) parts.push(`Sauce: ${sauces.map(s => s === 'sweet_and_sour' ? 'Sweet & Sour' : 'Sweet Chili').join(', ')}`);
   }
   if (order.pancit?.enabled) {
     const ps = [];
-    if (order.pancit.full > 0) ps.push(`${order.pancit.full} Full`);
-    if (order.pancit.half > 0) ps.push(`${order.pancit.half} Half`);
+    if (order.pancit.full > 0) ps.push(`${order.pancit.full} Regular`);
+    if (order.pancit.half > 0) ps.push(`${order.pancit.half} Small`);
+    if ((order.pancit.large || 0) > 0) ps.push(`${order.pancit.large} Large`);
     if (ps.length) parts.push(`Pancit: ${ps.join(' + ')}`);
   }
+  if (order.rush_order) parts.push('Rush order');
   return parts.join(' · ') || 'No items';
 }
 
@@ -72,7 +81,7 @@ export function getReserved(orders) {
   orders.filter(o => o.order_status === "Ready").forEach(o => {
     if (o.lumpia?.enabled) reserved.lumpiaSets += (o.lumpia.sets || 0) + (o.lumpia.halves || 0) * 0.5;
     if (o.pancit?.enabled) {
-      reserved.pancitFull += o.pancit.full || 0;
+      reserved.pancitFull += (o.pancit.full || 0) + (o.pancit.large || 0) * 2;
       reserved.pancitHalf += o.pancit.half || 0;
     }
   });
@@ -97,9 +106,9 @@ export function checkShortage(order, stock, orders, excludeId = null) {
     if (needed > avail.lumpiaSets) warnings.push(`Lumpia: need ${needed} batch${needed !== 1 ? "es" : ""}, only ${Math.max(0, avail.lumpiaSets)} available`);
   }
   if (order.pancit?.enabled) {
-    const nf = order.pancit.full || 0, nh = order.pancit.half || 0;
-    if (nf > avail.pancitFull) warnings.push(`Pancit full trays: need ${nf}, only ${Math.max(0, avail.pancitFull)} available`);
-    if (nh > avail.pancitHalf) warnings.push(`Pancit half/small trays: need ${nh}, only ${Math.max(0, avail.pancitHalf)} available`);
+    const nf = (order.pancit.full || 0) + (order.pancit.large || 0) * 2, nh = order.pancit.half || 0;
+    if (nf > avail.pancitFull) warnings.push(`Pancit regular/large trays: need ${nf} tray equiv., only ${Math.max(0, avail.pancitFull)} available`);
+    if (nh > avail.pancitHalf) warnings.push(`Pancit small trays: need ${nh}, only ${Math.max(0, avail.pancitHalf)} available`);
   }
   return warnings;
 }
@@ -112,7 +121,7 @@ export function getMakeMoreNeeds(orders, stock) {
   pending.forEach(o => {
     if (o.lumpia?.enabled) needLumpia += (o.lumpia.sets || 0) + (o.lumpia.halves || 0) * 0.5;
     if (o.pancit?.enabled) {
-      needFull += o.pancit.full || 0;
+      needFull += (o.pancit.full || 0) + (o.pancit.large || 0) * 2;
       needHalf += o.pancit.half || 0;
     }
   });
@@ -238,7 +247,7 @@ export function getIngredientWarnings(form, stock) {
 
   // ── Pancit warnings ────────────────────────────────────────────────────────
   if (hasPancit) {
-    const packsNeeded = (form.pancit.full || 0) + Math.ceil((form.pancit.half || 0) / 2);
+    const packsNeeded = (form.pancit.full || 0) + Math.ceil((form.pancit.half || 0) / 2) + (form.pancit.large || 0) * 2;
     const packsOnHand = stock.noodle_packs || 0;
 
     if (packsNeeded > packsOnHand) {
@@ -309,6 +318,7 @@ export function dayLoad(ordersForDay) {
     if (o.pancit?.enabled) {
       units += o.pancit.full || 0;
       units += (o.pancit.half || 0) * 0.5;
+      units += (o.pancit.large || 0) * 2;
     }
   });
   let level = "light";

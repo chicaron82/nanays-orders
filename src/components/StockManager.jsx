@@ -36,10 +36,10 @@ export default function StockManager({ stock, orders, updateStock }) {
               </div>
             )}
             {makeMore.pancitFull.need > 0 && (
-              <div>🍜 <strong>{makeMore.pancitFull.need} more full tray{makeMore.pancitFull.need !== 1 ? 's' : ''}</strong></div>
+              <div>🍜 <strong>{makeMore.pancitFull.need} more regular tray{makeMore.pancitFull.need !== 1 ? 's' : ''}</strong></div>
             )}
             {makeMore.pancitHalf.need > 0 && (
-              <div>🍜 <strong>{makeMore.pancitHalf.need} more half tray{makeMore.pancitHalf.need !== 1 ? 's' : ''}</strong></div>
+              <div>🍜 <strong>{makeMore.pancitHalf.need} more small tray{makeMore.pancitHalf.need !== 1 ? 's' : ''}</strong></div>
             )}
           </div>
         </div>
@@ -55,8 +55,8 @@ export default function StockManager({ stock, orders, updateStock }) {
       {[
         { key: "lumpia_sets", label: "🥟 Lumpia Ready", avail: avail.lumpiaSets, reserved: reserved.lumpiaSets, total: stock.lumpia_sets || 0 },
         { key: "wrapper_packs", label: "📦 Wrapper Packs on Hand", avail: stock.wrapper_packs || 0, reserved: 0, total: Math.max(stock.wrapper_packs || 1, 1), isWrapper: true },
-        { key: "pancit_full", label: "🍜 Pancit Full Trays", avail: avail.pancitFull, reserved: reserved.pancitFull, total: stock.pancit_full || 0 },
-        { key: "pancit_half", label: "🍜 Pancit Half Trays", avail: avail.pancitHalf, reserved: reserved.pancitHalf, total: stock.pancit_half || 0 },
+        { key: "pancit_full", label: "🍜 Pancit Regular Trays", avail: avail.pancitFull, reserved: reserved.pancitFull, total: stock.pancit_full || 0 },
+        { key: "pancit_half", label: "🍜 Pancit Small Trays", avail: avail.pancitHalf, reserved: reserved.pancitHalf, total: stock.pancit_half || 0 },
       ].map(item => {
         const { label, avail: a, reserved: r, total: t, isWrapper } = item;
         const level = a <= 0 ? "danger" : a <= 2 ? "warn" : "ok";

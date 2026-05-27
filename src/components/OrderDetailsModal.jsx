@@ -71,14 +71,29 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
                       ].filter(Boolean).join(' · ') || '—';
                     })()}
                   </div>
+                  {(order.lumpia.sauces || []).length > 0 && (
+                    <div className="text-xs text-stone-500 mt-1">
+                      {order.lumpia.sauces.map(s => s === 'sweet_and_sour' ? 'Sweet & Sour' : 'Sweet Chili').join(', ')}
+                    </div>
+                  )}
                 </div>
               )}
               {order.pancit?.enabled && (
                 <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
                   <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">🍜 Pancit</div>
                   <div className="font-medium text-stone-800">
-                    {[order.pancit.full > 0 && `${order.pancit.full} Full`, order.pancit.half > 0 && `${order.pancit.half} Half`].filter(Boolean).join(" · ")}
+                    {[
+                      order.pancit.full > 0 && `${order.pancit.full} Regular`,
+                      order.pancit.half > 0 && `${order.pancit.half} Small`,
+                      (order.pancit.large || 0) > 0 && `${order.pancit.large} Large`,
+                    ].filter(Boolean).join(" · ")}
                   </div>
+                </div>
+              )}
+              {order.rush_order && (
+                <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
+                  <div className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-1">⚡ Rush Order</div>
+                  <div className="font-medium text-orange-800">Priority handling</div>
                 </div>
               )}
               
