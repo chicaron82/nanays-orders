@@ -43,7 +43,7 @@ export default function LoginScreen({ onLogin }) {
                 type="email" 
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:border-orange-500 focus:bg-black/40 outline-none transition-all"
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus-visible:border-orange-500 focus-visible:bg-black/40 focus-visible:ring-2 focus-visible:ring-white/30 outline-none transition-all"
                 placeholder="nanay@kitchen.com"
                 required
               />
@@ -55,7 +55,7 @@ export default function LoginScreen({ onLogin }) {
                 type="password" 
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:border-orange-500 focus:bg-black/40 outline-none transition-all"
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus-visible:border-orange-500 focus-visible:bg-black/40 focus-visible:ring-2 focus-visible:ring-white/30 outline-none transition-all"
                 placeholder="••••••••"
                 required
               />

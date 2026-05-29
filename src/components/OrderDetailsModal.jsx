@@ -181,7 +181,7 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
                       deposit_amount: depositInput === '' ? null : Number(depositInput),
                     })}
                     placeholder="0.00"
-                    className="w-28 border-2 border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:border-orange-500 outline-none transition-colors"
+                    className="w-28 border-2 border-stone-200 rounded-lg px-3 py-1.5 text-sm focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors"
                   />
                 </div>
               )}
