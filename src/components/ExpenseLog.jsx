@@ -48,8 +48,10 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }) {
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-white/70 font-semibold block mb-1">Batch Date</label>
+              <label htmlFor="expense-date" className="text-xs text-white/70 font-semibold block mb-1">Batch Date</label>
               <input
+                id="expense-date"
+                name="expense_date"
                 type="date"
                 value={form.date}
                 onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
@@ -58,12 +60,15 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }) {
               />
             </div>
             <div>
-              <label className="text-xs text-white/70 font-semibold block mb-1">Amount</label>
+              <label htmlFor="expense-amount" className="text-xs text-white/70 font-semibold block mb-1">Amount</label>
               <input
+                id="expense-amount"
+                name="expense_amount"
                 type="number"
                 min="0.01"
                 step="0.01"
                 placeholder="0.00"
+                autoComplete="off"
                 value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                 className="w-full bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40"
@@ -93,9 +98,12 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }) {
           </div>
 
           <div>
-            <label className="text-xs text-white/70 font-semibold block mb-1">Note <span className="font-normal opacity-60">(optional)</span></label>
+            <label htmlFor="expense-note" className="text-xs text-white/70 font-semibold block mb-1">Note <span className="font-normal opacity-60">(optional)</span></label>
             <input
+              id="expense-note"
+              name="expense_note"
               type="text"
+              autoComplete="off"
               placeholder="e.g. 200 wrappers from Seafood City"
               value={form.note}
               onChange={e => setForm(f => ({ ...f, note: e.target.value }))}

@@ -174,7 +174,7 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
               {order.payment_status === 'Deposit' && (
                 <div className="mt-3 flex items-center gap-2">
                   <span className="text-xs font-medium text-stone-500">Deposit received:</span>
-                  <input type="number" min={0} step="0.01" value={depositInput}
+                  <input type="number" id="order-deposit" name="deposit_amount" autoComplete="off" min={0} step="0.01" value={depositInput}
                     onChange={e => setDepositInput(e.target.value)}
                     onBlur={() => onPaymentChange(order.id, {
                       payment_status: 'Deposit',

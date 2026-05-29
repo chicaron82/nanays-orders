@@ -32,8 +32,8 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
             {/* Customer Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
               <div>
-                <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><User size={14}/> Customer Name *</label>
-                <input value={form.customer_name} onChange={e => { setField("customer_name", e.target.value); setShowSuggestions(true); }}
+                <label htmlFor="order-customer-name" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><User size={14}/> Customer Name *</label>
+                <input id="order-customer-name" name="customer_name" autoComplete="off" value={form.customer_name} onChange={e => { setField("customer_name", e.target.value); setShowSuggestions(true); }}
                   className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" placeholder="Tita Cora" />
                 {showSuggestions && nameSuggestions.length > 0 && (
                   <div className="absolute z-30 top-full mt-1 w-full bg-white border border-stone-200 rounded-xl shadow-xl overflow-hidden">
@@ -44,8 +44,8 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                 )}
               </div>
               <div>
-                <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><PenLine size={14}/> Contact</label>
-                <input value={form.contact} onChange={e => setField("contact", formatPhone(e.target.value))} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" placeholder="204-555-0100" />
+                <label htmlFor="order-contact" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><PenLine size={14}/> Contact</label>
+                <input id="order-contact" name="contact" type="tel" autoComplete="tel" spellCheck={false} value={form.contact} onChange={e => setField("contact", formatPhone(e.target.value))} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" placeholder="204-555-0100" />
               </div>
             </div>
 
@@ -304,16 +304,16 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
             {/* Logistics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><CalendarDays size={14}/> Date Needed *</label>
-                <input type="date" value={form.needed_date} onChange={e => setField("needed_date", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" />
+                <label htmlFor="order-date" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><CalendarDays size={14}/> Date Needed *</label>
+                <input id="order-date" name="needed_date" type="date" value={form.needed_date} onChange={e => setField("needed_date", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" />
               </div>
               <div>
-                <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><Clock size={14}/> {form.delivery_type === 'pickup' ? 'Pickup Time' : 'Delivery Time'}</label>
-                <input type="time" value={form.pickup_time} onChange={e => setField("pickup_time", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" />
+                <label htmlFor="order-time" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><Clock size={14}/> {form.delivery_type === 'pickup' ? 'Pickup Time' : 'Delivery Time'}</label>
+                <input id="order-time" name="pickup_time" type="time" value={form.pickup_time} onChange={e => setField("pickup_time", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" />
               </div>
               <div>
-                <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><MapPin size={14}/> Delivery Type</label>
-                <select value={form.delivery_type} onChange={e => setField("delivery_type", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none bg-white">
+                <label htmlFor="order-delivery-type" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><MapPin size={14}/> Delivery Type</label>
+                <select id="order-delivery-type" name="delivery_type" value={form.delivery_type} onChange={e => setField("delivery_type", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none bg-white">
                   <option value="pickup">🏠 Pickup (free)</option>
                   <option value="city">🚗 City Delivery (+$5)</option>
                   <option value="outside">🛣️ Outside City (+$10)</option>
@@ -323,16 +323,16 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
 
             {form.delivery_type !== 'pickup' && (
               <div>
-                <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><MapPin size={14}/> Delivery Address *</label>
-                <input value={form.address} onChange={e => setField("address", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" placeholder="123 Main St, Winnipeg" />
+                <label htmlFor="order-address" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><MapPin size={14}/> Delivery Address *</label>
+                <input id="order-address" name="address" autoComplete="off" value={form.address} onChange={e => setField("address", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none transition-colors" placeholder="123 Main St, Winnipeg" />
               </div>
             )}
 
             {/* Preferences & Notes */}
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 block">Customer Preferences / Notes</label>
-                <input value={form.preferences} onChange={e => setField("preferences", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none" placeholder="Sweet chili sauce, buzz code #405, message on arrival…" />
+                <label htmlFor="order-preferences" className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 block">Customer Preferences / Notes</label>
+                <input id="order-preferences" name="preferences" autoComplete="off" value={form.preferences} onChange={e => setField("preferences", e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus:border-orange-500 outline-none" placeholder="Sweet chili sauce, buzz code #405, message on arrival…" />
               </div>
               <label className="flex items-center gap-2 cursor-pointer bg-stone-50 p-3 rounded-xl border border-stone-200">
                 <input type="checkbox" checked={form.saveCustomer} onChange={e => setField("saveCustomer", e.target.checked)} className="w-5 h-5 rounded text-orange-500 focus:ring-orange-500" />
