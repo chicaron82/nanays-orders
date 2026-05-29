@@ -38,7 +38,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                 {showSuggestions && nameSuggestions.length > 0 && (
                   <div className="absolute z-30 top-full mt-1 w-full bg-white border border-stone-200 rounded-xl shadow-xl overflow-hidden">
                     {nameSuggestions.map(n => (
-                      <div key={n} className="px-4 py-3 hover:bg-orange-50 cursor-pointer text-stone-800" onClick={() => handleSelectSuggestion(n)}>{n}</div>
+                      <button key={n} type="button" className="w-full text-left px-4 py-3 hover:bg-orange-50 cursor-pointer text-stone-800" onClick={() => handleSelectSuggestion(n)}>{n}</button>
                     ))}
                   </div>
                 )}
@@ -55,8 +55,9 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
 
               {/* Lumpia */}
               <div className={`border-2 rounded-xl overflow-hidden transition-colors ${form.lumpia.enabled ? 'border-orange-400 shadow-sm' : 'border-stone-200'}`}>
-                <div
-                  className="p-4 bg-orange-50/50 flex items-center cursor-pointer gap-4"
+                <button
+                  type="button"
+                  className="w-full p-4 bg-orange-50/50 flex items-center cursor-pointer gap-4 text-left"
                   onClick={() => {
                     if (!form.lumpia.enabled) {
                       setField("lumpia", { enabled: true, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] });
@@ -72,7 +73,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                     <div className="font-bold text-stone-800">🥟 Lumpia</div>
                     <div className="text-xs text-stone-500">Full batch 100 pcs · Half batch 50 pcs</div>
                   </div>
-                </div>
+                </button>
 
                 {form.lumpia.enabled && (
                   <div className="px-4 py-3 bg-white border-t border-stone-100 space-y-3">
@@ -161,8 +162,9 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
 
               {/* Pancit */}
               <div className={`border-2 rounded-xl overflow-hidden transition-colors ${form.pancit.enabled ? 'border-orange-400 shadow-sm' : 'border-stone-200'}`}>
-                <div
-                  className="p-4 bg-orange-50/50 flex items-center cursor-pointer gap-4"
+                <button
+                  type="button"
+                  className="w-full p-4 bg-orange-50/50 flex items-center cursor-pointer gap-4 text-left"
                   onClick={() => {
                     if (!form.pancit.enabled) {
                       setField("pancit", { enabled: true, full: 1, half: 0, large: 0, extraMeat: false });
@@ -178,7 +180,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                     <div className="font-bold text-stone-800">🍜 Pancit Tray</div>
                     <div className="text-xs text-stone-500">Regular {fmt(PANCIT_PRICE.full)} · Small {fmt(PANCIT_PRICE.half)} · Large {fmt(PANCIT_PRICE.large)}</div>
                   </div>
-                </div>
+                </button>
 
                 {form.pancit.enabled && (
                   <div className="px-4 py-3 bg-white border-t border-stone-100 space-y-3">
@@ -282,14 +284,18 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
             })()}
 
             {/* Rush order */}
-            <label className={`flex items-center gap-3 cursor-pointer p-3 rounded-xl border-2 transition-colors ${form.rush_order ? 'border-orange-400 bg-orange-50/50' : 'border-stone-200'}`}>
-              <div
-                onClick={() => setField('rush_order', !form.rush_order)}
-                className={`w-6 h-6 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${form.rush_order ? 'bg-orange-500 border-orange-500' : 'border-stone-300'}`}
-              >
+            <label htmlFor="rush-order" className={`flex items-center gap-3 cursor-pointer p-3 rounded-xl border-2 transition-colors ${form.rush_order ? 'border-orange-400 bg-orange-50/50' : 'border-stone-200'}`}>
+              <input
+                type="checkbox"
+                id="rush-order"
+                className="sr-only"
+                checked={form.rush_order}
+                onChange={e => setField('rush_order', e.target.checked)}
+              />
+              <div className={`w-6 h-6 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${form.rush_order ? 'bg-orange-500 border-orange-500' : 'border-stone-300'}`}>
                 {form.rush_order && <Check size={14} className="text-white" />}
               </div>
-              <div className="flex-1" onClick={() => setField('rush_order', !form.rush_order)}>
+              <div className="flex-1">
                 <div className="font-bold text-stone-800 text-sm">⚡ Rush Order</div>
                 <div className="text-xs text-stone-500">Priority handling · +{fmt(RUSH_ORDER_FEE)}</div>
               </div>
