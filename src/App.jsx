@@ -110,7 +110,7 @@ function MainApp({ onLogout }) {
       <header className="px-6 mb-8 text-center sm:text-left flex flex-col sm:flex-row justify-between items-center gap-4">
         <div>
           <h1 className="font-playfair text-white text-4xl sm:text-5xl font-black drop-shadow-md flex items-center justify-center sm:justify-start gap-3">
-            <span>🍜</span> Nanay's Orders
+            <span aria-hidden="true">🍜</span> Nanay's Orders
           </h1>
           <p className="text-white/80 font-lato text-sm mt-2 font-medium tracking-wide">Pancit · Lumpia · Made with love 🥟</p>
         </div>
@@ -129,14 +129,14 @@ function MainApp({ onLogout }) {
               <button
                 onClick={onLogout}
                 className="bg-white/20 hover:bg-white/30 text-white p-1.5 rounded-full transition-colors"
-                title="Confirm sign out"
+                aria-label="Confirm sign out"
               >
                 <Check size={15} />
               </button>
               <button
                 onClick={() => setConfirmLogout(false)}
                 className="bg-white/20 hover:bg-white/30 text-white p-1.5 rounded-full transition-colors"
-                title="Cancel"
+                aria-label="Cancel sign out"
               >
                 <X size={15} />
               </button>
@@ -145,7 +145,7 @@ function MainApp({ onLogout }) {
             <button
               onClick={() => setConfirmLogout(true)}
               className="bg-black/20 text-white/90 p-3 rounded-full hover:bg-black/40 transition-colors"
-              title="Lock Kitchen"
+              aria-label="Lock Kitchen"
             >
               <LogOut size={20} />
             </button>

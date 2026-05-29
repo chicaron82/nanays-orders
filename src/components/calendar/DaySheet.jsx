@@ -32,7 +32,7 @@ export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrde
                 {units > 0 ? ` · ${units} work units` : ''}
               </div>
             </div>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors">
+            <button onClick={onClose} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors">
               <X size={18} />
             </button>
           </div>

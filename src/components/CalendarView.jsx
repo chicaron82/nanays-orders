@@ -78,13 +78,13 @@ export default function CalendarView({ orders, onOrderClick, onNewOrderForDate }
         <div className="flex items-center gap-2 sm:ml-auto">
           {view !== 'agenda' && (
             <>
-              <button onClick={() => shift(-1)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-black/20 text-white hover:bg-black/40 transition-colors">
+              <button onClick={() => shift(-1)} aria-label={`Previous ${view}`} className="w-8 h-8 flex items-center justify-center rounded-lg bg-black/20 text-white hover:bg-black/40 transition-colors">
                 <ChevronLeft size={16} />
               </button>
               <button onClick={() => setAnchorDate(new Date())} className="px-3 h-8 rounded-lg bg-black/20 text-white text-xs font-bold hover:bg-black/40 transition-colors">
                 Today
               </button>
-              <button onClick={() => shift(1)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-black/20 text-white hover:bg-black/40 transition-colors">
+              <button onClick={() => shift(1)} aria-label={`Next ${view}`} className="w-8 h-8 flex items-center justify-center rounded-lg bg-black/20 text-white hover:bg-black/40 transition-colors">
                 <ChevronRight size={16} />
               </button>
             </>

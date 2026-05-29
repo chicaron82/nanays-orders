@@ -25,7 +25,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
         >
           <div className="sticky top-0 bg-gradient-to-r from-orange-600 to-amber-500 p-5 flex justify-between items-center z-20 shrink-0">
             <h2 className="font-playfair text-white text-2xl font-black">{editOrder ? "Edit Order ✏️" : "New Order 🍜"}</h2>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><X size={18}/></button>
+            <button onClick={onClose} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><X size={18}/></button>
           </div>
 
           <div className="p-6 space-y-6">

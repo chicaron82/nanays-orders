@@ -37,7 +37,7 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
               {order.preferences && <div className="flex items-center gap-1.5 text-white/90 text-sm mt-2 bg-white/20 px-3 py-1.5 rounded-lg w-max"><MessageSquare size={14}/> {order.preferences}</div>}
             </div>
             <div className="flex flex-col items-end gap-3">
-              <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><X size={18}/></button>
+              <button onClick={onClose} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><X size={18}/></button>
               {urgency && order.order_status === "Pending" && (
                 <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${urgency.tailwind}`}>{urgency.text}</span>
               )}
