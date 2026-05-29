@@ -85,7 +85,7 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }) {
                   key={cat.value}
                   type="button"
                   onClick={() => setForm(f => ({ ...f, category: cat.value }))}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                     form.category === cat.value
                       ? 'bg-white text-orange-600 border-white shadow-sm'
                       : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/20'

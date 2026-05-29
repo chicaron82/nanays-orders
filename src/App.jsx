@@ -118,7 +118,7 @@ function MainApp({ onLogout }) {
           {tab === 'orders' && (
             <button
               onClick={() => { setEditOrder(null); setNewOrderDate(null); setShowForm(true); }}
-              className="bg-white text-orange-600 px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2"
+              className="bg-white text-orange-600 px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-[transform,box-shadow] flex items-center gap-2"
             >
               <Plus size={20} /> New Order
             </button>
@@ -163,19 +163,19 @@ function MainApp({ onLogout }) {
         <div className="bg-black/40 backdrop-blur-xl p-1.5 rounded-2xl flex max-w-md border border-white/20 mx-auto sm:mx-0 shadow-lg">
           <button
             onClick={() => setTab('orders')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${tab === 'orders' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'orders' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
           >
             <ClipboardList size={18} /> Calendar
           </button>
           <button
             onClick={() => setTab('stock')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${tab === 'stock' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'stock' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
           >
             <PackageOpen size={18} /> Stock & Prep
           </button>
           <button
             onClick={() => setTab('expenses')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${tab === 'expenses' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'expenses' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
           >
             <Receipt size={18} /> Expenses
           </button>

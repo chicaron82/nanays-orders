@@ -17,7 +17,7 @@ export default function DayCell({ ymd, orders, isToday, inMonth, onDayClick }) {
   return (
     <button
       onClick={() => onDayClick(ymd)}
-      className={`h-[88px] sm:h-[104px] p-1 flex flex-col gap-0.5 text-left border border-black/5 rounded-lg transition-all hover:brightness-95 ${LEVEL[level]} ${inMonth ? '' : 'opacity-40'} ${isToday ? 'ring-2 ring-orange-500' : ''}`}
+      className={`h-[88px] sm:h-[104px] p-1 flex flex-col gap-0.5 text-left border border-black/5 rounded-lg transition hover:brightness-95 ${LEVEL[level]} ${inMonth ? '' : 'opacity-40'} ${isToday ? 'ring-2 ring-orange-500' : ''}`}
     >
       <span className={`text-xs font-bold px-1 ${isToday ? 'text-orange-600' : 'text-stone-500'}`}>
         {d.getDate()}

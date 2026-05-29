@@ -138,7 +138,7 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
                   const isReadyWarn = s === "Ready" && detailShortage.length > 0 && order.order_status === "Pending";
                   return (
                     <button key={s} onClick={() => onStatusChange(order.id, s)}
-                      className={`px-4 py-2 rounded-full font-bold text-xs transition-all ${
+                      className={`px-4 py-2 rounded-full font-bold text-xs transition-colors ${
                         isActive ? 'bg-stone-800 text-white shadow-md' : 
                         isReadyWarn ? 'bg-white border-2 border-red-200 text-red-500 hover:bg-red-50' : 
                         'bg-white border-2 border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300'
@@ -161,7 +161,7 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
                       payment_status: p,
                       deposit_amount: p === 'Deposit' ? (order.deposit_amount ?? null) : null,
                     })}
-                      className={`px-4 py-2 rounded-full font-bold text-xs transition-all ${
+                      className={`px-4 py-2 rounded-full font-bold text-xs transition-colors ${
                         isActive ? 'bg-stone-800 text-white shadow-md' :
                         'bg-white border-2 border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300'
                       }`}
