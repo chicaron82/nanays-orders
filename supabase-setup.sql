@@ -16,6 +16,7 @@ CREATE TABLE orders (
   deposit_amount NUMERIC DEFAULT 0,
   notes TEXT,
   preferences TEXT,
+  rush_order BOOLEAN NOT NULL DEFAULT FALSE,
   order_status TEXT DEFAULT 'Pending',
   total NUMERIC
 );
