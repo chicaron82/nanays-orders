@@ -16,6 +16,7 @@ const EMPTY_FORM = { date: localYMD(new Date()), category: 'wrappers', amount: '
 export default function ExpenseLog({ expenses, onAdd, onDelete }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
 
   const grouped = useMemo(() => {
     const map = {};
@@ -138,12 +139,21 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }) {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-white font-semibold text-sm">{fmt(entry.amount)}</span>
-                        <button
-                          onClick={() => onDelete(entry.id)}
-                          className="opacity-0 group-hover:opacity-100 text-white/40 hover:text-red-300 transition-all"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {pendingDeleteId === entry.id ? (
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => setPendingDeleteId(null)} className="text-xs text-white/60 hover:text-white font-semibold transition-colors cursor-pointer">Cancel</button>
+                            <button type="button" onClick={() => { onDelete(entry.id); setPendingDeleteId(null); }} className="text-xs text-red-300 hover:text-red-200 font-bold transition-colors cursor-pointer">Delete</button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label="Delete expense"
+                            onClick={() => setPendingDeleteId(entry.id)}
+                            className="opacity-0 group-hover:opacity-100 text-white/40 hover:text-red-300 transition-all cursor-pointer"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

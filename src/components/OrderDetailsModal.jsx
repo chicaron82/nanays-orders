@@ -9,6 +9,7 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
   const [depositInput, setDepositInput] = useState(
     () => (order?.deposit_amount != null ? String(order.deposit_amount) : '')
   );
+  const [pendingDelete, setPendingDelete] = useState(false);
 
   if (!isOpen || !order) return null;
 
@@ -190,9 +191,19 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
               <button onClick={() => onEdit(order)} className="flex-1 bg-stone-100 text-stone-800 font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors">
                 <Edit2 size={16}/> Edit
               </button>
-              <button onClick={() => { onDelete(order.id); onClose(); }} className="flex-1 bg-red-50 text-red-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 border border-red-200 hover:bg-red-100 transition-colors">
-                <Trash2 size={16}/> Delete
-              </button>
+              {pendingDelete ? (
+                <div className="flex-1 flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                  <span className="text-sm font-semibold text-red-700">Delete order?</span>
+                  <div className="flex gap-3">
+                    <button type="button" onClick={() => setPendingDelete(false)} className="text-xs text-stone-500 hover:text-stone-700 font-semibold transition-colors cursor-pointer">Cancel</button>
+                    <button type="button" onClick={() => { onDelete(order.id); onClose(); }} className="text-xs text-red-600 hover:text-red-800 font-bold transition-colors cursor-pointer">Delete</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setPendingDelete(true)} className="flex-1 bg-red-50 text-red-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 border border-red-200 hover:bg-red-100 transition-colors">
+                  <Trash2 size={16}/> Delete
+                </button>
+              )}
             </div>
           </div>
         </motion.div>
