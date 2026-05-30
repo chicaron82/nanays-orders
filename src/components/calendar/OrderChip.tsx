@@ -18,12 +18,14 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
   const s = (order.order_status && STATUS[order.order_status]) || STATUS.Pending;
   const items = `${order.lumpia?.enabled ? '🥟' : ''}${order.pancit?.enabled ? '🍜' : ''}` || '🍽️';
   const dp = order.delivery_type === 'pickup' ? 'P' : 'D';
+  const done = order.order_status === 'Fulfilled' && order.payment_status === 'Prepaid';
+  const cancelled = order.order_status === 'Cancelled';
   const faded = order.order_status === 'Fulfilled';
 
   if (variant === 'compact') {
     return (
       <div
-        className={`w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${s.bg} ${s.text} ${faded ? 'opacity-60' : ''}`}
+        className={`w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${s.bg} ${s.text} ${faded ? 'opacity-60' : ''} ${done ? 'line-through' : ''}`}
       >
         <span className={`w-1.5 h-1.5 rounded-full ${s.dot} shrink-0`} />
         <span className="truncate">{items}</span>
@@ -38,10 +40,21 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
       className={`w-full text-left bg-white rounded-lg border-l-4 ${s.border} shadow-sm px-3 py-2 flex items-center gap-3 hover:shadow-md transition-shadow ${faded ? 'opacity-60' : ''}`}
     >
       <div className="flex-1 min-w-0">
-        <div className="font-bold text-stone-800 text-sm truncate">{order.customer_name}</div>
-        <div className="text-xs text-stone-500 truncate">{items} {orderSummary(order)}</div>
+        <div className={`font-bold text-sm flex items-baseline gap-1.5 ${done ? 'text-stone-400' : 'text-stone-800'}`}>
+          <span className={`truncate ${done ? 'line-through' : ''}`}>{order.customer_name}</span>
+          {order.pickup_time && (
+            <span className="shrink-0 text-xs font-mono font-normal text-stone-400">{order.pickup_time}</span>
+          )}
+        </div>
+        <div className={`text-xs truncate mt-0.5 ${done ? 'line-through text-stone-400' : 'text-stone-500'}`}>
+          {items} {orderSummary(order)}
+        </div>
       </div>
-      <span className={`shrink-0 w-6 h-6 rounded-full ${s.bg} ${s.text} text-[11px] font-black flex items-center justify-center`}>{dp}</span>
+      {cancelled ? (
+        <span className="shrink-0 px-2 py-0.5 rounded-full bg-stone-200 text-stone-500 text-[10px] font-bold uppercase tracking-wider">Cancelled</span>
+      ) : (
+        <span className={`shrink-0 w-6 h-6 rounded-full ${s.bg} ${s.text} text-[11px] font-black flex items-center justify-center`}>{dp}</span>
+      )}
     </button>
   );
 }

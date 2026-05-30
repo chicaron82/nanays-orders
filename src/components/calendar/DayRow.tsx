@@ -42,18 +42,15 @@ export default function DayRow({ ymd, orders, isToday, onOrderClick, onNewOrderF
         )}
       </div>
       <div className="p-2 space-y-1.5">
-        {visible.length === 0 ? (
-          <button
-            onClick={() => onNewOrderForDate(ymd)}
-            className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-stone-400 hover:text-orange-500 transition-colors"
-          >
-            <Plus size={14} /> Add order
-          </button>
-        ) : (
-          visible.map(o => (
-            <OrderChip key={o.id as string} order={o} variant="full" onClick={() => onOrderClick(o)} />
-          ))
-        )}
+        {visible.map(o => (
+          <OrderChip key={o.id as string} order={o} variant="full" onClick={() => onOrderClick(o)} />
+        ))}
+        <button
+          onClick={() => onNewOrderForDate(ymd)}
+          className={`w-full flex items-center justify-center gap-1.5 text-xs font-medium text-stone-400 hover:text-orange-500 transition-colors ${visible.length === 0 ? 'py-2' : 'pt-1 border-t border-stone-100'}`}
+        >
+          <Plus size={14} /> Add order
+        </button>
       </div>
     </div>
   );

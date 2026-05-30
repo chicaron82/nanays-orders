@@ -109,7 +109,7 @@ function MainApp({ onLogout }: MainAppProps) {
 
   return (
     <div className="max-w-[1400px] mx-auto pt-8 pb-20 relative">
-      <Toaster position="top-center" richColors />
+      <Toaster position="bottom-center" richColors />
 
       <header className="px-6 mb-8 text-center sm:text-left flex flex-col sm:flex-row justify-between items-center gap-4">
         <div>
