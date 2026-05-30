@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Printer } from 'lucide-react';
 import type { Order } from '../../types';
-import { formatDate, dayLoad } from '../../lib/utils';
+import { formatDate, dayLoad, fmt } from '../../lib/utils';
 import OrderChip from './OrderChip';
 
 interface Props {
@@ -20,6 +20,7 @@ export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrde
     .filter(o => o.order_status !== 'Cancelled')
     .sort((a, b) => (a.pickup_time || '').localeCompare(b.pickup_time || ''));
   const { units } = dayLoad(visible);
+  const dayTotal = visible.reduce((s, o) => s + (o.total ?? 0), 0);
 
   return (
     <AnimatePresence>
@@ -40,6 +41,7 @@ export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrde
               <div className="text-xs text-white/80">
                 {visible.length} order{visible.length !== 1 ? 's' : ''}
                 {units > 0 ? ` · ${units} work units` : ''}
+                {dayTotal > 0 ? ` · ${fmt(dayTotal)}` : ''}
               </div>
             </div>
             <div className="flex items-center gap-2">

@@ -1,5 +1,6 @@
+import { MessageSquare } from 'lucide-react';
 import type { Order, OrderStatus } from '../../types';
-import { orderSummary } from '../../lib/utils';
+import { orderSummary, fmt } from '../../lib/utils';
 
 interface Props {
   order: Order;
@@ -21,6 +22,9 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
   const done = order.order_status === 'Fulfilled' && order.payment_status === 'Prepaid';
   const cancelled = order.order_status === 'Cancelled';
   const faded = order.order_status === 'Fulfilled';
+  const balance = order.payment_status === 'Deposit' ? (order.total ?? 0) - (Number(order.deposit_amount) || 0) : 0;
+  const showBalance = order.payment_status === 'Deposit' && order.order_status !== 'Fulfilled' && balance > 0;
+  const note = [order.preferences, order.notes].filter(Boolean).join(' · ');
 
   if (variant === 'compact') {
     return (
@@ -44,6 +48,14 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
           <span className={`truncate ${done ? 'line-through' : ''}`}>{order.customer_name}</span>
           {order.pickup_time && (
             <span className="shrink-0 text-xs font-mono font-normal text-stone-400">{order.pickup_time}</span>
+          )}
+          {note && (
+            <span className="shrink-0 self-center text-stone-400" title={note} aria-label="Has notes">
+              <MessageSquare size={12} />
+            </span>
+          )}
+          {showBalance && (
+            <span className="shrink-0 ml-auto text-xs font-bold text-amber-600">owes {fmt(balance)}</span>
           )}
         </div>
         <div className={`text-xs truncate mt-0.5 ${done ? 'line-through text-stone-400' : 'text-stone-500'}`}>
