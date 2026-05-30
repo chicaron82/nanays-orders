@@ -19,30 +19,30 @@ export function useStock() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    async function fetchStock() {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase.from('stock').select('*').eq('id', 1).single();
+        if (error && error.code !== 'PGRST116') throw error; // ignore no rows error initially
+        if (data) setStock(data);
+      } catch (err) {
+        console.error('Error fetching stock:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
     fetchStock();
-    
+
     const subscription = supabase
       .channel('stock_channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => {
         fetchStock();
       })
       .subscribe();
 
     return () => supabase.removeChannel(subscription);
   }, []);
-
-  async function fetchStock() {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.from('stock').select('*').eq('id', 1).single();
-      if (error && error.code !== 'PGRST116') throw error; // ignore no rows error initially
-      if (data) setStock(data);
-    } catch (err) {
-      console.error('Error fetching stock:', err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function updateStock(newStock, { silent = false } = {}) {
     try {

@@ -7,6 +7,23 @@ export function useExpenses() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    async function fetchExpenses() {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('expenses')
+          .select('*')
+          .order('date', { ascending: false });
+        if (error) throw error;
+        setExpenses(data || []);
+      } catch (err) {
+        console.error('Error fetching expenses:', err.message);
+        toast.error('Failed to load expenses');
+      } finally {
+        setLoading(false);
+      }
+    }
+
     fetchExpenses();
 
     const subscription = supabase
@@ -24,23 +41,6 @@ export function useExpenses() {
 
     return () => supabase.removeChannel(subscription);
   }, []);
-
-  async function fetchExpenses() {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .order('date', { ascending: false });
-      if (error) throw error;
-      setExpenses(data || []);
-    } catch (err) {
-      console.error('Error fetching expenses:', err.message);
-      toast.error('Failed to load expenses');
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function addExpense(expense) {
     try {

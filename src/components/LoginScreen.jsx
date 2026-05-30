@@ -13,7 +13,7 @@ export default function LoginScreen({ onLogin }) {
     setLoading(true);
     try {
       await onLogin(email, password);
-    } catch (error) {
+    } catch {
       // Error is handled by the toast in useAuth, but we catch it here to reset loading
       setLoading(false);
     }
