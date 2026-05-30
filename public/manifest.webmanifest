@@ -1,0 +1,19 @@
+{
+  "name": "Nanay's Orders",
+  "short_name": "Nanay's",
+  "description": "Order tracker for Nanay's lumpia and pancit",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#B5350F",
+  "theme_color": "#B5350F",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}
