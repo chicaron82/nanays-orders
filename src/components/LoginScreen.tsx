@@ -1,20 +1,22 @@
 import { useState } from 'react';
 import { ChefHat, Lock } from 'lucide-react';
 
-export default function LoginScreen({ onLogin }) {
+interface Props {
+  onLogin: (email: string, password: string) => Promise<void>;
+}
+
+export default function LoginScreen({ onLogin }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
-    
     setLoading(true);
     try {
       await onLogin(email, password);
     } catch {
-      // Error is handled by the toast in useAuth, but we catch it here to reset loading
       setLoading(false);
     }
   };
@@ -22,11 +24,10 @@ export default function LoginScreen({ onLogin }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-        {/* Decorative background elements */}
         <div className="absolute top-0 right-0 p-8 opacity-5">
           <ChefHat size={120} />
         </div>
-        
+
         <div className="relative z-10">
           <div className="text-center mb-8">
             <div className="bg-gradient-to-r from-orange-600 to-amber-500 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -39,8 +40,8 @@ export default function LoginScreen({ onLogin }) {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-white/70 text-xs font-bold uppercase tracking-wider mb-2">Email</label>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus-visible:border-orange-500 focus-visible:bg-black/40 focus-visible:ring-2 focus-visible:ring-white/30 outline-none transition-all"
@@ -48,11 +49,11 @@ export default function LoginScreen({ onLogin }) {
                 required
               />
             </div>
-            
+
             <div>
               <label className="block text-white/70 text-xs font-bold uppercase tracking-wider mb-2">Password</label>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus-visible:border-orange-500 focus-visible:bg-black/40 focus-visible:ring-2 focus-visible:ring-white/30 outline-none transition-all"
@@ -61,7 +62,7 @@ export default function LoginScreen({ onLogin }) {
               />
             </div>
 
-            <button 
+            <button
               type="submit"
               disabled={loading || !email || !password}
               className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-orange-500/30 transition-all active:scale-[0.98] mt-6 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"

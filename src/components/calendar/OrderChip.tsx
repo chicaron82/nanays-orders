@@ -1,14 +1,21 @@
+import type { Order, OrderStatus } from '../../types';
 import { orderSummary } from '../../lib/utils';
 
-const STATUS = {
+interface Props {
+  order: Order;
+  variant?: 'full' | 'compact';
+  onClick?: () => void;
+}
+
+const STATUS: Record<OrderStatus, { dot: string; border: string; bg: string; text: string }> = {
   Pending:   { dot: 'bg-orange-500',  border: 'border-l-orange-500',  bg: 'bg-orange-50',  text: 'text-orange-700' },
   Ready:     { dot: 'bg-blue-500',    border: 'border-l-blue-500',    bg: 'bg-blue-50',    text: 'text-blue-700' },
   Fulfilled: { dot: 'bg-emerald-500', border: 'border-l-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700' },
   Cancelled: { dot: 'bg-stone-400',   border: 'border-l-stone-400',   bg: 'bg-stone-100',  text: 'text-stone-500' },
 };
 
-export default function OrderChip({ order, variant = 'full', onClick }) {
-  const s = STATUS[order.order_status] || STATUS.Pending;
+export default function OrderChip({ order, variant = 'full', onClick }: Props) {
+  const s = (order.order_status && STATUS[order.order_status]) || STATUS.Pending;
   const items = `${order.lumpia?.enabled ? '🥟' : ''}${order.pancit?.enabled ? '🍜' : ''}` || '🍽️';
   const dp = order.delivery_type === 'pickup' ? 'P' : 'D';
   const faded = order.order_status === 'Fulfilled';

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Toaster } from 'sonner';
 import { ChefHat, ClipboardList, PackageOpen, Receipt, Plus, LogOut, Check, X } from 'lucide-react';
+import type { Order, OrderStatus } from './types';
 import { useOrders } from './hooks/useOrders';
 import { useStock } from './hooks/useStock';
 import { useAuth } from './hooks/useAuth';
@@ -16,16 +17,20 @@ import OrderDetailsModal from './components/OrderDetailsModal';
 import LoginScreen from './components/LoginScreen';
 import { getRepeatCustomers } from './lib/utils';
 
-function MainApp({ onLogout }) {
+interface MainAppProps {
+  onLogout: () => void;
+}
+
+function MainApp({ onLogout }: MainAppProps) {
   const { orders, loading: ordersLoading, addOrder, updateOrder, deleteOrder } = useOrders();
   const { stock, loading: stockLoading, updateStock } = useStock();
   const { expenses, addExpense, deleteExpense } = useExpenses();
 
-  const [tab, setTab] = useState('orders');
+  const [tab, setTab] = useState<'orders' | 'stock' | 'expenses'>('orders');
   const [showForm, setShowForm] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [editOrder, setEditOrder] = useState(null);
-  const [newOrderDate, setNewOrderDate] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [editOrder, setEditOrder] = useState<Order | null>(null);
+  const [newOrderDate, setNewOrderDate] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   useBackGuard([
@@ -36,7 +41,7 @@ function MainApp({ onLogout }) {
   const repeatMap = getRepeatCustomers(orders);
   const repeatCount = Object.values(repeatMap).filter(count => count >= 2).length;
 
-  const handleStatusChange = (id, newStatus) => {
+  const handleStatusChange = (id: string | number, newStatus: OrderStatus) => {
     updateOrder(id, { order_status: newStatus });
     if (selectedOrder?.id === id) {
       setSelectedOrder({ ...selectedOrder, order_status: newStatus });
@@ -45,15 +50,15 @@ function MainApp({ onLogout }) {
     if (newStatus === 'Fulfilled') {
       const order = orders.find(o => o.id === id);
       if (order) {
-        const deductions = {};
+        const deductions: typeof stock = {};
         if (order.lumpia?.enabled) {
           const sets = (order.lumpia.sets || 0) + (order.lumpia.halves || 0) * 0.5;
           if (sets > 0) deductions.lumpia_sets = Math.max(0, (stock.lumpia_sets || 0) - sets);
         }
         if (order.pancit?.enabled) {
-          if ((order.pancit.full || 0) > 0) deductions.pancit_full = Math.max(0, (stock.pancit_full || 0) - order.pancit.full);
-          if ((order.pancit.half || 0) > 0) deductions.pancit_half = Math.max(0, (stock.pancit_half || 0) - order.pancit.half);
-          if ((order.pancit.large || 0) > 0) deductions.pancit_large = Math.max(0, (stock.pancit_large || 0) - order.pancit.large);
+          if ((order.pancit.full || 0) > 0) deductions.pancit_full = Math.max(0, (stock.pancit_full || 0) - order.pancit.full!);
+          if ((order.pancit.half || 0) > 0) deductions.pancit_half = Math.max(0, (stock.pancit_half || 0) - order.pancit.half!);
+          if ((order.pancit.large || 0) > 0) deductions.pancit_large = Math.max(0, (stock.pancit_large || 0) - order.pancit.large!);
         }
         if (Object.keys(deductions).length > 0) {
           updateStock({ ...stock, ...deductions }, { silent: true });
@@ -62,14 +67,14 @@ function MainApp({ onLogout }) {
     }
   };
 
-  const handlePaymentChange = (id, patch) => {
+  const handlePaymentChange = (id: string | number, patch: Partial<Order>) => {
     updateOrder(id, patch);
     if (selectedOrder?.id === id) {
       setSelectedOrder({ ...selectedOrder, ...patch });
     }
   };
 
-  const handleSaveOrder = async (orderData) => {
+  const handleSaveOrder = async (orderData: Order) => {
     if (orderData.id) {
       await updateOrder(orderData.id, orderData);
     } else {
@@ -80,14 +85,14 @@ function MainApp({ onLogout }) {
     setNewOrderDate(null);
   };
 
-  const openEdit = (order) => {
+  const openEdit = (order: Order) => {
     setEditOrder(order);
     setNewOrderDate(null);
     setSelectedOrder(null);
     setShowForm(true);
   };
 
-  const handleNewOrderForDate = (ymd) => {
+  const handleNewOrderForDate = (ymd: string) => {
     setEditOrder(null);
     setNewOrderDate(ymd);
     setShowForm(true);
@@ -106,7 +111,6 @@ function MainApp({ onLogout }) {
     <div className="max-w-[1400px] mx-auto pt-8 pb-20 relative">
       <Toaster position="top-center" richColors />
 
-      {/* Header */}
       <header className="px-6 mb-8 text-center sm:text-left flex flex-col sm:flex-row justify-between items-center gap-4">
         <div>
           <h1 className="font-playfair text-white text-4xl sm:text-5xl font-black drop-shadow-md flex items-center justify-center sm:justify-start gap-3">
@@ -126,88 +130,51 @@ function MainApp({ onLogout }) {
           {confirmLogout ? (
             <div className="flex items-center gap-1.5 bg-black/30 rounded-full px-3 py-2">
               <span className="text-white/90 text-sm font-semibold mr-1">Sign out?</span>
-              <button
-                onClick={onLogout}
-                className="bg-white/20 hover:bg-white/30 text-white p-1.5 rounded-full transition-colors"
-                aria-label="Confirm sign out"
-              >
+              <button onClick={onLogout} className="bg-white/20 hover:bg-white/30 text-white p-1.5 rounded-full transition-colors" aria-label="Confirm sign out">
                 <Check size={15} />
               </button>
-              <button
-                onClick={() => setConfirmLogout(false)}
-                className="bg-white/20 hover:bg-white/30 text-white p-1.5 rounded-full transition-colors"
-                aria-label="Cancel sign out"
-              >
+              <button onClick={() => setConfirmLogout(false)} className="bg-white/20 hover:bg-white/30 text-white p-1.5 rounded-full transition-colors" aria-label="Cancel sign out">
                 <X size={15} />
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => setConfirmLogout(true)}
-              className="bg-black/20 text-white/90 p-3 rounded-full hover:bg-black/40 transition-colors"
-              aria-label="Lock Kitchen"
-            >
+            <button onClick={() => setConfirmLogout(true)} className="bg-black/20 text-white/90 p-3 rounded-full hover:bg-black/40 transition-colors" aria-label="Lock Kitchen">
               <LogOut size={20} />
             </button>
           )}
         </div>
       </header>
 
-      {/* Dashboard Summary */}
       <div className="px-6">
         <Dashboard orders={orders} repeatCount={repeatCount} expenses={expenses} />
       </div>
 
-      {/* Tabs */}
       <div className="px-6 mb-6 sticky top-4 z-40">
         <div className="bg-black/40 backdrop-blur-xl p-1.5 rounded-2xl flex max-w-md border border-white/20 mx-auto sm:mx-0 shadow-lg">
-          <button
-            onClick={() => setTab('orders')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'orders' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
-          >
+          <button onClick={() => setTab('orders')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'orders' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
             <ClipboardList size={18} /> Calendar
           </button>
-          <button
-            onClick={() => setTab('stock')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'stock' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
-          >
+          <button onClick={() => setTab('stock')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'stock' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
             <PackageOpen size={18} /> Stock & Prep
           </button>
-          <button
-            onClick={() => setTab('expenses')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'expenses' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
-          >
+          <button onClick={() => setTab('expenses')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'expenses' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
             <Receipt size={18} /> Expenses
           </button>
         </div>
       </div>
 
-      {/* Main Content */}
       <main>
         {tab === 'orders' && (
-          <CalendarView
-            orders={orders}
-            onOrderClick={setSelectedOrder}
-            onNewOrderForDate={handleNewOrderForDate}
-          />
+          <CalendarView orders={orders} onOrderClick={setSelectedOrder} onNewOrderForDate={handleNewOrderForDate} />
         )}
         {tab === 'stock' && (
-          <StockManager
-            stock={stock}
-            orders={orders}
-            updateStock={updateStock}
-          />
+          <StockManager stock={stock} orders={orders} updateStock={updateStock} />
         )}
         {tab === 'expenses' && (
-          <ExpenseLog
-            expenses={expenses}
-            onAdd={addExpense}
-            onDelete={deleteExpense}
-          />
+          <ExpenseLog expenses={expenses} onAdd={addExpense} onDelete={deleteExpense} />
         )}
       </main>
 
-      {/* Modals */}
       <OrderFormModal
         isOpen={showForm}
         onClose={() => { setShowForm(false); setEditOrder(null); setNewOrderDate(null); }}
@@ -219,7 +186,7 @@ function MainApp({ onLogout }) {
       />
 
       <OrderDetailsModal
-        key={selectedOrder?.id || 'none'}
+        key={selectedOrder?.id as string ?? 'none'}
         isOpen={!!selectedOrder}
         order={selectedOrder}
         stock={stock}

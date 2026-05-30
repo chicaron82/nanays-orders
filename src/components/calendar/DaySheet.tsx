@@ -1,9 +1,19 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Printer } from 'lucide-react';
+import type { Order } from '../../types';
 import { formatDate, dayLoad } from '../../lib/utils';
 import OrderChip from './OrderChip';
 
-export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrderForDate, onPrint }) {
+interface Props {
+  ymd: string | null;
+  orders: Order[];
+  onClose: () => void;
+  onOrderClick: (order: Order) => void;
+  onNewOrderForDate: (ymd: string) => void;
+  onPrint?: (ymd: string) => void;
+}
+
+export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrderForDate, onPrint }: Props) {
   if (!ymd) return null;
 
   const visible = orders
@@ -53,7 +63,7 @@ export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrde
               <div className="text-center text-stone-400 text-sm py-6">No orders this day</div>
             )}
             {visible.map(o => (
-              <OrderChip key={o.id} order={o} variant="full" onClick={() => onOrderClick(o)} />
+              <OrderChip key={o.id as string} order={o} variant="full" onClick={() => onOrderClick(o)} />
             ))}
             <button
               onClick={() => onNewOrderForDate(ymd)}

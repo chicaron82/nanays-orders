@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import type { Stock } from '../types';
 
-const initialStock = {
+const initialStock: Stock = {
   lumpia_sets: 0,
   wrapper_packs: 0,
   pancit_full: 0,
@@ -15,7 +16,7 @@ const initialStock = {
 };
 
 export function useStock() {
-  const [stock, setStock] = useState(initialStock);
+  const [stock, setStock] = useState<Stock>(initialStock);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,7 +25,7 @@ export function useStock() {
         setLoading(true);
         const { data, error } = await supabase.from('stock').select('*').eq('id', 1).single();
         if (error && error.code !== 'PGRST116') throw error; // ignore no rows error initially
-        if (data) setStock(data);
+        if (data) setStock(data as Stock);
       } catch (err) {
         console.error('Error fetching stock:', err.message);
       } finally {
@@ -41,10 +42,10 @@ export function useStock() {
       })
       .subscribe();
 
-    return () => supabase.removeChannel(subscription);
+    return () => { supabase.removeChannel(subscription); };
   }, []);
 
-  async function updateStock(newStock, { silent = false } = {}) {
+  async function updateStock(newStock: Partial<Stock>, { silent = false }: { silent?: boolean } = {}) {
     try {
       const { error } = await supabase.from('stock').upsert({ id: 1, ...newStock });
       if (error) throw error;

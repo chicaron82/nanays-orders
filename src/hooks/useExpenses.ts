@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import type { Expense } from '../types';
 
 export function useExpenses() {
-  const [expenses, setExpenses] = useState([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,7 +16,7 @@ export function useExpenses() {
           .select('*')
           .order('date', { ascending: false });
         if (error) throw error;
-        setExpenses(data || []);
+        setExpenses((data as Expense[]) || []);
       } catch (err) {
         console.error('Error fetching expenses:', err.message);
         toast.error('Failed to load expenses');
@@ -28,7 +29,8 @@ export function useExpenses() {
 
     const subscription = supabase
       .channel('expenses_channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, (payload) => {
+      // eslint-disable-next-line -- realtime payloads are dynamic DB rows
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, (payload: any) => {
         if (payload.eventType === 'INSERT') {
           setExpenses(prev => prev.some(e => e.id === payload.new.id) ? prev : [payload.new, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
@@ -39,15 +41,15 @@ export function useExpenses() {
       })
       .subscribe();
 
-    return () => supabase.removeChannel(subscription);
+    return () => { supabase.removeChannel(subscription); };
   }, []);
 
-  async function addExpense(expense) {
+  async function addExpense(expense: Expense) {
     try {
       const { data, error } = await supabase.from('expenses').insert([expense]).select();
       if (error) throw error;
       setExpenses(prev =>
-        [data[0], ...prev].sort((a, b) => b.date.localeCompare(a.date))
+        [data[0] as Expense, ...prev].sort((a, b) => b.date.localeCompare(a.date))
       );
       toast.success('Expense logged ✓');
       return data[0];
@@ -58,7 +60,7 @@ export function useExpenses() {
     }
   }
 
-  async function deleteExpense(id) {
+  async function deleteExpense(id: string | number) {
     try {
       const { error } = await supabase.from('expenses').delete().eq('id', id);
       if (error) throw error;

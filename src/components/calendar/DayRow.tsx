@@ -1,6 +1,15 @@
 import { Plus } from 'lucide-react';
+import type { Order } from '../../types';
 import { dayLoad } from '../../lib/utils';
 import OrderChip from './OrderChip';
+
+interface Props {
+  ymd: string;
+  orders: Order[];
+  isToday: boolean;
+  onOrderClick: (order: Order) => void;
+  onNewOrderForDate: (ymd: string) => void;
+}
 
 const LEVEL = {
   light:  { row: 'bg-white border-stone-200',    badge: 'bg-emerald-100 text-emerald-700', label: 'Light' },
@@ -11,7 +20,7 @@ const LEVEL = {
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-export default function DayRow({ ymd, orders, isToday, onOrderClick, onNewOrderForDate }) {
+export default function DayRow({ ymd, orders, isToday, onOrderClick, onNewOrderForDate }: Props) {
   const d = new Date(ymd + 'T00:00:00');
   const visible = orders.filter(o => o.order_status !== 'Cancelled');
   const { units, level } = dayLoad(visible);
@@ -42,7 +51,7 @@ export default function DayRow({ ymd, orders, isToday, onOrderClick, onNewOrderF
           </button>
         ) : (
           visible.map(o => (
-            <OrderChip key={o.id} order={o} variant="full" onClick={() => onOrderClick(o)} />
+            <OrderChip key={o.id as string} order={o} variant="full" onClick={() => onOrderClick(o)} />
           ))
         )}
       </div>

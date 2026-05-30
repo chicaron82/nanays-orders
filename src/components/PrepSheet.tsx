@@ -1,10 +1,21 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Printer } from 'lucide-react';
+import type { Order, DeliveryType } from '../types';
 import { buildPrepList, orderSummary, formatDate } from '../lib/utils';
 
-const DELIVERY_LABEL = { pickup: 'Pickup', city: 'Delivery — city', outside: 'Delivery — outside' };
+interface Props {
+  ymd: string | null;
+  orders: Order[];
+  onClose: () => void;
+}
 
-export default function PrepSheet({ ymd, orders, onClose }) {
+const DELIVERY_LABEL: Record<DeliveryType, string> = {
+  pickup: 'Pickup',
+  city: 'Delivery — city',
+  outside: 'Delivery — outside',
+};
+
+export default function PrepSheet({ ymd, orders, onClose }: Props) {
   if (!ymd) return null;
 
   const { orders: rows, totals } = buildPrepList(orders, ymd);
@@ -41,7 +52,6 @@ export default function PrepSheet({ ymd, orders, onClose }) {
           onClick={e => e.stopPropagation()}
           className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl my-auto"
         >
-          {/* Toolbar — not printed */}
           <div className="no-print sticky top-0 bg-gradient-to-r from-orange-600 to-amber-500 p-4 flex justify-between items-center rounded-t-2xl">
             <div className="text-white font-playfair text-lg font-black">Prep Sheet</div>
             <div className="flex items-center gap-2">
@@ -61,7 +71,6 @@ export default function PrepSheet({ ymd, orders, onClose }) {
             </div>
           </div>
 
-          {/* Printable area */}
           <div className="print-area p-6 text-stone-900">
             <header className="border-b-2 border-stone-800 pb-3 mb-5">
               <h1 className="font-playfair text-2xl font-black">Nanay's Orders — Prep Sheet</h1>
@@ -100,13 +109,13 @@ export default function PrepSheet({ ymd, orders, onClose }) {
                   <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Orders</h2>
                   <div className="divide-y divide-stone-200">
                     {rows.map(o => (
-                      <div key={o.id} className="py-2.5">
+                      <div key={o.id as string} className="py-2.5">
                         <div className="flex justify-between items-baseline gap-3">
                           <span className="font-bold">
                             <span className="tabular-nums">{o.pickup_time || '—'}</span> · {o.customer_name || 'Walk-in'}
                           </span>
                           <span className="text-sm text-stone-600 shrink-0">
-                            {DELIVERY_LABEL[o.delivery_type] || 'Pickup'}{o.rush_order ? ' · RUSH' : ''}
+                            {o.delivery_type ? DELIVERY_LABEL[o.delivery_type] : 'Pickup'}{o.rush_order ? ' · RUSH' : ''}
                           </span>
                         </div>
                         <div className="text-sm text-stone-700">{orderSummary(o)}</div>

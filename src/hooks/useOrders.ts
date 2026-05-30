@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import type { Order } from '../types';
 
 export function useOrders() {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchOrders();
-    
+
     const subscription = supabase
       .channel('orders_channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+      // eslint-disable-next-line -- realtime payloads are dynamic DB rows
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload: any) => {
         if (payload.eventType === 'INSERT') {
           setOrders(prev => prev.some(o => o.id === payload.new.id) ? prev : [payload.new, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
@@ -36,7 +38,7 @@ export function useOrders() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
+      setOrders((data as Order[]) || []);
     } catch (err) {
       console.error('Error fetching orders:', err.message);
       toast.error('Failed to load orders');
@@ -45,11 +47,11 @@ export function useOrders() {
     }
   }
 
-  async function addOrder(orderData) {
+  async function addOrder(orderData: Order) {
     try {
       const { data, error } = await supabase.from('orders').insert([orderData]).select();
       if (error) throw error;
-      setOrders(prev => [data[0], ...prev]);
+      setOrders(prev => [data[0] as Order, ...prev]);
       toast.success('Order added! 🎉');
       return data[0];
     } catch (err) {
@@ -59,7 +61,7 @@ export function useOrders() {
     }
   }
 
-  async function updateOrder(id, updates) {
+  async function updateOrder(id: string | number, updates: Partial<Order>) {
     try {
       const { data, error } = await supabase.from('orders').update(updates).eq('id', id).select();
       if (error) throw error;
@@ -72,7 +74,7 @@ export function useOrders() {
     }
   }
 
-  async function deleteOrder(id) {
+  async function deleteOrder(id: string | number) {
     try {
       const { error } = await supabase.from('orders').delete().eq('id', id);
       if (error) throw error;

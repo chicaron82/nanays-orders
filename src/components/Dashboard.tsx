@@ -1,17 +1,24 @@
+import type { Order, Expense } from '../types';
 import { getRevenue, fmt } from '../lib/utils';
 import { Repeat, DollarSign, Clock, TrendingUp, Wallet } from 'lucide-react';
 
-export default function Dashboard({ orders, repeatCount, expenses = [] }) {
+interface Props {
+  orders: Order[];
+  repeatCount: number;
+  expenses?: Expense[];
+}
+
+export default function Dashboard({ orders, repeatCount, expenses = [] }: Props) {
   const revenue = getRevenue(orders);
 
   const now = new Date();
   const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const monthlySpend = expenses
-    .filter(e => e.date.startsWith(monthPrefix))
+    .filter(e => String(e.date).startsWith(monthPrefix))
     .reduce((sum, e) => sum + Number(e.amount), 0);
   const net = revenue.month - monthlySpend;
 
-  const counts = ["Pending", "Ready"].reduce((acc, s) => {
+  const counts = ['Pending', 'Ready'].reduce<Record<string, number>>((acc, s) => {
     acc[s] = orders.filter(o => o.order_status === s).length;
     return acc;
   }, {});

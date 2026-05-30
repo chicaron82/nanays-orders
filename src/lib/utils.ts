@@ -1,20 +1,22 @@
+import type { Order, LumpiaOrder, Stock, DeliveryType, LumpiaSauce, OrderStatus, PaymentStatus } from '../types';
+
 // ─── PRICING ─────────────────────────────────────────────────────────────────
 export const LUMPIA_PRICE = { uncooked: 30, cooked: 35 };
 export const LUMPIA_HALF_PRICE = { uncooked: 15, cooked: 17.50 };
 export const PANCIT_PRICE = { full: 25, half: 12.50, large: 50 };
-export const PANCIT_SAUCE_PRICE = { sweet_and_sour: 2, sweet_chili: 2 };
+export const PANCIT_SAUCE_PRICE: Record<string, number> = { sweet_and_sour: 2, sweet_chili: 2 };
 export const PANCIT_EXTRA_MEAT_PRICE = 5;
 export const RUSH_ORDER_FEE = 10;
-export const DELIVERY_FEE = { pickup: 0, city: 5, outside: 10 };
+export const DELIVERY_FEE: Record<DeliveryType, number> = { pickup: 0, city: 5, outside: 10 };
 
 // Resolve cooked/uncooked for a lumpia batch — handles both old (style) and new (setsCooked/halvesCooked) formats
-function lumpiaStyleFor(lumpia, key) {
+function lumpiaStyleFor(lumpia: LumpiaOrder, key: 'sets' | 'halves'): 'cooked' | 'uncooked' {
   const cooked = key === 'sets' ? lumpia.setsCooked : lumpia.halvesCooked;
   if (cooked != null) return cooked ? 'cooked' : 'uncooked';
-  return lumpia.style || 'uncooked';
+  return lumpia.style === 'cooked' ? 'cooked' : 'uncooked';
 }
 
-export function calcTotal(order) {
+export function calcTotal(order: Order): number {
   let t = 0;
   if (order.lumpia?.enabled) {
     t += LUMPIA_PRICE[lumpiaStyleFor(order.lumpia, 'sets')] * (order.lumpia.sets || 0);
@@ -28,14 +30,14 @@ export function calcTotal(order) {
     if (order.pancit.extraMeat) t += PANCIT_EXTRA_MEAT_PRICE;
   }
   t += order.rush_order ? RUSH_ORDER_FEE : 0;
-  t += DELIVERY_FEE[order.delivery_type] || 0;
+  t += order.delivery_type ? (DELIVERY_FEE[order.delivery_type] || 0) : 0;
   return t;
 }
 
-export function orderSummary(order) {
-  const parts = [];
+export function orderSummary(order: Order): string {
+  const parts: string[] = [];
   if (order.lumpia?.enabled) {
-    const ls = [];
+    const ls: string[] = [];
     if ((order.lumpia.sets || 0) > 0) {
       const cooked = order.lumpia.setsCooked != null ? order.lumpia.setsCooked : order.lumpia.style === 'cooked';
       ls.push(`${order.lumpia.sets}× full (${cooked ? 'Cooked' : 'Uncooked'})`);
@@ -49,9 +51,9 @@ export function orderSummary(order) {
     if (sauces.length) parts.push(`Sauce: ${sauces.map(s => s === 'sweet_and_sour' ? 'Sweet & Sour' : 'Sweet Chili').join(', ')}`);
   }
   if (order.pancit?.enabled) {
-    const ps = [];
-    if (order.pancit.full > 0) ps.push(`${order.pancit.full} Regular`);
-    if (order.pancit.half > 0) ps.push(`${order.pancit.half} Small`);
+    const ps: string[] = [];
+    if ((order.pancit.full || 0) > 0) ps.push(`${order.pancit.full} Regular`);
+    if ((order.pancit.half || 0) > 0) ps.push(`${order.pancit.half} Small`);
     if ((order.pancit.large || 0) > 0) ps.push(`${order.pancit.large} Large`);
     if (order.pancit.extraMeat) ps.push('Extra meat/veggies');
     if (ps.length) parts.push(`Pancit: ${ps.join(' + ')}`);
@@ -61,14 +63,16 @@ export function orderSummary(order) {
 }
 
 // ─── URGENCY ─────────────────────────────────────────────────────────────────
-export function getDaysUntil(dateStr) {
+export function getDaysUntil(dateStr?: string | null): number | null {
   if (!dateStr) return null;
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const target = new Date(dateStr + "T00:00:00");
-  return Math.round((target - today) / 86400000);
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
 
-export function urgencyLabel(days) {
+export interface UrgencyLabel { text: string; bg: string; color: string; tailwind: string; }
+
+export function urgencyLabel(days: number | null): UrgencyLabel | null {
   if (days === null) return null;
   if (days < 0) return { text: `${Math.abs(days)}d overdue`, bg: "#DC3545", color: "white", tailwind: "bg-red-500 text-white" };
   if (days === 0) return { text: "Today!", bg: "#DC3545", color: "white", tailwind: "bg-red-500 text-white" };
@@ -79,8 +83,10 @@ export function urgencyLabel(days) {
 }
 
 // ─── STOCK ───────────────────────────────────────────────────────────────────
-export function getReserved(orders) {
-  const reserved = { lumpiaSets: 0, pancitFull: 0, pancitHalf: 0, pancitLarge: 0 };
+export interface BatchCounts { lumpiaSets: number; pancitFull: number; pancitHalf: number; pancitLarge: number; }
+
+export function getReserved(orders: Order[]): BatchCounts {
+  const reserved: BatchCounts = { lumpiaSets: 0, pancitFull: 0, pancitHalf: 0, pancitLarge: 0 };
   orders.filter(o => o.order_status === "Ready").forEach(o => {
     if (o.lumpia?.enabled) reserved.lumpiaSets += (o.lumpia.sets || 0) + (o.lumpia.halves || 0) * 0.5;
     if (o.pancit?.enabled) {
@@ -92,7 +98,7 @@ export function getReserved(orders) {
   return reserved;
 }
 
-export function getAvailable(stock, orders) {
+export function getAvailable(stock: Stock | null | undefined, orders: Order[]): BatchCounts {
   const reserved = getReserved(orders);
   return {
     lumpiaSets: (stock?.lumpia_sets || 0) - reserved.lumpiaSets,
@@ -102,10 +108,10 @@ export function getAvailable(stock, orders) {
   };
 }
 
-export function checkShortage(order, stock, orders, excludeId = null) {
+export function checkShortage(order: Order, stock: Stock | null | undefined, orders: Order[], excludeId: string | number | null = null): string[] {
   const filtered = excludeId ? orders.filter(o => o.id !== excludeId) : orders;
   const avail = getAvailable(stock, filtered);
-  const warnings = [];
+  const warnings: string[] = [];
   if (order.lumpia?.enabled) {
     const needed = (order.lumpia.sets || 0) + (order.lumpia.halves || 0) * 0.5;
     if (needed > avail.lumpiaSets) warnings.push(`Lumpia: need ${needed} batch${needed !== 1 ? "es" : ""}, only ${Math.max(0, avail.lumpiaSets)} available`);
@@ -120,7 +126,10 @@ export function checkShortage(order, stock, orders, excludeId = null) {
 }
 
 // ─── MAKE MORE CALCULATOR ────────────────────────────────────────────────────
-export function getMakeMoreNeeds(orders, stock) {
+export interface MakeMoreNeed { need: number; avail: number; total: number; }
+export interface MakeMoreNeeds { lumpia: MakeMoreNeed; pancitFull: MakeMoreNeed; pancitHalf: MakeMoreNeed; pancitLarge: MakeMoreNeed; }
+
+export function getMakeMoreNeeds(orders: Order[], stock: Stock | null | undefined): MakeMoreNeeds {
   const pending = orders.filter(o => o.order_status === "Pending");
   const avail = getAvailable(stock, orders);
   let needLumpia = 0, needFull = 0, needHalf = 0, needLarge = 0;
@@ -141,16 +150,15 @@ export function getMakeMoreNeeds(orders, stock) {
 }
 
 // ─── REVENUE ─────────────────────────────────────────────────────────────────
-export function getRevenue(orders) {
+export function getRevenue(orders: Order[]): { total: number; month: number } {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const counted = orders.filter(o => {
-    const counts = o.order_status === "Fulfilled" ||
-      (o.order_status === "Ready" && (o.payment_status === "Prepaid" || o.payment_status === "Deposit"));
-    return counts;
-  });
+  const counted = orders.filter(o =>
+    o.order_status === "Fulfilled" ||
+    (o.order_status === "Ready" && (o.payment_status === "Prepaid" || o.payment_status === "Deposit"))
+  );
   const thisMonth = counted.filter(o => {
-    const d = new Date(o.created_at || o.needed_date + "T00:00:00");
+    const d = new Date(o.created_at || `${o.needed_date}T00:00:00`);
     return d >= monthStart;
   });
   return {
@@ -160,17 +168,17 @@ export function getRevenue(orders) {
 }
 
 // ─── REPEAT CUSTOMERS ────────────────────────────────────────────────────────
-export function fuzzyMatch(a, b) {
+export function fuzzyMatch(a?: string | null, b?: string | null): boolean {
   if (!a || !b) return false;
-  const norm = s => s.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+  const norm = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
   const na = norm(a), nb = norm(b);
   if (na === nb) return true;
   if (na.startsWith(nb.slice(0, 4)) || nb.startsWith(na.slice(0, 4))) return true;
   return false;
 }
 
-export function getRepeatCustomers(orders) {
-  const counts = {};
+export function getRepeatCustomers(orders: Order[]): Record<string, number> {
+  const counts: Record<string, number> = {};
   orders.forEach(o => {
     const key = (o.customer_name || "").toLowerCase().trim().slice(0, 6);
     if (key) counts[key] = (counts[key] || 0) + 1;
@@ -178,26 +186,26 @@ export function getRepeatCustomers(orders) {
   return counts;
 }
 
-export function isRepeat(name, orders, currentId = null) {
+export function isRepeat(name: string, orders: Order[], currentId: string | number | null = null): boolean {
   const others = currentId ? orders.filter(o => o.id !== currentId) : orders;
   return others.filter(o => fuzzyMatch(o.customer_name, name)).length >= 1;
 }
 
-export function formatDate(s) {
+export function formatDate(s?: string | null): string {
   if (!s) return "—";
   const d = new Date(s + "T00:00:00");
   return d.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export function fmt(n) { return "$" + Number(n).toFixed(2); }
+export function fmt(n: number): string { return "$" + Number(n).toFixed(2); }
 
-export const ORDER_STATUS = ["Pending", "Ready", "Fulfilled", "Cancelled"];
-export const PAYMENT_STATUS = ["Unpaid", "Deposit", "Prepaid"];
+export const ORDER_STATUS: OrderStatus[] = ["Pending", "Ready", "Fulfilled", "Cancelled"];
+export const PAYMENT_STATUS: PaymentStatus[] = ["Unpaid", "Deposit", "Prepaid"];
 
 // ─── FULFILLABILITY WARNINGS ─────────────────────────────────────────────────
-export function getIngredientWarnings(form, stock) {
+export function getIngredientWarnings(form: Order, stock: Stock | null | undefined): string[] {
   if (!stock) return [];
-  const warnings = [];
+  const warnings: string[] = [];
   const hasLumpia = !!form.lumpia?.enabled;
   const hasPancit = !!form.pancit?.enabled;
   if (!hasLumpia && !hasPancit) return [];
@@ -211,7 +219,7 @@ export function getIngredientWarnings(form, stock) {
   const pickupDt = (form.needed_date && form.pickup_time)
     ? new Date(`${form.needed_date}T${form.pickup_time}:00`)
     : null;
-  const hoursUntil = pickupDt ? (pickupDt - Date.now()) / 3600000 : null;
+  const hoursUntil = pickupDt ? (pickupDt.getTime() - Date.now()) / 3600000 : null;
   const timeLabel = form.pickup_time ? ` at ${form.pickup_time}` : '';
 
   // ── Shared consumables (carrots + celery) ─────────────────────────────────
@@ -234,7 +242,7 @@ export function getIngredientWarnings(form, stock) {
 
   // ── Lumpia timeline warnings ───────────────────────────────────────────────
   if (hasLumpia && form.needed_date) {
-    const lumpiaNeeded = (form.lumpia.sets || 0) + (form.lumpia.halves || 0) * 0.5;
+    const lumpiaNeeded = (form.lumpia?.sets || 0) + (form.lumpia?.halves || 0) * 0.5;
     const lumpiaReady = stock.lumpia_sets || 0;
 
     if (lumpiaNeeded > lumpiaReady) {
@@ -255,7 +263,7 @@ export function getIngredientWarnings(form, stock) {
 
   // ── Pancit warnings ────────────────────────────────────────────────────────
   if (hasPancit) {
-    const packsNeeded = (form.pancit.full || 0) + Math.ceil((form.pancit.half || 0) / 2) + (form.pancit.large || 0) * 2;
+    const packsNeeded = (form.pancit?.full || 0) + Math.ceil((form.pancit?.half || 0) / 2) + (form.pancit?.large || 0) * 2;
     const packsOnHand = stock.noodle_packs || 0;
 
     if (packsNeeded > packsOnHand) {
@@ -274,7 +282,7 @@ export function getIngredientWarnings(form, stock) {
 // ─── CALENDAR ────────────────────────────────────────────────────────────────
 // YYYY-MM-DD from a Date's *local* parts. needed_date is stored as a local YMD
 // string, so toISOString() would shift evening dates a day forward.
-export function localYMD(date) {
+export function localYMD(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
@@ -282,7 +290,7 @@ export function localYMD(date) {
 }
 
 // 7 YMD strings for the week containing anchorDate, Sunday start.
-export function getWeekDays(anchorDate) {
+export function getWeekDays(anchorDate: Date): string[] {
   const start = new Date(anchorDate);
   start.setHours(0, 0, 0, 0);
   start.setDate(start.getDate() - start.getDay());
@@ -295,15 +303,15 @@ export function getWeekDays(anchorDate) {
 
 // Weeks × 7 YMD strings covering the month containing anchorDate, padded with
 // adjacent-month days so every row is a full week (Sunday start).
-export function getMonthGrid(anchorDate) {
+export function getMonthGrid(anchorDate: Date): string[][] {
   const first = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
   const last = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0);
   const gridStart = new Date(first);
   gridStart.setDate(first.getDate() - first.getDay());
   const weekCount = Math.ceil((first.getDay() + last.getDate()) / 7);
-  const weeks = [];
+  const weeks: string[][] = [];
   for (let w = 0; w < weekCount; w++) {
-    const week = [];
+    const week: string[] = [];
     for (let i = 0; i < 7; i++) {
       const day = new Date(gridStart);
       day.setDate(gridStart.getDate() + w * 7 + i);
@@ -318,7 +326,7 @@ export function getMonthGrid(anchorDate) {
 export const LOAD_THRESHOLDS = { medium: 3, heavy: 5 };
 
 // Work units for a day's orders: lumpia batch ×1, pancit full ×1, half ×0.5.
-export function dayLoad(ordersForDay) {
+export function dayLoad(ordersForDay: Order[]): { units: number; level: 'light' | 'medium' | 'heavy' } {
   let units = 0;
   ordersForDay.forEach(o => {
     if (o.order_status === "Cancelled") return;
@@ -329,22 +337,30 @@ export function dayLoad(ordersForDay) {
       units += (o.pancit.large || 0) * 2;
     }
   });
-  let level = "light";
+  let level: 'light' | 'medium' | 'heavy' = "light";
   if (units >= LOAD_THRESHOLDS.heavy) level = "heavy";
   else if (units >= LOAD_THRESHOLDS.medium) level = "medium";
   return { units, level };
 }
 
 // ─── PREP SHEET ──────────────────────────────────────────────────────────────
+export interface PrepTotals {
+  orderCount: number;
+  lumpia: { setsCooked: number; setsUncooked: number; halvesCooked: number; halvesUncooked: number };
+  pancit: { full: number; half: number; large: number; extraMeat: number };
+  sauces: Record<LumpiaSauce, number>;
+  rushCount: number;
+}
+
 // A day's cooking plan: the orders for that date (sorted by pickup time) plus an
 // aggregate "to make" roll-up — lumpia split by cooked/uncooked, pancit trays,
 // sauces, and rush count. Pure; rendered by the PrepSheet component.
-export function buildPrepList(orders, ymd) {
+export function buildPrepList(orders: Order[], ymd: string): { ymd: string; orders: Order[]; totals: PrepTotals } {
   const rows = (orders || [])
     .filter(o => o.needed_date === ymd && o.order_status !== "Cancelled")
     .sort((a, b) => (a.pickup_time || "").localeCompare(b.pickup_time || ""));
 
-  const totals = {
+  const totals: PrepTotals = {
     orderCount: rows.length,
     lumpia: { setsCooked: 0, setsUncooked: 0, halvesCooked: 0, halvesUncooked: 0 },
     pancit: { full: 0, half: 0, large: 0, extraMeat: 0 },

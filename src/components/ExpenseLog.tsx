@@ -1,6 +1,20 @@
 import { useState, useMemo } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import type { Expense } from '../types';
 import { fmt, formatDate, localYMD } from '../lib/utils';
+
+interface Props {
+  expenses: Expense[];
+  onAdd: (expense: Expense) => Promise<void>;
+  onDelete: (id: string | number) => void;
+}
+
+interface ExpenseForm {
+  date: string;
+  category: string;
+  amount: string;
+  note: string;
+}
 
 const CATEGORIES = [
   { value: 'wrappers',   label: 'Wrappers',   emoji: '🧻' },
@@ -11,15 +25,15 @@ const CATEGORIES = [
   { value: 'other',      label: 'Other',       emoji: '🛒' },
 ];
 
-const EMPTY_FORM = { date: localYMD(new Date()), category: 'wrappers', amount: '', note: '' };
+const EMPTY_FORM: ExpenseForm = { date: localYMD(new Date()), category: 'wrappers', amount: '', note: '' };
 
-export default function ExpenseLog({ expenses, onAdd, onDelete }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
+  const [form, setForm] = useState<ExpenseForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | number | null>(null);
 
-  const grouped = useMemo(() => {
-    const map = {};
+  const grouped = useMemo<[string, Expense[]][]>(() => {
+    const map: Record<string, Expense[]> = {};
     for (const e of expenses) {
       if (!map[e.date]) map[e.date] = [];
       map[e.date].push(e);
@@ -27,13 +41,13 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }) {
     return Object.entries(map).sort(([a], [b]) => b.localeCompare(a));
   }, [expenses]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const amount = parseFloat(form.amount);
     if (!form.date || isNaN(amount) || amount <= 0) return;
     setSaving(true);
     try {
-      await onAdd({ date: form.date, category: form.category, amount, note: form.note.trim() || null });
+      await onAdd({ date: form.date, category: form.category, amount, note: form.note.trim() || undefined });
       setForm(prev => ({ ...EMPTY_FORM, date: prev.date, category: prev.category }));
     } finally {
       setSaving(false);
@@ -42,7 +56,6 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }) {
 
   return (
     <div className="px-6 space-y-6">
-      {/* Add expense form */}
       <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl p-5 shadow-lg">
         <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-4">Log an Expense</div>
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -121,14 +134,13 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }) {
         </form>
       </div>
 
-      {/* Grouped expense history */}
       {grouped.length === 0 ? (
         <div className="text-center text-white/50 py-10 text-sm">No expenses logged yet.</div>
       ) : (
         <div className="space-y-4">
           {grouped.map(([date, entries]) => {
             const batchTotal = entries.reduce((s, e) => s + Number(e.amount), 0);
-            const cat = v => CATEGORIES.find(c => c.value === v);
+            const cat = (v: string) => CATEGORIES.find(c => c.value === v);
             return (
               <div key={date} className="bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl overflow-hidden shadow">
                 <div className="flex items-center justify-between px-4 py-3 bg-white/10 border-b border-white/10">
@@ -137,26 +149,26 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }) {
                 </div>
                 <div className="divide-y divide-white/10">
                   {entries.map(entry => (
-                    <div key={entry.id} className="flex items-center justify-between px-4 py-2.5 group">
+                    <div key={entry.id as string} className="flex items-center justify-between px-4 py-2.5 group">
                       <div className="flex items-center gap-2.5">
-                        <span className="text-base">{cat(entry.category)?.emoji ?? '🛒'}</span>
+                        <span className="text-base">{cat(entry.category ?? '')?.emoji ?? '🛒'}</span>
                         <div>
-                          <div className="text-white text-sm font-medium">{cat(entry.category)?.label ?? entry.category}</div>
+                          <div className="text-white text-sm font-medium">{cat(entry.category ?? '')?.label ?? entry.category}</div>
                           {entry.note && <div className="text-white/50 text-xs">{entry.note}</div>}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-white font-semibold text-sm">{fmt(entry.amount)}</span>
+                        <span className="text-white font-semibold text-sm">{fmt(Number(entry.amount))}</span>
                         {pendingDeleteId === entry.id ? (
                           <div className="flex items-center gap-2">
                             <button type="button" onClick={() => setPendingDeleteId(null)} className="text-xs text-white/60 hover:text-white font-semibold transition-colors cursor-pointer">Cancel</button>
-                            <button type="button" onClick={() => { onDelete(entry.id); setPendingDeleteId(null); }} className="text-xs text-red-300 hover:text-red-200 font-bold transition-colors cursor-pointer">Delete</button>
+                            <button type="button" onClick={() => { onDelete(entry.id!); setPendingDeleteId(null); }} className="text-xs text-red-300 hover:text-red-200 font-bold transition-colors cursor-pointer">Delete</button>
                           </div>
                         ) : (
                           <button
                             type="button"
                             aria-label="Delete expense"
-                            onClick={() => setPendingDeleteId(entry.id)}
+                            onClick={() => setPendingDeleteId(entry.id ?? null)}
                             className="opacity-0 group-hover:opacity-100 text-white/40 hover:text-red-300 transition-all cursor-pointer"
                           >
                             <Trash2 size={14} />
