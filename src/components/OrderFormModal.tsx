@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock } from 'lucide-react';
+import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock, RotateCcw } from 'lucide-react';
 import type { Order, Stock } from '../types';
 import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE } from '../lib/utils';
 import { useOrderForm } from '../hooks/useOrderForm';
@@ -21,6 +21,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
     form, showSuggestions, setShowSuggestions,
     nameSuggestions, setField, formatPhone,
     handleSelectSuggestion, handleSubmit, hasItems, total,
+    repeatAvailable, applyRepeatLast,
   } = useOrderForm({ isOpen, editOrder, allOrders, stock: stock ?? undefined, initialDate, onSave });
 
   if (!isOpen) return null;
@@ -62,7 +63,14 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
 
             {/* Order Items */}
             <div className="space-y-4">
-              <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider"><ChefHat size={14}/> Menu Items</label>
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider"><ChefHat size={14}/> Menu Items</label>
+                {repeatAvailable && (
+                  <button type="button" onClick={applyRepeatLast} className="flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-full transition-colors">
+                    <RotateCcw size={13}/> Repeat last order
+                  </button>
+                )}
+              </div>
 
               {/* Lumpia */}
               <div className={`border-2 rounded-xl overflow-hidden transition-colors ${form.lumpia?.enabled ? 'border-orange-400 shadow-sm' : 'border-stone-200'}`}>

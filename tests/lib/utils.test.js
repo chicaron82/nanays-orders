@@ -4,8 +4,8 @@ import {
   getDaysUntil, urgencyLabel,
   getReserved, getAvailable, checkShortage, getMakeMoreNeeds,
   getRevenue,
-  fuzzyMatch, getRepeatCustomers, isRepeat,
-  formatDate, fmt,
+  fuzzyMatch, getRepeatCustomers, isRepeat, lastOrderFor,
+  formatDate, fmt, buildOrderMessage,
   getIngredientWarnings,
   localYMD, getWeekDays, getMonthGrid,
   dayLoad, LOAD_THRESHOLDS,
@@ -202,6 +202,49 @@ describe('getRepeatCustomers / isRepeat', () => {
     const orders = [{ id: 1, customer_name: 'Maria Santos' }];
     expect(isRepeat('Maria', orders)).toBe(true);
     expect(isRepeat('Maria', orders, 1)).toBe(false); // excluding the only match
+  });
+});
+
+describe('lastOrderFor', () => {
+  const orders = [
+    { id: 1, customer_name: 'Maria Santos', created_at: '2026-01-01T10:00:00', pancit: { enabled: true, full: 1 } },
+    { id: 2, customer_name: 'Maria Santos', created_at: '2026-05-01T10:00:00', lumpia: { enabled: true, sets: 2 } },
+    { id: 3, customer_name: 'Bob', created_at: '2026-05-10T10:00:00' },
+  ];
+  it('returns the most recent matching order by created_at', () => {
+    expect(lastOrderFor('Maria', orders)?.id).toBe(2);
+  });
+  it('excludes a given id', () => {
+    expect(lastOrderFor('Maria Santos', orders, 2)?.id).toBe(1);
+  });
+  it('returns undefined for unknown or blank name', () => {
+    expect(lastOrderFor('Nobody', orders)).toBeUndefined();
+    expect(lastOrderFor('', orders)).toBeUndefined();
+  });
+});
+
+describe('buildOrderMessage', () => {
+  const base = {
+    customer_name: 'Tita Cora',
+    needed_date: '2026-06-02',
+    pickup_time: '14:00',
+    total: 80,
+    lumpia: { enabled: true, sets: 2, setsCooked: true },
+  };
+  it('includes name, items, date/time and a total line', () => {
+    const msg = buildOrderMessage({ ...base, payment_status: 'Unpaid' });
+    expect(msg).toContain('Tita Cora');
+    expect(msg).toContain('2× full');
+    expect(msg).toContain('14:00');
+    expect(msg).toContain('$80.00');
+  });
+  it('shows deposit + balance for Deposit orders', () => {
+    const msg = buildOrderMessage({ ...base, payment_status: 'Deposit', deposit_amount: 30 });
+    expect(msg).toContain('Deposit $30.00');
+    expect(msg).toContain('Balance $50.00');
+  });
+  it('shows fully paid for Prepaid orders', () => {
+    expect(buildOrderMessage({ ...base, payment_status: 'Prepaid' })).toContain('Fully paid');
   });
 });
 

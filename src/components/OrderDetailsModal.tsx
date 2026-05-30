@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Edit2, AlertTriangle, Calendar, MapPin, Phone, MessageSquare } from 'lucide-react';
+import { X, Trash2, Edit2, AlertTriangle, Calendar, MapPin, Phone, MessageSquare, Share2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Order, Stock, OrderStatus, PaymentStatus } from '../types';
-import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, ORDER_STATUS, PAYMENT_STATUS } from '../lib/utils';
+import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, buildOrderMessage, ORDER_STATUS, PAYMENT_STATUS } from '../lib/utils';
 
 interface Props {
   order: Order | null;
@@ -39,6 +40,21 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
     });
   };
 
+  const handleShare = async () => {
+    const text = buildOrderMessage(order);
+    try {
+      await navigator.share({ text });
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      try {
+        await navigator.clipboard.writeText(text);
+        toast.success('Order copied 📋');
+      } catch {
+        toast.error('Could not share or copy');
+      }
+    }
+  };
+
   return (
     <AnimatePresence>
       <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center sm:p-4" onClick={onClose}>
@@ -56,7 +72,10 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
               {order.preferences && <div className="flex items-center gap-1.5 text-white/90 text-sm mt-2 bg-white/20 px-3 py-1.5 rounded-lg w-max"><MessageSquare size={14}/> {order.preferences}</div>}
             </div>
             <div className="flex flex-col items-end gap-3">
-              <button onClick={onClose} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><X size={18}/></button>
+              <div className="flex items-center gap-2">
+                <button onClick={handleShare} aria-label="Share order" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><Share2 size={16}/></button>
+                <button onClick={onClose} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><X size={18}/></button>
+              </div>
               {urgency && order.order_status === 'Pending' && (
                 <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${urgency.tailwind}`}>{urgency.text}</span>
               )}

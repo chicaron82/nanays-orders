@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Printer } from 'lucide-react';
 import type { Order } from '../../types';
@@ -14,11 +15,15 @@ interface Props {
 }
 
 export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrderForDate, onPrint }: Props) {
+  const [showCancelled, setShowCancelled] = useState(false);
+
   if (!ymd) return null;
 
   const visible = orders
     .filter(o => o.order_status !== 'Cancelled')
     .sort((a, b) => (a.pickup_time || '').localeCompare(b.pickup_time || ''));
+  const cancelled = orders.filter(o => o.order_status === 'Cancelled');
+  const shown = showCancelled ? [...visible, ...cancelled] : visible;
   const { units } = dayLoad(visible);
   const dayTotal = visible.reduce((s, o) => s + (o.total ?? 0), 0);
 
@@ -61,12 +66,20 @@ export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrde
           </div>
 
           <div className="p-4 space-y-2">
-            {visible.length === 0 && (
+            {visible.length === 0 && !showCancelled && (
               <div className="text-center text-stone-400 text-sm py-6">No orders this day</div>
             )}
-            {visible.map(o => (
+            {shown.map(o => (
               <OrderChip key={o.id as string} order={o} variant="full" onClick={() => onOrderClick(o)} />
             ))}
+            {cancelled.length > 0 && (
+              <button
+                onClick={() => setShowCancelled(v => !v)}
+                className="w-full text-center text-xs font-semibold text-stone-400 hover:text-stone-600 py-1.5 transition-colors"
+              >
+                {showCancelled ? 'Hide' : 'Show'} {cancelled.length} cancelled
+              </button>
+            )}
             <button
               onClick={() => onNewOrderForDate(ymd)}
               className="w-full flex items-center justify-center gap-2 py-3 mt-2 rounded-xl border-2 border-dashed border-stone-300 text-stone-500 font-bold text-sm hover:border-orange-400 hover:text-orange-500 transition-colors"

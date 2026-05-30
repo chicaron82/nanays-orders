@@ -191,6 +191,14 @@ export function isRepeat(name: string, orders: Order[], currentId: string | numb
   return others.filter(o => fuzzyMatch(o.customer_name, name)).length >= 1;
 }
 
+/** Most recent prior order for a customer (by created_at desc), for "repeat last order". */
+export function lastOrderFor(name: string, orders: Order[], excludeId: string | number | null = null): Order | undefined {
+  if (!name?.trim()) return undefined;
+  return orders
+    .filter(o => o.id !== excludeId && fuzzyMatch(o.customer_name, name))
+    .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))[0];
+}
+
 export function formatDate(s?: string | null): string {
   if (!s) return "—";
   const d = new Date(s + "T00:00:00");
@@ -198,6 +206,23 @@ export function formatDate(s?: string | null): string {
 }
 
 export function fmt(n: number): string { return "$" + Number(n).toFixed(2); }
+
+/** Customer-facing order confirmation text for sharing (Web Share / clipboard). */
+export function buildOrderMessage(order: Order): string {
+  const total = order.total ?? calcTotal(order);
+  const deposit = Number(order.deposit_amount) || 0;
+  const lines = [`${order.customer_name || 'Order'} — Order Confirmation`, orderSummary(order)];
+  const when = `📅 ${formatDate(order.needed_date)}${order.pickup_time ? ` @ ${order.pickup_time}` : ''}`;
+  lines.push(when);
+  if (order.payment_status === 'Prepaid') {
+    lines.push(`💵 Total ${fmt(total)} · Fully paid ✓`);
+  } else if (order.payment_status === 'Deposit') {
+    lines.push(`💵 Total ${fmt(total)} · Deposit ${fmt(deposit)} · Balance ${fmt(total - deposit)}`);
+  } else {
+    lines.push(`💵 Total ${fmt(total)}`);
+  }
+  return lines.join('\n');
+}
 
 export const ORDER_STATUS: OrderStatus[] = ["Pending", "Ready", "Fulfilled", "Cancelled"];
 export const PAYMENT_STATUS: PaymentStatus[] = ["Unpaid", "Deposit", "Prepaid"];

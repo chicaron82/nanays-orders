@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fuzzyMatch, calcTotal } from '../lib/utils';
+import { fuzzyMatch, calcTotal, lastOrderFor } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import type { Order, OrderForm, Stock } from '../types';
 
@@ -78,6 +78,20 @@ export function useOrderForm({ isOpen, editOrder, allOrders, stock: _stock, init
     } catch (e) { console.error(e); }
   };
 
+  const repeatSource = !editOrder && q.trim() ? lastOrderFor(q, allOrders) : undefined;
+  const repeatAvailable = !!repeatSource;
+
+  const applyRepeatLast = () => {
+    if (!repeatSource) return;
+    setForm(f => ({
+      ...f,
+      lumpia: repeatSource.lumpia ? structuredClone(repeatSource.lumpia) : f.lumpia,
+      pancit: repeatSource.pancit ? structuredClone(repeatSource.pancit) : f.pancit,
+      delivery_type: repeatSource.delivery_type || f.delivery_type,
+      preferences: f.preferences || repeatSource.preferences || '',
+    }));
+  };
+
   const hasItems =
     (form.lumpia?.enabled && ((form.lumpia.sets || 0) + (form.lumpia.halves || 0) > 0)) ||
     (form.pancit?.enabled && ((form.pancit.full || 0) + (form.pancit.half || 0) + (form.pancit.large || 0) > 0));
@@ -102,5 +116,6 @@ export function useOrderForm({ isOpen, editOrder, allOrders, stock: _stock, init
     form, showSuggestions, setShowSuggestions,
     nameSuggestions, setField, formatPhone,
     handleSelectSuggestion, handleSubmit, hasItems, total,
+    repeatAvailable, applyRepeatLast,
   };
 }
