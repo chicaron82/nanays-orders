@@ -5,6 +5,7 @@ import DayRow from './calendar/DayRow';
 import DayCell from './calendar/DayCell';
 import DaySheet from './calendar/DaySheet';
 import OrderChip from './calendar/OrderChip';
+import PrepSheet from './PrepSheet';
 
 const VIEWS = ['week', 'month', 'agenda'];
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -14,6 +15,7 @@ export default function CalendarView({ orders, onOrderClick, onNewOrderForDate }
   const [view, setView] = useState('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [daySheetDate, setDaySheetDate] = useState(null);
+  const [prepDate, setPrepDate] = useState(null);
 
   const todayYMD = localYMD(new Date());
 
@@ -181,6 +183,15 @@ export default function CalendarView({ orders, onOrderClick, onNewOrderForDate }
           onClose={() => setDaySheetDate(null)}
           onOrderClick={(o) => { setDaySheetDate(null); onOrderClick(o); }}
           onNewOrderForDate={(ymd) => { setDaySheetDate(null); onNewOrderForDate(ymd); }}
+          onPrint={(ymd) => { setDaySheetDate(null); setPrepDate(ymd); }}
+        />
+      )}
+
+      {prepDate && (
+        <PrepSheet
+          ymd={prepDate}
+          orders={ordersByDate[prepDate] || []}
+          onClose={() => setPrepDate(null)}
         />
       )}
     </div>

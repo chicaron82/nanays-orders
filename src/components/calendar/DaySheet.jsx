@@ -1,9 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Printer } from 'lucide-react';
 import { formatDate, dayLoad } from '../../lib/utils';
 import OrderChip from './OrderChip';
 
-export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrderForDate }) {
+export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrderForDate, onPrint }) {
   if (!ymd) return null;
 
   const visible = orders
@@ -32,9 +32,20 @@ export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrde
                 {units > 0 ? ` · ${units} work units` : ''}
               </div>
             </div>
-            <button onClick={onClose} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors">
-              <X size={18} />
-            </button>
+            <div className="flex items-center gap-2">
+              {visible.length > 0 && onPrint && (
+                <button
+                  onClick={() => onPrint(ymd)}
+                  aria-label="Print prep sheet"
+                  className="h-8 px-3 flex items-center gap-1.5 rounded-full bg-white/20 text-white text-xs font-bold hover:bg-white/30 transition-colors"
+                >
+                  <Printer size={15} /> Prep
+                </button>
+              )}
+              <button onClick={onClose} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors">
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           <div className="p-4 space-y-2">

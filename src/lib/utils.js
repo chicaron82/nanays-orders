@@ -334,3 +334,44 @@ export function dayLoad(ordersForDay) {
   else if (units >= LOAD_THRESHOLDS.medium) level = "medium";
   return { units, level };
 }
+
+// ─── PREP SHEET ──────────────────────────────────────────────────────────────
+// A day's cooking plan: the orders for that date (sorted by pickup time) plus an
+// aggregate "to make" roll-up — lumpia split by cooked/uncooked, pancit trays,
+// sauces, and rush count. Pure; rendered by the PrepSheet component.
+export function buildPrepList(orders, ymd) {
+  const rows = (orders || [])
+    .filter(o => o.needed_date === ymd && o.order_status !== "Cancelled")
+    .sort((a, b) => (a.pickup_time || "").localeCompare(b.pickup_time || ""));
+
+  const totals = {
+    orderCount: rows.length,
+    lumpia: { setsCooked: 0, setsUncooked: 0, halvesCooked: 0, halvesUncooked: 0 },
+    pancit: { full: 0, half: 0, large: 0, extraMeat: 0 },
+    sauces: { sweet_and_sour: 0, sweet_chili: 0 },
+    rushCount: 0,
+  };
+
+  for (const o of rows) {
+    if (o.lumpia?.enabled) {
+      const setsCooked = o.lumpia.setsCooked != null ? o.lumpia.setsCooked : o.lumpia.style === "cooked";
+      const halvesCooked = o.lumpia.halvesCooked != null ? o.lumpia.halvesCooked : o.lumpia.style === "cooked";
+      const sets = o.lumpia.sets || 0;
+      const halves = o.lumpia.halves || 0;
+      if (setsCooked) totals.lumpia.setsCooked += sets; else totals.lumpia.setsUncooked += sets;
+      if (halvesCooked) totals.lumpia.halvesCooked += halves; else totals.lumpia.halvesUncooked += halves;
+      for (const s of (o.lumpia.sauces || [])) {
+        if (totals.sauces[s] != null) totals.sauces[s] += 1;
+      }
+    }
+    if (o.pancit?.enabled) {
+      totals.pancit.full += o.pancit.full || 0;
+      totals.pancit.half += o.pancit.half || 0;
+      totals.pancit.large += o.pancit.large || 0;
+      if (o.pancit.extraMeat) totals.pancit.extraMeat += 1;
+    }
+    if (o.rush_order) totals.rushCount += 1;
+  }
+
+  return { ymd, orders: rows, totals };
+}

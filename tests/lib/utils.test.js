@@ -9,6 +9,7 @@ import {
   getIngredientWarnings,
   localYMD, getWeekDays, getMonthGrid,
   dayLoad, LOAD_THRESHOLDS,
+  buildPrepList,
 } from '../../src/lib/utils';
 
 // Build a local YYYY-MM-DD offset from today (deterministic regardless of run date)
@@ -285,5 +286,58 @@ describe('dayLoad', () => {
   it('crosses medium and heavy thresholds', () => {
     expect(dayLoad([{ order_status: 'Pending', pancit: { enabled: true, full: LOAD_THRESHOLDS.medium } }]).level).toBe('medium');
     expect(dayLoad([{ order_status: 'Pending', pancit: { enabled: true, full: LOAD_THRESHOLDS.heavy } }]).level).toBe('heavy');
+  });
+});
+
+// ─── PREP SHEET ──────────────────────────────────────────────────────────────
+
+describe('buildPrepList', () => {
+  const day = '2026-05-30';
+  const mk = (over) => ({ needed_date: day, order_status: 'Pending', ...over });
+
+  it('filters to the day, drops cancelled, sorts by pickup_time', () => {
+    const orders = [
+      mk({ id: 1, pickup_time: '14:00' }),
+      mk({ id: 2, pickup_time: '09:00' }),
+      mk({ id: 3, needed_date: '2026-05-31', pickup_time: '08:00' }),    // other day
+      mk({ id: 4, order_status: 'Cancelled', pickup_time: '01:00' }),    // cancelled
+    ];
+    const { orders: rows, totals } = buildPrepList(orders, day);
+    expect(rows.map(o => o.id)).toEqual([2, 1]);
+    expect(totals.orderCount).toBe(2);
+  });
+
+  it('aggregates lumpia cooked/uncooked sets and halves', () => {
+    const orders = [
+      mk({ lumpia: { enabled: true, sets: 2, setsCooked: true, halves: 1, halvesCooked: false } }),
+      mk({ lumpia: { enabled: true, sets: 1, setsCooked: false, halves: 2, halvesCooked: true } }),
+    ];
+    expect(buildPrepList(orders, day).totals.lumpia)
+      .toEqual({ setsCooked: 2, setsUncooked: 1, halvesCooked: 2, halvesUncooked: 1 });
+  });
+
+  it('respects legacy lumpia.style for cooked resolution', () => {
+    const orders = [mk({ lumpia: { enabled: true, sets: 3, halves: 0, style: 'cooked' } })];
+    const { lumpia } = buildPrepList(orders, day).totals;
+    expect(lumpia.setsCooked).toBe(3);
+    expect(lumpia.setsUncooked).toBe(0);
+  });
+
+  it('aggregates pancit trays, extra-meat count, sauces, and rush', () => {
+    const orders = [
+      mk({ pancit: { enabled: true, full: 2, half: 1, large: 0, extraMeat: true }, lumpia: { enabled: true, sets: 1, setsCooked: true, halves: 0, sauces: ['sweet_chili'] }, rush_order: true }),
+      mk({ pancit: { enabled: true, full: 1, half: 0, large: 2, extraMeat: false } }),
+    ];
+    const { totals } = buildPrepList(orders, day);
+    expect(totals.pancit).toEqual({ full: 3, half: 1, large: 2, extraMeat: 1 });
+    expect(totals.sauces.sweet_chili).toBe(1);
+    expect(totals.rushCount).toBe(1);
+  });
+
+  it('empty day → zeroed totals', () => {
+    const { orders: rows, totals } = buildPrepList([], day);
+    expect(rows).toEqual([]);
+    expect(totals.orderCount).toBe(0);
+    expect(totals.lumpia.setsCooked).toBe(0);
   });
 });
