@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Edit2, AlertTriangle, Calendar, MapPin, Phone, MessageSquare, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Order, Stock, OrderStatus, PaymentStatus } from '../types';
@@ -58,7 +58,7 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
   return (
     <AnimatePresence>
       <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center sm:p-4" onClick={onClose}>
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -237,7 +237,7 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
               )}
             </div>
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </AnimatePresence>
   );

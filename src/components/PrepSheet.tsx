@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { X, Printer } from 'lucide-react';
 import type { Order, DeliveryType } from '../types';
 import { buildPrepList, orderSummary, formatDate } from '../lib/utils';
@@ -45,7 +45,7 @@ export default function PrepSheet({ ymd, orders, onClose }: Props) {
         className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[60] flex items-start sm:items-center justify-center overflow-y-auto py-6 px-4"
         onClick={onClose}
       >
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 40 }}
@@ -131,7 +131,7 @@ export default function PrepSheet({ ymd, orders, onClose }: Props) {
               </>
             )}
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </AnimatePresence>
   );

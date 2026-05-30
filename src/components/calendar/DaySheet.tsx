@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { X, Plus, Printer } from 'lucide-react';
 import type { Order } from '../../types';
 import { formatDate, dayLoad, fmt } from '../../lib/utils';
@@ -33,7 +33,7 @@ export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrde
         className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center"
         onClick={onClose}
       >
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 60 }}
@@ -87,7 +87,7 @@ export default function DaySheet({ ymd, orders, onClose, onOrderClick, onNewOrde
               <Plus size={16} /> New order this day
             </button>
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </AnimatePresence>
   );
