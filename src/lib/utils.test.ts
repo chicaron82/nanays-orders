@@ -3,6 +3,9 @@ import {
   isEarlyFulfillment,
   earlyFeeApplies,
   amountOwing,
+  amountReceived,
+  tipAmount,
+  getRevenue,
   calcTotal,
   orderSummary,
   EARLY_ORDER_FEE,
@@ -109,6 +112,66 @@ describe('amountOwing', () => {
   it('falls back to calcTotal when total is not stored', () => {
     // pancit full = 25, pickup, no fees
     expect(amountOwing(base({ payment_status: 'Unpaid', total: undefined }))).toBe(25);
+  });
+});
+
+describe('amountReceived', () => {
+  it('Prepaid received the full total', () => {
+    expect(amountReceived(base({ payment_status: 'Prepaid', total: 42.5 }))).toBe(42.5);
+  });
+  it('Deposit received the deposit amount', () => {
+    expect(amountReceived(base({ payment_status: 'Deposit', total: 42.5, deposit_amount: 43 }))).toBe(43);
+  });
+  it('Unpaid received nothing', () => {
+    expect(amountReceived(base({ payment_status: 'Unpaid', total: 42.5 }))).toBe(0);
+  });
+});
+
+describe('tipAmount', () => {
+  it('is the surplus when the deposit exceeds the total', () => {
+    expect(tipAmount(base({ payment_status: 'Deposit', total: 42.5, deposit_amount: 43 }))).toBeCloseTo(0.5);
+  });
+  it('is 0 when paid exactly', () => {
+    expect(tipAmount(base({ payment_status: 'Deposit', total: 42.5, deposit_amount: 42.5 }))).toBe(0);
+  });
+  it('is 0 on a partial deposit (that is owing, not a tip)', () => {
+    expect(tipAmount(base({ payment_status: 'Deposit', total: 60, deposit_amount: 30 }))).toBe(0);
+    expect(amountOwing(base({ payment_status: 'Deposit', total: 60, deposit_amount: 30 }))).toBe(30);
+  });
+  it('is 0 for Prepaid and Cancelled', () => {
+    expect(tipAmount(base({ payment_status: 'Prepaid', total: 42.5 }))).toBe(0);
+    expect(tipAmount(base({ payment_status: 'Deposit', total: 42.5, deposit_amount: 43, order_status: 'Cancelled' }))).toBe(0);
+  });
+  it('an overpaid deposit owes nothing', () => {
+    expect(amountOwing(base({ payment_status: 'Deposit', total: 42.5, deposit_amount: 43 }))).toBe(0);
+  });
+
+  it('prefers an explicit tip_amount (the Paid + tip path)', () => {
+    // Paid in full; amountReceived = total, so the derived surplus is 0 —
+    // the explicit tip must win (this is the $50-given-as-tip case).
+    expect(tipAmount(base({ payment_status: 'Prepaid', total: 42.5, tip_amount: 7.5 }))).toBe(7.5);
+  });
+  it('explicit tip_amount of 0 means change was given, not a tip', () => {
+    expect(tipAmount(base({ payment_status: 'Prepaid', total: 42.5, tip_amount: 0 }))).toBe(0);
+  });
+});
+
+describe('getRevenue — tips count as cash', () => {
+  it('includes the tip on a counted (fulfilled) order', () => {
+    const tipped = base({ order_status: 'Fulfilled', payment_status: 'Deposit', total: 42.5, deposit_amount: 43 });
+    expect(getRevenue([tipped]).total).toBeCloseTo(43);
+  });
+  it('counts only the total when paid exactly', () => {
+    const exact = base({ order_status: 'Fulfilled', payment_status: 'Prepaid', total: 42.5 });
+    expect(getRevenue([exact]).total).toBeCloseTo(42.5);
+  });
+  it('includes an explicit tip on a Paid order ($50 kept as tip)', () => {
+    const tipped = base({ order_status: 'Fulfilled', payment_status: 'Prepaid', total: 42.5, tip_amount: 7.5 });
+    expect(getRevenue([tipped]).total).toBeCloseTo(50);
+  });
+  it('change given (tip 0) counts only the total', () => {
+    const change = base({ order_status: 'Fulfilled', payment_status: 'Prepaid', total: 42.5, tip_amount: 0 });
+    expect(getRevenue([change]).total).toBeCloseTo(42.5);
   });
 });
 

@@ -3,7 +3,7 @@ import { m, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Edit2, AlertTriangle, Calendar, MapPin, Phone, MessageSquare, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Order, Stock, OrderStatus, PaymentStatus } from '../types';
-import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, buildOrderMessage, isEarlyFulfillment, EARLY_ORDER_FEE, ORDER_STATUS, PAYMENT_STATUS } from '../lib/utils';
+import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, buildOrderMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, ORDER_STATUS, PAYMENT_STATUS } from '../lib/utils';
 
 interface Props {
   order: Order | null;
@@ -21,13 +21,18 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
   const [depositInput, setDepositInput] = useState(
     () => (order?.deposit_amount != null ? String(order.deposit_amount) : '')
   );
+  const [paidInput, setPaidInput] = useState(
+    () => String((order?.total ?? 0) + (Number(order?.tip_amount) || 0))
+  );
   const [pendingDelete, setPendingDelete] = useState(false);
 
   if (!isOpen || !order) return null;
 
   const total = order.total ?? 0;
   const deposit = Number(order.deposit_amount) || 0;
-  const balance = order.payment_status === 'Prepaid' ? 0 : order.payment_status === 'Deposit' ? total - deposit : total;
+  const owing = amountOwing(order);
+  const tip = tipAmount(order);
+  const paidSurplus = Math.max(0, (Number(paidInput) || 0) - total);
 
   const detailShortage = checkShortage(order, stock, allOrders.filter(x => x.id !== order.id && x.order_status === 'Ready'));
   const days = getDaysUntil(order.needed_date);
@@ -37,8 +42,14 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
     onPaymentChange(order.id!, {
       payment_status: p,
       deposit_amount: p === 'Deposit' ? (order.deposit_amount ?? null) : null,
+      // Tip only applies while Paid; switching to Unpaid/Deposit clears it.
+      tip_amount: p === 'Prepaid' ? (Number(order.tip_amount) || 0) : 0,
     });
   };
+
+  // Mark Paid in full, recording any overage as a tip (vs. change given back).
+  const commitPaid = (tipAmt: number) =>
+    onPaymentChange(order.id!, { payment_status: 'Prepaid', deposit_amount: null, tip_amount: tipAmt });
 
   const handleShare = async () => {
     const text = buildOrderMessage(order);
@@ -162,9 +173,11 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
               <div>
                 <div className="text-sm font-bold opacity-80 uppercase tracking-wider">Total</div>
                 <div className="text-xs opacity-70 mt-1">
-                  {order.payment_status === 'Deposit' && `Deposit: ${fmt(deposit)} · Bal: ${fmt(balance)}`}
-                  {order.payment_status === 'Prepaid' && `✓ Fully Paid`}
                   {order.payment_status === 'Unpaid' && `Balance Due: ${fmt(total)}`}
+                  {order.payment_status === 'Deposit' && owing > 0 && `Deposit: ${fmt(deposit)} · Bal: ${fmt(owing)}`}
+                  {order.payment_status === 'Deposit' && owing === 0 && tip > 0 && `Paid: ${fmt(deposit)} · +${fmt(tip)} tip ✓`}
+                  {order.payment_status === 'Deposit' && owing === 0 && tip === 0 && `✓ Fully Paid`}
+                  {order.payment_status === 'Prepaid' && (tip > 0 ? `Paid ${fmt(total + tip)} · +${fmt(tip)} tip ✓` : `✓ Fully Paid`)}
                 </div>
               </div>
               <div className="font-playfair text-4xl font-black">{fmt(total)}</div>
@@ -223,6 +236,32 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
                     placeholder="0.00"
                     className="w-28 border-2 border-stone-200 rounded-lg px-3 py-1.5 text-sm focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors"
                   />
+                </div>
+              )}
+              {order.payment_status === 'Prepaid' && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-stone-500">Amount received:</span>
+                    <input type="number" id="order-paid" name="paid_amount" autoComplete="off" min={0} step="0.01" value={paidInput}
+                      onChange={e => setPaidInput(e.target.value)}
+                      onBlur={() => { if (Math.max(0, (Number(paidInput) || 0) - total) <= 0) commitPaid(0); }}
+                      placeholder="0.00"
+                      className="w-28 border-2 border-stone-200 rounded-lg px-3 py-1.5 text-sm focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors"
+                    />
+                  </div>
+                  {paidSurplus > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-stone-500">+{fmt(paidSurplus)} over —</span>
+                      <button type="button" onClick={() => commitPaid(paidSurplus)}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${tip > 0 ? 'bg-emerald-600 text-white' : 'bg-white border-2 border-stone-200 text-stone-600 hover:border-stone-300'}`}>
+                        Tip
+                      </button>
+                      <button type="button" onClick={() => commitPaid(0)}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${tip === 0 ? 'bg-stone-800 text-white' : 'bg-white border-2 border-stone-200 text-stone-600 hover:border-stone-300'}`}>
+                        Change given
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

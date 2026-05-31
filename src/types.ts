@@ -39,6 +39,7 @@ export interface Order {
   address?: string;
   payment_status?: PaymentStatus;
   deposit_amount?: number | null;
+  tip_amount?: number;  // overage kept as a tip when paid more than the total
   notes?: string;
   preferences?: string;
   rush_order?: boolean;

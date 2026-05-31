@@ -89,19 +89,34 @@ export function orderSummary(order: Order): string {
   return parts.join(' · ') || 'No items';
 }
 
+/** Cash received against an order. Prepaid = the full total; Deposit = the deposit; Unpaid = 0. */
+export function amountReceived(order: Order): number {
+  const total = order.total ?? calcTotal(order);
+  if (order.payment_status === 'Prepaid') return total;
+  if (order.payment_status === 'Deposit') return Number(order.deposit_amount) || 0;
+  return 0;
+}
+
 /**
- * What's still owed on an order. Prepaid → 0; Deposit → total minus the deposit;
- * Unpaid → the full total. Cancelled orders owe nothing. Mirrors the balance
- * shown in orderSummary so the dashboard and the confirmation message agree.
+ * What's still owed on an order — total minus cash received, floored at 0.
+ * Cancelled orders owe nothing. Mirrors the balance shown in orderSummary so
+ * the dashboard and the confirmation message agree.
  */
 export function amountOwing(order: Order): number {
   if (order.order_status === 'Cancelled') return 0;
-  const total = order.total ?? calcTotal(order);
-  const paid =
-    order.payment_status === 'Prepaid' ? total
-    : order.payment_status === 'Deposit' ? (Number(order.deposit_amount) || 0)
-    : 0;
-  return Math.max(0, total - paid);
+  return Math.max(0, (order.total ?? calcTotal(order)) - amountReceived(order));
+}
+
+/**
+ * Amount paid above the order total, kept as income. Prefers the explicit
+ * tip_amount recorded when marking Paid for more than the total (the
+ * tip-vs-change decision can't be derived). Falls back to a Deposit larger than
+ * the total (the legacy workaround). 0 when not overpaid or cancelled.
+ */
+export function tipAmount(order: Order): number {
+  if (order.order_status === 'Cancelled') return 0;
+  if (order.tip_amount != null && order.tip_amount > 0) return order.tip_amount;
+  return Math.max(0, amountReceived(order) - (order.total ?? calcTotal(order)));
 }
 
 // ─── URGENCY ─────────────────────────────────────────────────────────────────
@@ -203,9 +218,12 @@ export function getRevenue(orders: Order[]): { total: number; month: number } {
     const d = new Date(o.created_at || `${o.needed_date}T00:00:00`);
     return d >= monthStart;
   });
+  // Revenue = order value + any tip (cash received above the total), so the
+  // P&L reflects actual money taken in, not just the order sticker price.
+  const cash = (o: Order) => Number(o.total ?? calcTotal(o)) + tipAmount(o);
   return {
-    total: counted.reduce((s, o) => s + Number(o.total ?? calcTotal(o)), 0),
-    month: thisMonth.reduce((s, o) => s + Number(o.total ?? calcTotal(o)), 0),
+    total: counted.reduce((s, o) => s + cash(o), 0),
+    month: thisMonth.reduce((s, o) => s + cash(o), 0),
   };
 }
 
@@ -256,10 +274,16 @@ export function buildOrderMessage(order: Order): string {
   const lines = [`${order.customer_name || 'Order'} — Order Confirmation`, orderSummary(order)];
   const when = `📅 ${formatDate(order.needed_date)}${order.pickup_time ? ` @ ${order.pickup_time}` : ''}`;
   lines.push(when);
+  const owing = amountOwing(order);
+  const tip = tipAmount(order);
   if (order.payment_status === 'Prepaid') {
     lines.push(`💵 Total ${fmt(total)} · Fully paid ✓`);
+  } else if (order.payment_status === 'Deposit' && owing > 0) {
+    lines.push(`💵 Total ${fmt(total)} · Deposit ${fmt(deposit)} · Balance ${fmt(owing)}`);
   } else if (order.payment_status === 'Deposit') {
-    lines.push(`💵 Total ${fmt(total)} · Deposit ${fmt(deposit)} · Balance ${fmt(total - deposit)}`);
+    lines.push(tip > 0
+      ? `💵 Total ${fmt(total)} · Paid ${fmt(deposit)} · Fully paid ✓`
+      : `💵 Total ${fmt(total)} · Fully paid ✓`);
   } else {
     lines.push(`💵 Total ${fmt(total)}`);
   }
