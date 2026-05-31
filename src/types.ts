@@ -38,7 +38,7 @@ export interface Order {
   delivery_type?: DeliveryType;
   address?: string;
   payment_status?: PaymentStatus;
-  deposit_amount?: number | string | null;
+  deposit_amount?: number | null;
   notes?: string;
   preferences?: string;
   rush_order?: boolean;

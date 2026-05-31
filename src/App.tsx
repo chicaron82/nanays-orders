@@ -52,7 +52,9 @@ function MainApp({ onLogout }: MainAppProps) {
       if (order) {
         const deductions: typeof stock = {};
         if (order.lumpia?.enabled) {
-          const sets = (order.lumpia.sets || 0) + (order.lumpia.halves || 0) * 0.5;
+          // halves count as 0.5 sets for display/calc, but lumpia_sets is an integer column.
+          // Math.round here so 1 half = 1 set deducted; use Math.floor to only deduct on whole sets.
+          const sets = Math.round((order.lumpia.sets || 0) + (order.lumpia.halves || 0) * 0.5);
           if (sets > 0) deductions.lumpia_sets = Math.max(0, (stock.lumpia_sets || 0) - sets);
         }
         if (order.pancit?.enabled) {
@@ -61,7 +63,8 @@ function MainApp({ onLogout }: MainAppProps) {
           if ((order.pancit.large || 0) > 0) deductions.pancit_large = Math.max(0, (stock.pancit_large || 0) - order.pancit.large!);
         }
         if (Object.keys(deductions).length > 0) {
-          updateStock({ ...stock, ...deductions }, { silent: true });
+          // Pass only the changed fields — avoids overwriting unrelated stock values in a concurrent session.
+          updateStock(deductions, { silent: true });
         }
       }
     }

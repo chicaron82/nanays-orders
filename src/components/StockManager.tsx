@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Order, Stock } from '../types';
 import { getAvailable, getReserved, getMakeMoreNeeds } from '../lib/utils';
 import { AlertTriangle, Package, ChefHat, CheckCircle2 } from 'lucide-react';
@@ -47,6 +47,12 @@ const porkItems: { key: NumericStockKey; label: string }[] = [
 
 export default function StockManager({ stock, orders, updateStock }: Props) {
   const [stockEdit, setStockEdit] = useState<Stock>({ ...stock });
+
+  // Re-sync local edit state when a Supabase realtime push updates the stock prop.
+  // This prevents saving a stale snapshot over a value that changed in another session.
+  useEffect(() => {
+    setStockEdit({ ...stock });
+  }, [stock]);
   const avail = getAvailable(stock, orders);
   const reserved = getReserved(orders);
   const makeMore = getMakeMoreNeeds(orders, stock);

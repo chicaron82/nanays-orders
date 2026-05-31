@@ -8,7 +8,7 @@ const initialForm: OrderForm = {
   lumpia: { enabled: false, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] },
   pancit: { enabled: false, full: 1, half: 0, large: 0, extraMeat: false },
   needed_date: "", pickup_time: "", delivery_type: "pickup", address: "",
-  payment_status: "Unpaid", deposit_amount: "", notes: "", preferences: "",
+  payment_status: "Unpaid", deposit_amount: null, notes: "", preferences: "",
   rush_order: false, order_status: "Pending", saveCustomer: false,
 };
 
@@ -103,7 +103,7 @@ export function useOrderForm({ isOpen, editOrder, allOrders, stock: _stock, init
     const finalOrder: OrderForm = {
       ...form,
       total,
-      deposit_amount: form.deposit_amount === '' ? null : Number(form.deposit_amount),
+      deposit_amount: form.deposit_amount ?? null,
     };
     if (finalOrder.saveCustomer) {
       supabase.from('customers').upsert({ name: finalOrder.customer_name, contact: finalOrder.contact, preferences: finalOrder.preferences }).then();
