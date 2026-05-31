@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   isEarlyFulfillment,
   earlyFeeApplies,
+  amountOwing,
   calcTotal,
   orderSummary,
   EARLY_ORDER_FEE,
@@ -86,6 +87,28 @@ describe('calcTotal — early fee', () => {
   it('stacks with the rush fee', () => {
     expect(calcTotal(base({ delivery_type: 'pickup', pickup_time: '08:00', rush_order: true })))
       .toBe(PANCIT_FULL + RUSH_ORDER_FEE + EARLY_ORDER_FEE);
+  });
+});
+
+describe('amountOwing', () => {
+  it('Unpaid owes the full total', () => {
+    expect(amountOwing(base({ payment_status: 'Unpaid', total: 60 }))).toBe(60);
+  });
+  it('Deposit owes the balance after the deposit', () => {
+    expect(amountOwing(base({ payment_status: 'Deposit', total: 60, deposit_amount: 30 }))).toBe(30);
+  });
+  it('Prepaid owes nothing', () => {
+    expect(amountOwing(base({ payment_status: 'Prepaid', total: 60 }))).toBe(0);
+  });
+  it('Cancelled owes nothing even if unpaid', () => {
+    expect(amountOwing(base({ payment_status: 'Unpaid', total: 60, order_status: 'Cancelled' }))).toBe(0);
+  });
+  it('never goes negative when the deposit exceeds the total', () => {
+    expect(amountOwing(base({ payment_status: 'Deposit', total: 60, deposit_amount: 80 }))).toBe(0);
+  });
+  it('falls back to calcTotal when total is not stored', () => {
+    // pancit full = 25, pickup, no fees
+    expect(amountOwing(base({ payment_status: 'Unpaid', total: undefined }))).toBe(25);
   });
 });
 

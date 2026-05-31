@@ -89,6 +89,21 @@ export function orderSummary(order: Order): string {
   return parts.join(' · ') || 'No items';
 }
 
+/**
+ * What's still owed on an order. Prepaid → 0; Deposit → total minus the deposit;
+ * Unpaid → the full total. Cancelled orders owe nothing. Mirrors the balance
+ * shown in orderSummary so the dashboard and the confirmation message agree.
+ */
+export function amountOwing(order: Order): number {
+  if (order.order_status === 'Cancelled') return 0;
+  const total = order.total ?? calcTotal(order);
+  const paid =
+    order.payment_status === 'Prepaid' ? total
+    : order.payment_status === 'Deposit' ? (Number(order.deposit_amount) || 0)
+    : 0;
+  return Math.max(0, total - paid);
+}
+
 // ─── URGENCY ─────────────────────────────────────────────────────────────────
 export function getDaysUntil(dateStr?: string | null): number | null {
   if (!dateStr) return null;

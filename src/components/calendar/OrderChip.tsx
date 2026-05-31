@@ -24,6 +24,7 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
   const faded = order.order_status === 'Fulfilled';
   const balance = order.payment_status === 'Deposit' ? (order.total ?? 0) - (Number(order.deposit_amount) || 0) : 0;
   const showBalance = order.payment_status === 'Deposit' && order.order_status !== 'Fulfilled' && balance > 0;
+  const unpaid = order.payment_status === 'Unpaid' && order.order_status !== 'Fulfilled' && !cancelled;
   const note = [order.preferences, order.notes].filter(Boolean).join(' · ');
 
   if (variant === 'compact') {
@@ -56,6 +57,9 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
           )}
           {showBalance && (
             <span className="shrink-0 ml-auto text-xs font-bold text-amber-600">owes {fmt(balance)}</span>
+          )}
+          {unpaid && (
+            <span className="shrink-0 ml-auto px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">Unpaid</span>
           )}
         </div>
         <div className={`text-xs truncate mt-0.5 ${done ? 'line-through text-stone-400' : 'text-stone-500'}`}>
