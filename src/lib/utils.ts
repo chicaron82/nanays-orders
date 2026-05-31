@@ -41,6 +41,11 @@ function lumpiaStyleFor(lumpia: LumpiaOrder, key: 'sets' | 'halves'): 'cooked' |
   return lumpia.style === 'cooked' ? 'cooked' : 'uncooked';
 }
 
+/** Sum of any ad-hoc custom items (one-off dishes) on an order. */
+export function customItemsTotal(order: Order): number {
+  return (order.custom_items || []).reduce((s, c) => s + (Number(c.price) || 0), 0);
+}
+
 export function calcTotal(order: Order): number {
   let t = 0;
   if (order.lumpia?.enabled) {
@@ -54,6 +59,7 @@ export function calcTotal(order: Order): number {
     t += PANCIT_PRICE.large * (order.pancit.large || 0);
     if (order.pancit.extraMeat) t += PANCIT_EXTRA_MEAT_PRICE;
   }
+  t += customItemsTotal(order);
   t += order.rush_order ? RUSH_ORDER_FEE : 0;
   t += earlyFeeApplies(order) ? EARLY_ORDER_FEE : 0;
   t += order.delivery_type ? (DELIVERY_FEE[order.delivery_type] || 0) : 0;
@@ -83,6 +89,9 @@ export function orderSummary(order: Order): string {
     if ((order.pancit.large || 0) > 0) ps.push(`${order.pancit.large} Large`);
     if (order.pancit.extraMeat) ps.push('Extra meat/veggies');
     if (ps.length) parts.push(`Pancit: ${ps.join(' + ')}`);
+  }
+  for (const c of order.custom_items || []) {
+    if (c.name?.trim()) parts.push(c.name.trim());
   }
   if (order.rush_order) parts.push('Rush order');
   if (earlyFeeApplies(order)) parts.push('Early order fee');

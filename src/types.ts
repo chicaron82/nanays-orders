@@ -27,12 +27,19 @@ export interface PancitOrder {
   extraMeat?: boolean;
 }
 
+/** An ad-hoc dish (e.g. embutido) — free-text name + price, for one-off orders. */
+export interface CustomItem {
+  name: string;
+  price: number;
+}
+
 export interface Order {
   id?: string | number;
   customer_name?: string;
   contact?: string;
   lumpia?: LumpiaOrder;
   pancit?: PancitOrder;
+  custom_items?: CustomItem[];
   needed_date?: string;
   pickup_time?: string;
   delivery_type?: DeliveryType;

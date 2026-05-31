@@ -1,5 +1,5 @@
 import type { Order } from '../types';
-import { LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE } from './utils';
+import { LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, customItemsTotal } from './utils';
 
 // ─── PER-ITEM REVENUE ────────────────────────────────────────────────────────
 // Splits an order's value into what each product line earned. Fees, delivery,
@@ -45,7 +45,8 @@ export interface ItemBreakdown {
   month: string; // 'YYYY-MM'
   lumpia: { full: number; half: number; revenue: number };
   pancit: { full: number; half: number; large: number; revenue: number };
-  itemRevenue: number; // lumpia + pancit
+  custom: { count: number; revenue: number }; // ad-hoc one-off dishes
+  itemRevenue: number; // lumpia + pancit + custom
   orderCount: number;
 }
 
@@ -54,6 +55,7 @@ function emptyBreakdown(month: string): ItemBreakdown {
     month,
     lumpia: { full: 0, half: 0, revenue: 0 },
     pancit: { full: 0, half: 0, large: 0, revenue: 0 },
+    custom: { count: 0, revenue: 0 },
     itemRevenue: 0,
     orderCount: 0,
   };
@@ -76,8 +78,12 @@ export function itemBreakdownForMonth(orders: Order[], month: string): ItemBreak
       b.pancit.large += o.pancit.large || 0;
       b.pancit.revenue += pancitRevenue(o);
     }
+    if (o.custom_items?.length) {
+      b.custom.count += o.custom_items.length;
+      b.custom.revenue += customItemsTotal(o);
+    }
   }
-  b.itemRevenue = b.lumpia.revenue + b.pancit.revenue;
+  b.itemRevenue = b.lumpia.revenue + b.pancit.revenue + b.custom.revenue;
   return b;
 }
 

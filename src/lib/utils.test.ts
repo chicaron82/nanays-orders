@@ -7,6 +7,7 @@ import {
   tipAmount,
   getRevenue,
   calcTotal,
+  customItemsTotal,
   orderSummary,
   EARLY_ORDER_FEE,
   RUSH_ORDER_FEE,
@@ -172,6 +173,22 @@ describe('getRevenue — tips count as cash', () => {
   it('change given (tip 0) counts only the total', () => {
     const change = base({ order_status: 'Fulfilled', payment_status: 'Prepaid', total: 42.5, tip_amount: 0 });
     expect(getRevenue([change]).total).toBeCloseTo(42.5);
+  });
+});
+
+describe('custom items', () => {
+  it('customItemsTotal sums the prices', () => {
+    expect(customItemsTotal(base({ custom_items: [{ name: 'Embutido', price: 40 }, { name: 'Leche flan', price: 25 }] }))).toBe(65);
+    expect(customItemsTotal(base({ custom_items: [] }))).toBe(0);
+    expect(customItemsTotal(base({}))).toBe(0);
+  });
+  it('calcTotal adds custom items on top of the menu items', () => {
+    // base = pancit full ($25)
+    expect(calcTotal(base({ custom_items: [{ name: 'Embutido', price: 40 }] }))).toBe(65);
+  });
+  it('orderSummary lists the custom dish names', () => {
+    const s = orderSummary(base({ custom_items: [{ name: 'Embutido', price: 40 }] }));
+    expect(s).toContain('Embutido');
   });
 });
 

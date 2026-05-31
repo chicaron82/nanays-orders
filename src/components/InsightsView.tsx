@@ -46,6 +46,18 @@ export default function InsightsView({ orders }: { orders: Order[] }) {
         </div>
       </div>
 
+      {/* Custom / one-off items — only when there were any */}
+      {cur.custom.revenue > 0 && (
+        <div className="bg-white rounded-2xl border-2 border-stone-100 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🍽️</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-stone-400">Other / Custom</span>
+            <span className="text-sm text-stone-400">{cur.custom.count} item{cur.custom.count !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="text-xl font-black text-stone-800">{fmt(cur.custom.revenue)}</div>
+        </div>
+      )}
+
       {/* Month total + MoM */}
       <div className="bg-gradient-to-r from-orange-600 to-amber-500 rounded-2xl p-5 text-white shadow-lg flex items-baseline justify-between">
         <div>
@@ -84,7 +96,7 @@ export default function InsightsView({ orders }: { orders: Order[] }) {
           </div>
         )}
         <p className="text-[11px] text-stone-400 mt-3">
-          Item sales only (lumpia + pancit). Delivery, rush/early fees, and tips show in the revenue cards above.
+          Item sales (lumpia + pancit + custom). Delivery, rush/early fees, and tips show in the revenue cards above.
         </p>
       </div>
     </div>

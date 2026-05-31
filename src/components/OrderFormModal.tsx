@@ -1,5 +1,5 @@
 import { m, AnimatePresence } from 'framer-motion';
-import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock, RotateCcw } from 'lucide-react';
+import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock, RotateCcw, Plus } from 'lucide-react';
 import type { Order, Stock } from '../types';
 import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE, EARLY_ORDER_FEE, isEarlyFulfillment } from '../lib/utils';
 import { useOrderForm } from '../hooks/useOrderForm';
@@ -22,6 +22,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
     nameSuggestions, setField, formatPhone,
     handleSelectSuggestion, handleSubmit, hasItems, total,
     repeatAvailable, applyRepeatLast,
+    addCustomItem, updateCustomItem, removeCustomItem,
   } = useOrderForm({ isOpen, editOrder, allOrders, stock: stock ?? undefined, initialDate, onSave });
 
   if (!isOpen) return null;
@@ -269,8 +270,44 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
               </div>
             </div>
 
+            {/* Custom / one-off items */}
+            <div>
+              <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+                <ChefHat size={14}/> Custom Items <span className="font-normal normal-case text-stone-400">— one-offs, e.g. embutido</span>
+              </label>
+              <div className="space-y-2">
+                {(form.custom_items || []).map((c, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="text" value={c.name}
+                      onChange={e => updateCustomItem(i, { name: e.target.value })}
+                      placeholder="Dish name"
+                      className="flex-1 border-2 border-stone-200 rounded-lg px-3 py-2 text-sm focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors"
+                    />
+                    <div className="relative w-24 shrink-0">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-stone-400 pointer-events-none">$</span>
+                      <input
+                        type="number" min={0} step="0.01" value={c.price || ''}
+                        onChange={e => updateCustomItem(i, { price: Number(e.target.value) || 0 })}
+                        placeholder="0.00"
+                        className="w-full border-2 border-stone-200 rounded-lg pl-6 pr-2 py-2 text-sm focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors"
+                      />
+                    </div>
+                    <button type="button" onClick={() => removeCustomItem(i)} aria-label="Remove custom item"
+                      className="shrink-0 text-stone-400 hover:text-red-500 transition-colors p-1">
+                      <X size={16}/>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={addCustomItem}
+                className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-orange-600 hover:text-orange-700 transition-colors">
+                <Plus size={16}/> Add custom item
+              </button>
+            </div>
+
             {/* Running subtotal */}
-            {(form.lumpia?.enabled || form.pancit?.enabled) && (
+            {(form.lumpia?.enabled || form.pancit?.enabled || (form.custom_items?.some(c => c.name?.trim() && c.price > 0))) && (
               <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
                 <span className="text-sm font-semibold text-stone-600">
                   {form.delivery_type !== 'pickup' ? 'Total (incl. delivery)' : 'Total'}

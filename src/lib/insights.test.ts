@@ -76,6 +76,17 @@ describe('itemBreakdownForMonth', () => {
     expect(b.orderCount).toBe(0);
     expect(b.itemRevenue).toBe(0);
   });
+
+  it('counts custom one-off items in their own bucket and the item total', () => {
+    const withCustom: Order[] = [
+      order({ needed_date: '2026-05-08', custom_items: [{ name: 'Embutido', price: 40 }, { name: 'Leche flan', price: 25 }] }),
+      order({ needed_date: '2026-05-12', pancit: { enabled: true, full: 1 }, custom_items: [{ name: 'Embutido', price: 40 }] }),
+    ];
+    const b = itemBreakdownForMonth(withCustom, '2026-05');
+    expect(b.custom.count).toBe(3);
+    expect(b.custom.revenue).toBe(105);
+    expect(b.itemRevenue).toBeCloseTo(25 + 105); // one pancit reg + custom
+  });
 });
 
 describe('recentMonths', () => {

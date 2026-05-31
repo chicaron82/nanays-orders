@@ -7,6 +7,7 @@ const initialForm: OrderForm = {
   customer_name: "", contact: "",
   lumpia: { enabled: false, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] },
   pancit: { enabled: false, full: 1, half: 0, large: 0, extraMeat: false },
+  custom_items: [],
   needed_date: "", pickup_time: "", delivery_type: "pickup", address: "",
   payment_status: "Unpaid", deposit_amount: null, notes: "", preferences: "",
   rush_order: false, early_fee_waived: false, order_status: "Pending", saveCustomer: false,
@@ -92,9 +93,18 @@ export function useOrderForm({ isOpen, editOrder, allOrders, stock: _stock, init
     }));
   };
 
+  const validCustomItems = (form.custom_items || []).filter(c => c.name?.trim() && (Number(c.price) || 0) > 0);
   const hasItems =
     (form.lumpia?.enabled && ((form.lumpia.sets || 0) + (form.lumpia.halves || 0) > 0)) ||
-    (form.pancit?.enabled && ((form.pancit.full || 0) + (form.pancit.half || 0) + (form.pancit.large || 0) > 0));
+    (form.pancit?.enabled && ((form.pancit.full || 0) + (form.pancit.half || 0) + (form.pancit.large || 0) > 0)) ||
+    validCustomItems.length > 0;
+
+  const addCustomItem = () =>
+    setForm(f => ({ ...f, custom_items: [...(f.custom_items || []), { name: '', price: 0 }] }));
+  const updateCustomItem = (i: number, patch: Partial<{ name: string; price: number }>) =>
+    setForm(f => ({ ...f, custom_items: (f.custom_items || []).map((c, idx) => idx === i ? { ...c, ...patch } : c) }));
+  const removeCustomItem = (i: number) =>
+    setForm(f => ({ ...f, custom_items: (f.custom_items || []).filter((_, idx) => idx !== i) }));
 
   const total = calcTotal(form);
 
@@ -104,6 +114,7 @@ export function useOrderForm({ isOpen, editOrder, allOrders, stock: _stock, init
       ...form,
       total,
       deposit_amount: form.deposit_amount ?? null,
+      custom_items: validCustomItems.map(c => ({ name: c.name.trim(), price: Number(c.price) || 0 })),
     };
     if (finalOrder.saveCustomer) {
       supabase.from('customers').upsert({ name: finalOrder.customer_name, contact: finalOrder.contact, preferences: finalOrder.preferences }).then();
@@ -117,5 +128,6 @@ export function useOrderForm({ isOpen, editOrder, allOrders, stock: _stock, init
     nameSuggestions, setField, formatPhone,
     handleSelectSuggestion, handleSubmit, hasItems, total,
     repeatAvailable, applyRepeatLast,
+    addCustomItem, updateCustomItem, removeCustomItem,
   };
 }
