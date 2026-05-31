@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Toaster } from 'sonner';
-import { ChefHat, ClipboardList, PackageOpen, Receipt, Plus, LogOut, Check, X } from 'lucide-react';
+import { ChefHat, ClipboardList, PackageOpen, Receipt, BarChart3, Plus, LogOut, Check, X } from 'lucide-react';
 import type { Order, OrderStatus } from './types';
 import { useOrders } from './hooks/useOrders';
 import { useStock } from './hooks/useStock';
@@ -12,6 +12,7 @@ import Dashboard from './components/Dashboard';
 import CalendarView from './components/CalendarView';
 import StockManager from './components/StockManager';
 import ExpenseLog from './components/ExpenseLog';
+import InsightsView from './components/InsightsView';
 import OrderFormModal from './components/OrderFormModal';
 import OrderDetailsModal from './components/OrderDetailsModal';
 import LoginScreen from './components/LoginScreen';
@@ -26,7 +27,7 @@ function MainApp({ onLogout }: MainAppProps) {
   const { stock, loading: stockLoading, updateStock } = useStock();
   const { expenses, addExpense, deleteExpense } = useExpenses();
 
-  const [tab, setTab] = useState<'orders' | 'stock' | 'expenses'>('orders');
+  const [tab, setTab] = useState<'orders' | 'stock' | 'expenses' | 'insights'>('orders');
   const [showForm, setShowForm] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [editOrder, setEditOrder] = useState<Order | null>(null);
@@ -163,6 +164,9 @@ function MainApp({ onLogout }: MainAppProps) {
           <button onClick={() => setTab('expenses')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'expenses' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
             <Receipt size={18} /> Expenses
           </button>
+          <button onClick={() => setTab('insights')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'insights' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
+            <BarChart3 size={18} /> Insights
+          </button>
         </div>
       </div>
 
@@ -175,6 +179,9 @@ function MainApp({ onLogout }: MainAppProps) {
         )}
         {tab === 'expenses' && (
           <ExpenseLog expenses={expenses} onAdd={addExpense} onDelete={deleteExpense} />
+        )}
+        {tab === 'insights' && (
+          <InsightsView orders={orders} />
         )}
       </main>
 
