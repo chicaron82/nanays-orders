@@ -1,7 +1,7 @@
 import { m, AnimatePresence } from 'framer-motion';
 import { X, Printer } from 'lucide-react';
 import type { Order, DeliveryType } from '../types';
-import { buildPrepList, orderSummary, formatDate } from '../lib/utils';
+import { buildPrepList, orderSummary, formatDate, isEarlyFulfillment } from '../lib/utils';
 
 interface Props {
   ymd: string | null;
@@ -115,7 +115,7 @@ export default function PrepSheet({ ymd, orders, onClose }: Props) {
                             <span className="tabular-nums">{o.pickup_time || '—'}</span> · {o.customer_name || 'Walk-in'}
                           </span>
                           <span className="text-sm text-stone-600 shrink-0">
-                            {o.delivery_type ? DELIVERY_LABEL[o.delivery_type] : 'Pickup'}{o.rush_order ? ' · RUSH' : ''}
+                            {o.delivery_type ? DELIVERY_LABEL[o.delivery_type] : 'Pickup'}{o.rush_order ? ' · RUSH' : ''}{isEarlyFulfillment(o) ? ' · EARLY' : ''}
                           </span>
                         </div>
                         <div className="text-sm text-stone-700">{orderSummary(o)}</div>

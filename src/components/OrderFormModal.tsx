@@ -1,7 +1,7 @@
 import { m, AnimatePresence } from 'framer-motion';
 import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock, RotateCcw } from 'lucide-react';
 import type { Order, Stock } from '../types';
-import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE } from '../lib/utils';
+import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE, EARLY_ORDER_FEE, isEarlyFulfillment } from '../lib/utils';
 import { useOrderForm } from '../hooks/useOrderForm';
 
 interface Props {
@@ -328,6 +328,29 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
               <div>
                 <label htmlFor="order-address" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><MapPin size={14}/> Delivery Address *</label>
                 <input id="order-address" name="address" autoComplete="off" value={form.address ?? ''} onChange={e => setField('address', e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors" placeholder="123 Main St, Winnipeg" />
+              </div>
+            )}
+
+            {/* Early-fulfillment fee — derived from the time + delivery type */}
+            {isEarlyFulfillment(form) && (
+              <div className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${form.early_fee_waived ? 'border-stone-200 bg-stone-50' : 'border-amber-300 bg-amber-50/60'}`}>
+                <div className="flex-1">
+                  <div className="font-bold text-stone-800 text-sm">
+                    ⏰ Early {form.delivery_type === 'pickup' ? 'pickup' : 'delivery'} — before {form.delivery_type === 'pickup' ? '11am' : 'noon'}
+                  </div>
+                  <div className="text-xs text-stone-500">
+                    {form.early_fee_waived
+                      ? 'Fee waived — no early charge added.'
+                      : `An early order fee of ${fmt(EARLY_ORDER_FEE)} will be added.`}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setField('early_fee_waived', !form.early_fee_waived)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-lg border-2 transition-colors shrink-0 ${form.early_fee_waived ? 'border-amber-300 text-amber-700 hover:bg-amber-50' : 'border-stone-300 text-stone-600 hover:bg-stone-100'}`}
+                >
+                  {form.early_fee_waived ? 'Apply fee' : 'Waive fee'}
+                </button>
               </div>
             )}
 

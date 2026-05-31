@@ -3,7 +3,7 @@ import { m, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Edit2, AlertTriangle, Calendar, MapPin, Phone, MessageSquare, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Order, Stock, OrderStatus, PaymentStatus } from '../types';
-import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, buildOrderMessage, ORDER_STATUS, PAYMENT_STATUS } from '../lib/utils';
+import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, buildOrderMessage, isEarlyFulfillment, EARLY_ORDER_FEE, ORDER_STATUS, PAYMENT_STATUS } from '../lib/utils';
 
 interface Props {
   order: Order | null;
@@ -135,6 +135,15 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
                 <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
                   <div className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-1">⚡ Rush Order</div>
                   <div className="font-medium text-orange-800">Priority handling</div>
+                </div>
+              )}
+              {isEarlyFulfillment(order) && (
+                <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                  <div className="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-1">⏰ Early Order</div>
+                  <div className="font-medium text-amber-800">
+                    {order.delivery_type === 'pickup' ? 'Pickup before 11am' : 'Delivery before noon'}
+                    {order.early_fee_waived ? ' · fee waived' : ` · +${fmt(EARLY_ORDER_FEE)}`}
+                  </div>
                 </div>
               )}
 

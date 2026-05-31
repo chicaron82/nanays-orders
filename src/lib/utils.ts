@@ -7,7 +7,32 @@ export const PANCIT_PRICE = { full: 25, half: 12.50, large: 50 };
 export const PANCIT_SAUCE_PRICE: Record<string, number> = { sweet_and_sour: 2, sweet_chili: 2 };
 export const PANCIT_EXTRA_MEAT_PRICE = 5;
 export const RUSH_ORDER_FEE = 10;
+export const EARLY_ORDER_FEE = 10;
 export const DELIVERY_FEE: Record<DeliveryType, number> = { pickup: 0, city: 5, outside: 10 };
+
+// Early-fulfillment cutoffs (local 24h hour). Pickup before 11am, or a delivery
+// before noon — a delivery booked for 11am means cooking and leaving well before
+// 11, so the cutoff is pushed to 12 to cover the prep + travel lead time.
+export const EARLY_PICKUP_CUTOFF_HOUR = 11;
+export const EARLY_DELIVERY_CUTOFF_HOUR = 12;
+
+/**
+ * True when the order's fulfillment time falls in the early window — derived
+ * live from pickup_time (the field that serves both pickup and delivery), so it
+ * always tracks the current time and never drifts. No time set → not early.
+ */
+export function isEarlyFulfillment(order: Order): boolean {
+  if (!order.pickup_time) return false;
+  const hour = parseInt(order.pickup_time.split(':')[0], 10);
+  if (Number.isNaN(hour)) return false;
+  const cutoff = order.delivery_type === 'pickup' ? EARLY_PICKUP_CUTOFF_HOUR : EARLY_DELIVERY_CUTOFF_HOUR;
+  return hour < cutoff;
+}
+
+/** The early fee actually applies only when it's early AND Christine hasn't waived it. */
+export function earlyFeeApplies(order: Order): boolean {
+  return isEarlyFulfillment(order) && !order.early_fee_waived;
+}
 
 // Resolve cooked/uncooked for a lumpia batch — handles both old (style) and new (setsCooked/halvesCooked) formats
 function lumpiaStyleFor(lumpia: LumpiaOrder, key: 'sets' | 'halves'): 'cooked' | 'uncooked' {
@@ -30,6 +55,7 @@ export function calcTotal(order: Order): number {
     if (order.pancit.extraMeat) t += PANCIT_EXTRA_MEAT_PRICE;
   }
   t += order.rush_order ? RUSH_ORDER_FEE : 0;
+  t += earlyFeeApplies(order) ? EARLY_ORDER_FEE : 0;
   t += order.delivery_type ? (DELIVERY_FEE[order.delivery_type] || 0) : 0;
   return t;
 }
@@ -59,6 +85,7 @@ export function orderSummary(order: Order): string {
     if (ps.length) parts.push(`Pancit: ${ps.join(' + ')}`);
   }
   if (order.rush_order) parts.push('Rush order');
+  if (earlyFeeApplies(order)) parts.push('Early order fee');
   return parts.join(' · ') || 'No items';
 }
 

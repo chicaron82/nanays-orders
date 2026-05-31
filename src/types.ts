@@ -42,6 +42,7 @@ export interface Order {
   notes?: string;
   preferences?: string;
   rush_order?: boolean;
+  early_fee_waived?: boolean;  // Christine's override: suppress the early-fulfillment fee
   order_status?: OrderStatus;
   total?: number;
   created_at?: string;

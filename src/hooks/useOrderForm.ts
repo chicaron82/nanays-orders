@@ -9,7 +9,7 @@ const initialForm: OrderForm = {
   pancit: { enabled: false, full: 1, half: 0, large: 0, extraMeat: false },
   needed_date: "", pickup_time: "", delivery_type: "pickup", address: "",
   payment_status: "Unpaid", deposit_amount: null, notes: "", preferences: "",
-  rush_order: false, order_status: "Pending", saveCustomer: false,
+  rush_order: false, early_fee_waived: false, order_status: "Pending", saveCustomer: false,
 };
 
 interface UseOrderFormProps {
