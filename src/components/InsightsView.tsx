@@ -1,6 +1,6 @@
 import type { Order } from '../types';
 import { fmt } from '../lib/utils';
-import { itemBreakdownForMonth, monthlyItemSeries, recentMonths } from '../lib/insights';
+import { itemBreakdownForMonth, monthlyItemSeries, recentMonths, weekdayDemand, halfBatchInsight } from '../lib/insights';
 
 function monthLabel(m: string, opts: Intl.DateTimeFormatOptions = { month: 'long', year: 'numeric' }): string {
   const [y, mo] = m.split('-').map(Number);
@@ -8,6 +8,14 @@ function monthLabel(m: string, opts: Intl.DateTimeFormatOptions = { month: 'long
 }
 
 export default function InsightsView({ orders }: { orders: Order[] }) {
+  // Weekday demand — Mon-first display order
+  const allDays = weekdayDemand(orders);
+  const orderedDays = [...allDays.slice(1), allDays[0]]; // Mon…Sat, Sun
+  const maxDayOrders = Math.max(...orderedDays.map(d => d.totalOrders), 1);
+
+  // Half-batch insight
+  const half = halfBatchInsight(orders);
+
   const [thisMonth, lastMonth] = recentMonths(2);
   const cur = itemBreakdownForMonth(orders, thisMonth);
   const prev = itemBreakdownForMonth(orders, lastMonth);
@@ -99,6 +107,56 @@ export default function InsightsView({ orders }: { orders: Order[] }) {
           Item sales (lumpia + pancit + custom). Delivery, rush/early fees, and tips show in the revenue cards above.
         </p>
       </div>
+
+      {/* Weekday demand */}
+      <div className="bg-white rounded-2xl border-2 border-stone-100 p-5">
+        <div className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-3">Orders by Day of Week</div>
+        {orderedDays.every(d => d.totalOrders === 0) ? (
+          <p className="text-sm text-stone-400 italic">No order history yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {orderedDays.map(d => (
+              <div key={d.day} className="flex items-center gap-3">
+                <span className="w-8 shrink-0 text-xs font-medium text-stone-500">{d.label}</span>
+                <div className="flex-1 bg-stone-100 rounded-full h-5 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-orange-400 to-amber-400 rounded-full transition-all"
+                    style={{ width: `${(d.totalOrders / maxDayOrders) * 100}%` }}
+                  />
+                </div>
+                <span className="w-5 shrink-0 text-right text-xs font-bold text-stone-700 tabular-nums">{d.totalOrders}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Half-batch recommendation */}
+      {half.totalLumpiaOrders >= 3 && (
+        <div className={`rounded-2xl border-2 p-5 ${half.recommend ? 'bg-amber-50 border-amber-200' : 'bg-white border-stone-100'}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-1">Lumpia Halves</div>
+              <div className="text-2xl font-black text-stone-800">
+                {Math.round(half.halvesRatio * 100)}%
+                <span className="text-sm font-semibold text-stone-400 ml-1">of lumpia orders</span>
+              </div>
+              <div className="text-xs text-stone-500 mt-1">
+                {half.halvesOrderCount} of {half.totalLumpiaOrders} orders · {half.totalHalvesSold} half-sets total
+              </div>
+            </div>
+            <span className="text-3xl">🥟</span>
+          </div>
+          {half.recommend && (
+            <div className="mt-3 pt-3 border-t border-amber-200 flex items-start gap-2">
+              <span className="text-sm">💡</span>
+              <p className="text-xs font-semibold text-amber-800">
+                Halves show up consistently — worth keeping them on the batch. Avg {half.avgHalvesPerOrder % 1 === 0 ? half.avgHalvesPerOrder : half.avgHalvesPerOrder.toFixed(1)} per order that includes them.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

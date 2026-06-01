@@ -6,6 +6,8 @@ import {
   itemBreakdownForMonth,
   recentMonths,
   monthlyItemSeries,
+  weekdayDemand,
+  halfBatchInsight,
 } from './insights';
 import type { Order } from '../types';
 
@@ -102,5 +104,99 @@ describe('monthlyItemSeries', () => {
     expect(series.map(s => s.month)).toEqual(['2026-05', '2026-04']);
     expect(series[0].itemRevenue).toBe(25);
     expect(series[1].itemRevenue).toBe(0);
+  });
+});
+
+describe('weekdayDemand', () => {
+  // 2026-05-29 = Friday (day 5), 2026-05-30 = Saturday (day 6)
+  const orders: Order[] = [
+    order({ needed_date: '2026-05-29', lumpia: { enabled: true, sets: 1 } }),          // Fri, lumpia
+    order({ needed_date: '2026-05-29', pancit: { enabled: true, full: 1 } }),           // Fri, pancit
+    order({ needed_date: '2026-05-30', lumpia: { enabled: true, sets: 1 },
+            pancit: { enabled: true, full: 1 } }),                                      // Sat, both
+    order({ needed_date: '2026-05-29', order_status: 'Cancelled',
+            lumpia: { enabled: true, sets: 1 } }),                                      // Fri, excluded
+    order({ needed_date: undefined, created_at: undefined }),                           // no date, skipped
+  ];
+
+  it('returns 7 slots (one per day, Sun=0…Sat=6)', () => {
+    const d = weekdayDemand(orders);
+    expect(d).toHaveLength(7);
+    expect(d.map(s => s.day)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  it('counts orders on the correct day, excluding cancelled', () => {
+    const d = weekdayDemand(orders);
+    expect(d[5].totalOrders).toBe(2);   // Fri: 2 valid
+    expect(d[6].totalOrders).toBe(1);   // Sat: 1
+    expect(d[0].totalOrders).toBe(0);   // Sun: 0
+  });
+
+  it('breaks down lumpia vs pancit per day', () => {
+    const d = weekdayDemand(orders);
+    expect(d[5].lumpiaOrders).toBe(1);
+    expect(d[5].pancitOrders).toBe(1);
+    expect(d[6].lumpiaOrders).toBe(1);
+    expect(d[6].pancitOrders).toBe(1);
+  });
+
+  it('falls back to created_at when needed_date is absent', () => {
+    const o = order({ needed_date: undefined, created_at: '2026-05-29T10:00:00Z', lumpia: { enabled: true } });
+    const d = weekdayDemand([o]);
+    expect(d[5].totalOrders).toBe(1); // Fri
+  });
+});
+
+describe('halfBatchInsight', () => {
+  it('returns zeros and no recommendation for an empty order list', () => {
+    const r = halfBatchInsight([]);
+    expect(r.totalLumpiaOrders).toBe(0);
+    expect(r.halvesRatio).toBe(0);
+    expect(r.recommend).toBe(false);
+  });
+
+  it('ignores cancelled and non-lumpia orders', () => {
+    const orders: Order[] = [
+      order({ order_status: 'Cancelled', lumpia: { enabled: true, halves: 2 } }),
+      order({ pancit: { enabled: true, full: 1 } }),
+    ];
+    expect(halfBatchInsight(orders).totalLumpiaOrders).toBe(0);
+  });
+
+  it('computes ratio and totals correctly', () => {
+    const orders: Order[] = [
+      order({ lumpia: { enabled: true, halves: 2 } }),  // has halves
+      order({ lumpia: { enabled: true, sets: 1 } }),    // no halves
+      order({ lumpia: { enabled: true, halves: 4 } }),  // has halves
+      order({ lumpia: { enabled: true, sets: 2 } }),    // no halves
+    ];
+    const r = halfBatchInsight(orders);
+    expect(r.totalLumpiaOrders).toBe(4);
+    expect(r.halvesOrderCount).toBe(2);
+    expect(r.halvesRatio).toBeCloseTo(0.5);
+    expect(r.totalHalvesSold).toBe(6);
+    expect(r.avgHalvesPerOrder).toBeCloseTo(3);
+  });
+
+  it('recommends when ratio >= 20% and totalLumpiaOrders >= 5', () => {
+    const orders: Order[] = Array.from({ length: 5 }, (_, i) =>
+      order({ lumpia: { enabled: true, halves: i < 2 ? 1 : undefined } })
+    ); // 2/5 = 40%
+    expect(halfBatchInsight(orders).recommend).toBe(true);
+  });
+
+  it('does not recommend below the 5-order threshold even at high ratio', () => {
+    const orders: Order[] = [
+      order({ lumpia: { enabled: true, halves: 1 } }),
+      order({ lumpia: { enabled: true, halves: 1 } }),
+    ]; // 100% ratio, but only 2 orders
+    expect(halfBatchInsight(orders).recommend).toBe(false);
+  });
+
+  it('does not recommend when ratio is below 20%', () => {
+    const orders: Order[] = Array.from({ length: 10 }, (_, i) =>
+      order({ lumpia: { enabled: true, halves: i === 0 ? 1 : undefined } })
+    ); // 1/10 = 10%
+    expect(halfBatchInsight(orders).recommend).toBe(false);
   });
 });

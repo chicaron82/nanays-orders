@@ -101,3 +101,72 @@ export function recentMonths(count: number, from: Date = new Date()): string[] {
 export function monthlyItemSeries(orders: Order[], count: number, from: Date = new Date()): ItemBreakdown[] {
   return recentMonths(count, from).map(m => itemBreakdownForMonth(orders, m));
 }
+
+// ─── WEEKDAY DEMAND ──────────────────────────────────────────────────────────
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+export interface WeekdayDemand {
+  day: number;           // 0 = Sunday … 6 = Saturday
+  label: string;
+  lumpiaOrders: number;
+  pancitOrders: number;
+  totalOrders: number;
+}
+
+/** Order counts by day of week (Sun=0…Sat=6), non-cancelled, keyed by needed_date. */
+export function weekdayDemand(orders: Order[]): WeekdayDemand[] {
+  const slots: WeekdayDemand[] = DAY_LABELS.map((label, day) => ({
+    day, label, lumpiaOrders: 0, pancitOrders: 0, totalOrders: 0,
+  }));
+  for (const o of orders) {
+    if (o.order_status === 'Cancelled') continue;
+    const d = o.needed_date || o.created_at?.slice(0, 10);
+    if (!d) continue;
+    const day = new Date(d + 'T12:00:00').getDay();
+    slots[day].totalOrders += 1;
+    if (o.lumpia?.enabled) slots[day].lumpiaOrders += 1;
+    if (o.pancit?.enabled) slots[day].pancitOrders += 1;
+  }
+  return slots;
+}
+
+// ─── HALF-BATCH RECOMMENDATION ───────────────────────────────────────────────
+
+export interface HalfBatchInsight {
+  totalLumpiaOrders: number;  // non-cancelled lumpia orders
+  halvesOrderCount: number;   // of those, how many include ≥1 half
+  halvesRatio: number;        // halvesOrderCount / totalLumpiaOrders (0–1)
+  totalHalvesSold: number;
+  avgHalvesPerOrder: number;  // when halvesOrderCount > 0
+  recommend: boolean;         // true when totalLumpiaOrders ≥ 5 AND halvesRatio ≥ 20%
+}
+
+/**
+ * Analyses historical lumpia half vs. full ratio to surface whether
+ * half-sets are consistent enough demand to plan for them.
+ */
+export function halfBatchInsight(orders: Order[]): HalfBatchInsight {
+  let totalLumpiaOrders = 0;
+  let halvesOrderCount = 0;
+  let totalHalvesSold = 0;
+  for (const o of orders) {
+    if (o.order_status === 'Cancelled' || !o.lumpia?.enabled) continue;
+    totalLumpiaOrders += 1;
+    const halves = o.lumpia.halves || 0;
+    if (halves > 0) {
+      halvesOrderCount += 1;
+      totalHalvesSold += halves;
+    }
+  }
+  const halvesRatio = totalLumpiaOrders > 0 ? halvesOrderCount / totalLumpiaOrders : 0;
+  const avgHalvesPerOrder = halvesOrderCount > 0 ? totalHalvesSold / halvesOrderCount : 0;
+  return {
+    totalLumpiaOrders,
+    halvesOrderCount,
+    halvesRatio,
+    totalHalvesSold,
+    avgHalvesPerOrder,
+    recommend: totalLumpiaOrders >= 5 && halvesRatio >= 0.2,
+  };
+}
