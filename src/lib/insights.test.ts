@@ -2,12 +2,14 @@ import { describe, it, expect } from 'vitest';
 import {
   lumpiaRevenue,
   pancitRevenue,
+  orderDate,
   orderMonth,
   itemBreakdownForMonth,
   recentMonths,
   monthlyItemSeries,
   weekdayDemand,
   halfBatchInsight,
+  ordersWithinDays,
 } from './insights';
 import type { Order } from '../types';
 
@@ -41,12 +43,57 @@ describe('pancitRevenue', () => {
   });
 });
 
+describe('orderDate', () => {
+  it('uses needed_date when present', () => {
+    expect(orderDate(order({ needed_date: '2026-05-31' }))).toBe('2026-05-31');
+  });
+  it('falls back to the created_at day', () => {
+    expect(orderDate(order({ needed_date: undefined, created_at: '2026-04-02T10:00:00Z' }))).toBe('2026-04-02');
+  });
+  it('is empty when neither is present', () => {
+    expect(orderDate(order({ needed_date: undefined, created_at: undefined }))).toBe('');
+  });
+});
+
 describe('orderMonth', () => {
   it('groups by the fulfillment month', () => {
     expect(orderMonth(order({ needed_date: '2026-05-31' }))).toBe('2026-05');
   });
   it('falls back to created_at when no needed_date', () => {
     expect(orderMonth(order({ needed_date: undefined, created_at: '2026-04-02T10:00:00Z' }))).toBe('2026-04');
+  });
+});
+
+describe('ordersWithinDays', () => {
+  const from = new Date(2026, 4, 31); // 2026-05-31
+  const orders: Order[] = [
+    order({ needed_date: '2026-05-31' }),  // today — in
+    order({ needed_date: '2026-05-01' }),  // 31 days back — in (90d window)
+    order({ needed_date: '2026-03-03' }),  // ~89 days back — in
+    order({ needed_date: '2026-01-15' }),  // way out — excluded
+    order({ needed_date: undefined, created_at: '2026-05-20T09:00:00Z' }), // fallback — in
+  ];
+
+  it('keeps orders inside the trailing window and drops older ones', () => {
+    const within = ordersWithinDays(orders, 90, from);
+    expect(within).toHaveLength(4);
+    expect(within.some(o => o.needed_date === '2026-01-15')).toBe(false);
+  });
+
+  it('includes the boundary day (inclusive cutoff)', () => {
+    // 90-day window ending 2026-05-31 → cutoff 2026-03-03
+    const within = ordersWithinDays([order({ needed_date: '2026-03-03' })], 90, from);
+    expect(within).toHaveLength(1);
+  });
+
+  it('honors the created_at fallback for the window', () => {
+    const within = ordersWithinDays(orders, 90, from);
+    expect(within.some(o => o.created_at === '2026-05-20T09:00:00Z')).toBe(true);
+  });
+
+  it('drops orders with no date at all', () => {
+    const within = ordersWithinDays([order({ needed_date: undefined, created_at: undefined })], 90, from);
+    expect(within).toHaveLength(0);
   });
 });
 

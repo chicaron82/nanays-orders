@@ -35,10 +35,25 @@ export function pancitRevenue(order: Order): number {
 
 // ─── MONTHLY BREAKDOWN ───────────────────────────────────────────────────────
 
-/** The month an order belongs to ('YYYY-MM'), by fulfillment date (when the food is for). */
+/** The date an order belongs to ('YYYY-MM-DD'), by fulfillment date (when the food is for). */
+export function orderDate(order: Order): string {
+  return order.needed_date || order.created_at?.slice(0, 10) || '';
+}
+
+/** The month an order belongs to ('YYYY-MM'), by fulfillment date. */
 export function orderMonth(order: Order): string {
-  const d = order.needed_date || order.created_at?.slice(0, 10) || '';
-  return d.slice(0, 7);
+  return orderDate(order).slice(0, 7);
+}
+
+/** Orders whose fulfillment date falls within the trailing `days` window ending at `from`. */
+export function ordersWithinDays(orders: Order[], days: number, from: Date = new Date()): Order[] {
+  const cutoff = new Date(from.getFullYear(), from.getMonth(), from.getDate() - days + 1);
+  const cutoffYmd = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}-${String(cutoff.getDate()).padStart(2, '0')}`;
+  const toYmd = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}-${String(from.getDate()).padStart(2, '0')}`;
+  return orders.filter(o => {
+    const d = orderDate(o);
+    return d >= cutoffYmd && d <= toYmd;
+  });
 }
 
 export interface ItemBreakdown {
@@ -121,7 +136,7 @@ export function weekdayDemand(orders: Order[]): WeekdayDemand[] {
   }));
   for (const o of orders) {
     if (o.order_status === 'Cancelled') continue;
-    const d = o.needed_date || o.created_at?.slice(0, 10);
+    const d = orderDate(o);
     if (!d) continue;
     const day = new Date(d + 'T12:00:00').getDay();
     slots[day].totalOrders += 1;
@@ -133,13 +148,17 @@ export function weekdayDemand(orders: Order[]): WeekdayDemand[] {
 
 // ─── HALF-BATCH RECOMMENDATION ───────────────────────────────────────────────
 
+// Recommendation thresholds — judgment calls, not derived. Tune here.
+export const MIN_LUMPIA_ORDERS = 5;   // need enough orders for the ratio to mean anything
+export const MIN_HALVES_RATIO = 0.2;  // halves show up in ≥20% of lumpia orders
+
 export interface HalfBatchInsight {
   totalLumpiaOrders: number;  // non-cancelled lumpia orders
   halvesOrderCount: number;   // of those, how many include ≥1 half
   halvesRatio: number;        // halvesOrderCount / totalLumpiaOrders (0–1)
   totalHalvesSold: number;
   avgHalvesPerOrder: number;  // when halvesOrderCount > 0
-  recommend: boolean;         // true when totalLumpiaOrders ≥ 5 AND halvesRatio ≥ 20%
+  recommend: boolean;         // true when totalLumpiaOrders ≥ MIN_LUMPIA_ORDERS AND halvesRatio ≥ MIN_HALVES_RATIO
 }
 
 /**
@@ -167,6 +186,6 @@ export function halfBatchInsight(orders: Order[]): HalfBatchInsight {
     halvesRatio,
     totalHalvesSold,
     avgHalvesPerOrder,
-    recommend: totalLumpiaOrders >= 5 && halvesRatio >= 0.2,
+    recommend: totalLumpiaOrders >= MIN_LUMPIA_ORDERS && halvesRatio >= MIN_HALVES_RATIO,
   };
 }

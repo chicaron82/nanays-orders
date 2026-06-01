@@ -1,6 +1,9 @@
+import { useMemo } from 'react';
 import type { Order } from '../types';
 import { fmt } from '../lib/utils';
-import { itemBreakdownForMonth, monthlyItemSeries, recentMonths, weekdayDemand, halfBatchInsight } from '../lib/insights';
+import { itemBreakdownForMonth, monthlyItemSeries, recentMonths, weekdayDemand, halfBatchInsight, ordersWithinDays } from '../lib/insights';
+
+const WINDOW_DAYS = 90;
 
 function monthLabel(m: string, opts: Intl.DateTimeFormatOptions = { month: 'long', year: 'numeric' }): string {
   const [y, mo] = m.split('-').map(Number);
@@ -8,13 +11,19 @@ function monthLabel(m: string, opts: Intl.DateTimeFormatOptions = { month: 'long
 }
 
 export default function InsightsView({ orders }: { orders: Order[] }) {
+  // Weekday demand + half-batch read only the recent window — all-time would mix
+  // stale seasonal data and let the recommendation go inert as orders pile up.
+  const recent = useMemo(() => ordersWithinDays(orders, WINDOW_DAYS), [orders]);
+
   // Weekday demand — Mon-first display order
-  const allDays = weekdayDemand(orders);
-  const orderedDays = [...allDays.slice(1), allDays[0]]; // Mon…Sat, Sun
+  const orderedDays = useMemo(() => {
+    const allDays = weekdayDemand(recent);
+    return [...allDays.slice(1), allDays[0]]; // Mon…Sat, Sun
+  }, [recent]);
   const maxDayOrders = Math.max(...orderedDays.map(d => d.totalOrders), 1);
 
   // Half-batch insight
-  const half = halfBatchInsight(orders);
+  const half = useMemo(() => halfBatchInsight(recent), [recent]);
 
   const [thisMonth, lastMonth] = recentMonths(2);
   const cur = itemBreakdownForMonth(orders, thisMonth);
@@ -110,7 +119,10 @@ export default function InsightsView({ orders }: { orders: Order[] }) {
 
       {/* Weekday demand */}
       <div className="bg-white rounded-2xl border-2 border-stone-100 p-5">
-        <div className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-3">Orders by Day of Week</div>
+        <div className="flex items-baseline justify-between mb-3">
+          <div className="text-xs font-bold uppercase tracking-wider text-stone-400">Orders by Day of Week</div>
+          <span className="text-[11px] text-stone-400">Last 90 days</span>
+        </div>
         {orderedDays.every(d => d.totalOrders === 0) ? (
           <p className="text-sm text-stone-400 italic">No order history yet.</p>
         ) : (
@@ -136,7 +148,7 @@ export default function InsightsView({ orders }: { orders: Order[] }) {
         <div className={`rounded-2xl border-2 p-5 ${half.recommend ? 'bg-amber-50 border-amber-200' : 'bg-white border-stone-100'}`}>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-1">Lumpia Halves</div>
+              <div className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-1">Lumpia Halves · <span className="text-stone-300">90d</span></div>
               <div className="text-2xl font-black text-stone-800">
                 {Math.round(half.halvesRatio * 100)}%
                 <span className="text-sm font-semibold text-stone-400 ml-1">of lumpia orders</span>
