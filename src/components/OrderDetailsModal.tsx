@@ -25,8 +25,17 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
     () => String((order?.total ?? 0) + (Number(order?.tip_amount) || 0))
   );
   const [pendingDelete, setPendingDelete] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesInput, setNotesInput] = useState('');
 
   if (!isOpen || !order) return null;
+
+  const startEditNotes = () => { setNotesInput(order.notes ?? ''); setEditingNotes(true); };
+  const cancelNotes = () => setEditingNotes(false);
+  const saveNotes = () => {
+    onPaymentChange(order.id!, { notes: notesInput.trim() || undefined });
+    setEditingNotes(false);
+  };
 
   const total = order.total ?? 0;
   const deposit = Number(order.deposit_amount) || 0;
@@ -183,10 +192,34 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
               <div className="font-playfair text-4xl font-black">{fmt(total)}</div>
             </div>
 
-            {order.notes && (
-              <div className="bg-amber-50 text-amber-900 p-4 rounded-xl text-sm border border-amber-200">
-                <span className="font-bold">📝 Notes:</span> {order.notes}
+            {editingNotes ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+                <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">📝 Notes</label>
+                <textarea
+                  autoFocus
+                  value={notesInput}
+                  onChange={e => setNotesInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveNotes(); if (e.key === 'Escape') cancelNotes(); }}
+                  rows={3}
+                  placeholder="e.g. e-transfer received June 2, called to confirm pickup…"
+                  className="w-full bg-white border-2 border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-900 placeholder:text-amber-300 focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/30 outline-none resize-none transition-colors"
+                />
+                <div className="flex gap-2 justify-end">
+                  <button type="button" onClick={cancelNotes} className="text-xs font-semibold text-stone-400 hover:text-stone-600 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">Cancel</button>
+                  <button type="button" onClick={saveNotes} className="text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg transition-colors cursor-pointer">Save</button>
+                </div>
               </div>
+            ) : order.notes ? (
+              <button type="button" onClick={startEditNotes} className="w-full text-left bg-amber-50 text-amber-900 p-4 rounded-xl text-sm border border-amber-200 hover:border-amber-300 hover:bg-amber-100 transition-colors group cursor-pointer">
+                <div className="flex items-start justify-between gap-2">
+                  <span><span className="font-bold">📝 Notes:</span> {order.notes}</span>
+                  <Edit2 size={13} className="text-amber-400 group-hover:text-amber-600 shrink-0 mt-0.5 transition-colors" />
+                </div>
+              </button>
+            ) : (
+              <button type="button" onClick={startEditNotes} className="w-full text-left px-4 py-3 rounded-xl border-2 border-dashed border-stone-200 text-stone-400 text-sm hover:border-amber-300 hover:text-amber-500 transition-colors cursor-pointer">
+                + Add a note…
+              </button>
             )}
 
             <div className="border-t border-stone-200 pt-6">
