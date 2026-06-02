@@ -219,9 +219,12 @@ export function getMakeMoreNeeds(orders: Order[], stock: Stock | null | undefine
 export function getRevenue(orders: Order[]): { total: number; month: number } {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  // Cash in hand = revenue. Prepaid and Deposit orders are counted regardless
+  // of fulfilment status — the money exists the moment it's received.
   const counted = orders.filter(o =>
     o.order_status === "Fulfilled" ||
-    (o.order_status === "Ready" && (o.payment_status === "Prepaid" || o.payment_status === "Deposit"))
+    o.payment_status === "Prepaid" ||
+    o.payment_status === "Deposit"
   );
   const thisMonth = counted.filter(o => {
     const d = new Date(o.created_at || `${o.needed_date}T00:00:00`);

@@ -157,6 +157,29 @@ describe('tipAmount', () => {
   });
 });
 
+describe('getRevenue — cash-in-hand counting', () => {
+  it('counts a Prepaid Pending order — money received before fulfilment', () => {
+    const order = base({ order_status: 'Pending', payment_status: 'Prepaid', total: 42.5 });
+    expect(getRevenue([order]).total).toBeCloseTo(42.5);
+  });
+  it('counts a Deposit Pending order — partial cash received', () => {
+    const order = base({ order_status: 'Pending', payment_status: 'Deposit', deposit_amount: 20, total: 42.5 });
+    expect(getRevenue([order]).total).toBeCloseTo(42.5);
+  });
+  it('counts a Prepaid Ready order', () => {
+    const order = base({ order_status: 'Ready', payment_status: 'Prepaid', total: 42.5 });
+    expect(getRevenue([order]).total).toBeCloseTo(42.5);
+  });
+  it('does NOT count an Unpaid Pending order', () => {
+    const order = base({ order_status: 'Pending', payment_status: 'Unpaid', total: 42.5 });
+    expect(getRevenue([order]).total).toBe(0);
+  });
+  it('does NOT double-count a Fulfilled Prepaid order', () => {
+    const order = base({ order_status: 'Fulfilled', payment_status: 'Prepaid', total: 42.5 });
+    expect(getRevenue([order]).total).toBeCloseTo(42.5);
+  });
+});
+
 describe('getRevenue — tips count as cash', () => {
   it('includes the tip on a counted (fulfilled) order', () => {
     const tipped = base({ order_status: 'Fulfilled', payment_status: 'Deposit', total: 42.5, deposit_amount: 43 });

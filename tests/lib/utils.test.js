@@ -161,18 +161,18 @@ describe('getMakeMoreNeeds', () => {
 // ─── REVENUE ─────────────────────────────────────────────────────────────────────
 
 describe('getRevenue', () => {
-  it('counts Fulfilled and Ready(Prepaid/Deposit); excludes Pending and Ready-Unpaid', () => {
+  it('counts any Prepaid/Deposit order regardless of status; excludes Unpaid', () => {
     const nowIso = new Date().toISOString();
     const orders = [
       { order_status: 'Fulfilled', payment_status: 'Prepaid', total: 100, created_at: nowIso },
-      { order_status: 'Ready', payment_status: 'Deposit', total: 50, created_at: nowIso },
-      { order_status: 'Pending', payment_status: 'Prepaid', total: 999, created_at: nowIso },     // excluded
-      { order_status: 'Ready', payment_status: 'Unpaid', total: 999, created_at: nowIso },         // excluded
-      { order_status: 'Fulfilled', payment_status: 'Prepaid', total: 25, created_at: '2000-01-01T00:00:00Z' }, // old
+      { order_status: 'Ready',     payment_status: 'Deposit', total: 50,  created_at: nowIso },
+      { order_status: 'Pending',   payment_status: 'Prepaid', total: 999, created_at: nowIso }, // now counted — cash in hand
+      { order_status: 'Ready',     payment_status: 'Unpaid',  total: 25,  created_at: nowIso }, // excluded — no cash yet
+      { order_status: 'Fulfilled', payment_status: 'Prepaid', total: 25,  created_at: '2000-01-01T00:00:00Z' }, // old
     ];
     const rev = getRevenue(orders);
-    expect(rev.total).toBe(175); // 100 + 50 + 25
-    expect(rev.month).toBe(150); // 100 + 50 (the 2000 order isn't this month)
+    expect(rev.total).toBe(1174); // 100 + 50 + 999 + 25 (Unpaid Ready excluded)
+    expect(rev.month).toBe(1149); // same minus the 2000 order
   });
 });
 
