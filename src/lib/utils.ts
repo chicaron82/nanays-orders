@@ -226,9 +226,12 @@ export function getRevenue(orders: Order[]): { total: number; month: number } {
     o.payment_status === "Prepaid" ||
     o.payment_status === "Deposit"
   );
+  // Bucket by needed_date — an order needed in June is June revenue regardless
+  // of when it was placed. Fall back to created_at only if needed_date is absent.
   const thisMonth = counted.filter(o => {
-    const d = new Date(o.created_at || `${o.needed_date}T00:00:00`);
-    return d >= monthStart;
+    const dateStr = o.needed_date || (o.created_at ? o.created_at.slice(0, 10) : null);
+    if (!dateStr) return false;
+    return new Date(dateStr + 'T00:00:00') >= monthStart;
   });
   // Revenue = order value + any tip (cash received above the total), so the
   // P&L reflects actual money taken in, not just the order sticker price.

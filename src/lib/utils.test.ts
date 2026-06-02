@@ -157,6 +157,38 @@ describe('tipAmount', () => {
   });
 });
 
+describe('getRevenue — monthly bucketing by needed_date', () => {
+  const nowYear = new Date().getFullYear();
+  const thisMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+  const lastMonth = String(new Date().getMonth() === 0 ? 12 : new Date().getMonth()).padStart(2, '0');
+  const lastMonthYear = new Date().getMonth() === 0 ? nowYear - 1 : nowYear;
+
+  it('counts an order placed last month but needed this month in revenue.month', () => {
+    const order = base({
+      order_status: 'Pending',
+      payment_status: 'Prepaid',
+      total: 42.5,
+      needed_date: `${nowYear}-${thisMonth}-15`,
+      created_at: `${lastMonthYear}-${lastMonth}-20T10:00:00Z`,
+    });
+    const rev = getRevenue([order]);
+    expect(rev.month).toBeCloseTo(42.5);
+    expect(rev.total).toBeCloseTo(42.5);
+  });
+
+  it('excludes an order with needed_date in a previous month from revenue.month', () => {
+    const order = base({
+      order_status: 'Fulfilled',
+      payment_status: 'Prepaid',
+      total: 42.5,
+      needed_date: `${lastMonthYear}-${lastMonth}-15`,
+    });
+    const rev = getRevenue([order]);
+    expect(rev.month).toBe(0);
+    expect(rev.total).toBeCloseTo(42.5);
+  });
+});
+
 describe('getRevenue — cash-in-hand counting', () => {
   it('counts a Prepaid Pending order — money received before fulfilment', () => {
     const order = base({ order_status: 'Pending', payment_status: 'Prepaid', total: 42.5 });
