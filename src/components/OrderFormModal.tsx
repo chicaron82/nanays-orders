@@ -23,7 +23,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
     handleSelectSuggestion, handleSubmit, hasItems, total,
     repeatAvailable, applyRepeatLast,
     addCustomItem, updateCustomItem, removeCustomItem,
-  } = useOrderForm({ isOpen, editOrder, allOrders, stock: stock ?? undefined, initialDate, onSave });
+  } = useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave });
 
   if (!isOpen) return null;
 

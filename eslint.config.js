@@ -5,10 +5,11 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
+// Drop unused params/vars — don't _-prefix them. For callbacks where a later
+// param is needed (e.g. Array.from((_, i) => ...)), args:'after-used' means
+// params before the last used one are not flagged.
 const unusedVarsOptions = {
-  argsIgnorePattern: '^_',
-  varsIgnorePattern: '^_',
-  caughtErrorsIgnorePattern: '^_',
+  args: 'after-used',
 }
 
 export default defineConfig([
@@ -25,7 +26,6 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
     rules: {
-      // Allow intentionally-unused args/vars/catch bindings when prefixed with _
       'no-unused-vars': ['error', unusedVarsOptions],
     },
   },

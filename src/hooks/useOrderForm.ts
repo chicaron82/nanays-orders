@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fuzzyMatch, calcTotal, lastOrderFor } from '../lib/utils';
 import { supabase } from '../lib/supabase';
-import type { Order, OrderForm, Stock } from '../types';
+import type { Order, OrderForm } from '../types';
 
 const initialForm: OrderForm = {
   customer_name: "", contact: "",
@@ -17,12 +17,11 @@ interface UseOrderFormProps {
   isOpen: boolean;
   editOrder: Order | null;
   allOrders: Order[];
-  stock?: Stock;
   initialDate?: string | null;
   onSave: (order: Order) => void;
 }
 
-export function useOrderForm({ isOpen, editOrder, allOrders, stock: _stock, initialDate, onSave }: UseOrderFormProps) {
+export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave }: UseOrderFormProps) {
   const [form, setForm] = useState<OrderForm>(initialForm);
   const [showSuggestions, setShowSuggestions] = useState(false);
 

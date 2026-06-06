@@ -56,7 +56,7 @@ Follow this shape for new data hooks.
   money and stock math must not silently break.
 - **Line count is judgment, not law.** A long-but-cohesive component (e.g. a big form) is fine —
   split god objects, not cohesive files. Don't refactor to hit a number.
-- **eslint:** `_`-prefixed args / vars / catch bindings are treated as intentionally unused.
+- **eslint:** Drop unused params/vars — don't `_`-prefix them. For callbacks where a later param is needed (e.g. `Array.from((_, i) => ...)`) the bare `_` is fine because `args: 'after-used'` only flags params after the last used one.
 
 ## Domain model (gotchas)
 

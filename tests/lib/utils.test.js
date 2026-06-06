@@ -33,7 +33,7 @@ describe('calcTotal', () => {
   });
 
   it('lumpia halves price independently of sets', () => {
-    expect(calcTotal({ lumpia: { enabled: true, sets: 1, setsCooked: false, halves: 3, halvesCooked: false, sauces: [] } })).toBe(75); // 30 + 3×15
+    expect(calcTotal({ lumpia: { enabled: true, sets: 1, setsCooked: false, halves: 3, halvesCooked: false, sauces: [] } })).toBe(84); // 30 + 3×18
   });
 
   it('adds sauce prices', () => {

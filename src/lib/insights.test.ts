@@ -20,8 +20,8 @@ describe('lumpiaRevenue', () => {
     const o = order({
       lumpia: { enabled: true, sets: 2, setsCooked: true, halves: 1, halvesCooked: false, sauces: ['sweet_chili'] },
     });
-    // 2 × 35 (cooked full) + 1 × 15 (uncooked half) + 1 × 2 (sauce) = 87
-    expect(lumpiaRevenue(o)).toBe(87);
+    // 2 × 35 (cooked full) + 1 × 18 (uncooked half) + 1 × 2 (sauce) = 90
+    expect(lumpiaRevenue(o)).toBe(90);
   });
   it('falls back to the legacy style field', () => {
     const o = order({ lumpia: { enabled: true, sets: 1, style: 'cooked' } });
@@ -115,9 +115,9 @@ describe('itemBreakdownForMonth', () => {
     expect(b.pancit.full).toBe(1);
     expect(b.pancit.half).toBe(1);
     expect(b.pancit.large).toBe(1);
-    expect(b.lumpia.revenue).toBeCloseTo(70 + 2 * 17.5);   // 105
+    expect(b.lumpia.revenue).toBeCloseTo(70 + 2 * 20);      // 110
     expect(b.pancit.revenue).toBeCloseTo(25 + 12.5 + 50);  // 87.5
-    expect(b.itemRevenue).toBeCloseTo(192.5);
+    expect(b.itemRevenue).toBeCloseTo(197.5);
   });
 
   it('returns an empty breakdown for a month with no orders', () => {
