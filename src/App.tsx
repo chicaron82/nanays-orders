@@ -7,6 +7,7 @@ import { useStock } from './hooks/useStock';
 import { useAuth } from './hooks/useAuth';
 import { useExpenses } from './hooks/useExpenses';
 import { useBackGuard } from './hooks/useBackGuard';
+import { useBlockedDays } from './hooks/useBlockedDays';
 
 import Dashboard from './components/Dashboard';
 import CalendarView from './components/CalendarView';
@@ -16,7 +17,7 @@ import InsightsView from './components/InsightsView';
 import OrderFormModal from './components/OrderFormModal';
 import OrderDetailsModal from './components/OrderDetailsModal';
 import LoginScreen from './components/LoginScreen';
-import { getRepeatCustomers } from './lib/utils';
+import { getRepeatCustomers, nextAvailableDate, formatDate } from './lib/utils';
 
 interface MainAppProps {
   onLogout: () => void;
@@ -26,6 +27,7 @@ function MainApp({ onLogout }: MainAppProps) {
   const { orders, loading: ordersLoading, addOrder, updateOrder, deleteOrder } = useOrders();
   const { stock, loading: stockLoading, updateStock } = useStock();
   const { expenses, addExpense, deleteExpense } = useExpenses();
+  const { blockedDays, blockedSet, blockDay, unblockDay } = useBlockedDays();
 
   const [tab, setTab] = useState<'orders' | 'stock' | 'expenses' | 'insights'>('orders');
   const [showForm, setShowForm] = useState(false);
@@ -33,6 +35,7 @@ function MainApp({ onLogout }: MainAppProps) {
   const [editOrder, setEditOrder] = useState<Order | null>(null);
   const [newOrderDate, setNewOrderDate] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [blockedWarning, setBlockedWarning] = useState<{ date: string; next: string; reason?: string | null } | null>(null);
 
   useBackGuard([
     { isActive: showForm,        onBack: () => { setShowForm(false); setEditOrder(null); setNewOrderDate(null); } },
@@ -97,6 +100,12 @@ function MainApp({ onLogout }: MainAppProps) {
   };
 
   const handleNewOrderForDate = (ymd: string) => {
+    if (blockedSet.has(ymd)) {
+      const next = nextAvailableDate(ymd, blockedSet);
+      const reason = blockedDays.find(d => d.date === ymd)?.reason;
+      setBlockedWarning({ date: ymd, next, reason });
+      return;
+    }
     setEditOrder(null);
     setNewOrderDate(ymd);
     setShowForm(true);
@@ -172,7 +181,15 @@ function MainApp({ onLogout }: MainAppProps) {
 
       <main>
         {tab === 'orders' && (
-          <CalendarView orders={orders} onOrderClick={setSelectedOrder} onNewOrderForDate={handleNewOrderForDate} />
+          <CalendarView
+            orders={orders}
+            blockedDays={blockedDays}
+            blockedSet={blockedSet}
+            onOrderClick={setSelectedOrder}
+            onNewOrderForDate={handleNewOrderForDate}
+            onBlockDay={blockDay}
+            onUnblockDay={unblockDay}
+          />
         )}
         {tab === 'stock' && (
           <StockManager stock={stock} orders={orders} updateStock={updateStock} />
@@ -207,6 +224,33 @@ function MainApp({ onLogout }: MainAppProps) {
         onStatusChange={handleStatusChange}
         onPaymentChange={handlePaymentChange}
       />
+
+      {blockedWarning && (
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setBlockedWarning(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
+            <div className="text-2xl mb-1">🔒</div>
+            <div className="font-playfair text-lg font-black text-stone-800 mb-1">{formatDate(blockedWarning.date)} is off</div>
+            {blockedWarning.reason && <p className="text-sm text-stone-500 mb-3">{blockedWarning.reason}</p>}
+            <p className="text-sm text-stone-600 mb-4">
+              Next open day: <span className="font-bold text-orange-600">{formatDate(blockedWarning.next)}</span>
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setBlockedWarning(null); setEditOrder(null); setNewOrderDate(blockedWarning.next); setShowForm(true); }}
+                className="flex-1 bg-orange-500 text-white font-bold py-2.5 rounded-xl hover:bg-orange-600 transition-colors text-sm"
+              >
+                Book for {formatDate(blockedWarning.next)}
+              </button>
+              <button
+                onClick={() => setBlockedWarning(null)}
+                className="px-4 py-2.5 rounded-xl bg-stone-100 text-stone-600 font-bold text-sm hover:bg-stone-200 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

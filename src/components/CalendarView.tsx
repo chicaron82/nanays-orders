@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
-import type { Order } from '../types';
+import type { Order, BlockedDay } from '../types';
 import { getWeekDays, getMonthGrid, localYMD, formatDate } from '../lib/utils';
 import DayRow from './calendar/DayRow';
 import DayCell from './calendar/DayCell';
@@ -10,8 +10,12 @@ import PrepSheet from './PrepSheet';
 
 interface Props {
   orders: Order[];
+  blockedDays: BlockedDay[];
+  blockedSet: ReadonlySet<string>;
   onOrderClick: (order: Order) => void;
   onNewOrderForDate: (ymd: string) => void;
+  onBlockDay: (date: string, reason?: string) => void;
+  onUnblockDay: (date: string) => void;
 }
 
 type ViewType = 'week' | 'month' | 'agenda';
@@ -20,7 +24,7 @@ const VIEWS: ViewType[] = ['week', 'month', 'agenda'];
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-export default function CalendarView({ orders, onOrderClick, onNewOrderForDate }: Props) {
+export default function CalendarView({ orders, blockedDays, blockedSet, onOrderClick, onNewOrderForDate, onBlockDay, onUnblockDay }: Props) {
   const [view, setView] = useState<ViewType>('week');
   const [anchorDate, setAnchorDate] = useState<Date>(() => new Date());
   const [daySheetDate, setDaySheetDate] = useState<string | null>(null);
@@ -36,6 +40,12 @@ export default function CalendarView({ orders, onOrderClick, onNewOrderForDate }
     });
     return map;
   }, [orders]);
+
+  const blockedByDate = useMemo<Record<string, BlockedDay>>(() => {
+    const map: Record<string, BlockedDay> = {};
+    blockedDays.forEach(d => { map[d.date] = d; });
+    return map;
+  }, [blockedDays]);
 
   const overdue = useMemo(
     () => orders
@@ -129,6 +139,8 @@ export default function CalendarView({ orders, onOrderClick, onNewOrderForDate }
               ymd={ymd}
               orders={ordersByDate[ymd] || []}
               isToday={ymd === todayYMD}
+              isBlocked={blockedSet.has(ymd)}
+              blockedReason={blockedByDate[ymd]?.reason}
               onOrderClick={onOrderClick}
               onNewOrderForDate={onNewOrderForDate}
             />
@@ -153,6 +165,7 @@ export default function CalendarView({ orders, onOrderClick, onNewOrderForDate }
                     orders={ordersByDate[ymd] || []}
                     isToday={ymd === todayYMD}
                     inMonth={new Date(ymd + 'T00:00:00').getMonth() === anchorDate.getMonth()}
+                    isBlocked={blockedSet.has(ymd)}
                     onDayClick={setDaySheetDate}
                   />
                 ))}
@@ -173,6 +186,8 @@ export default function CalendarView({ orders, onOrderClick, onNewOrderForDate }
               ymd={ymd}
               orders={ordersByDate[ymd] || []}
               isToday={ymd === todayYMD}
+              isBlocked={blockedSet.has(ymd)}
+              blockedReason={blockedByDate[ymd]?.reason}
               onOrderClick={onOrderClick}
               onNewOrderForDate={onNewOrderForDate}
             />
@@ -184,6 +199,10 @@ export default function CalendarView({ orders, onOrderClick, onNewOrderForDate }
         <DaySheet
           ymd={daySheetDate}
           orders={ordersByDate[daySheetDate] || []}
+          isBlocked={blockedSet.has(daySheetDate)}
+          blockedReason={blockedByDate[daySheetDate]?.reason}
+          onBlock={onBlockDay}
+          onUnblock={onUnblockDay}
           onClose={() => setDaySheetDate(null)}
           onOrderClick={(o) => { setDaySheetDate(null); onOrderClick(o); }}
           onNewOrderForDate={(ymd) => { setDaySheetDate(null); onNewOrderForDate(ymd); }}

@@ -74,6 +74,14 @@ export interface Stock {
   celery_status?: StockLevel;
 }
 
+/** A date the family is unavailable — orders on this day get a redirect warning. */
+export interface BlockedDay {
+  id: string;
+  date: string;   // YYYY-MM-DD
+  reason?: string | null;
+  created_at?: string;
+}
+
 export interface Expense {
   id?: string | number;
   date: string;

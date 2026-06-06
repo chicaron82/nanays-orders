@@ -13,19 +13,28 @@ export const DELIVERY_FEE: Record<DeliveryType, number> = { pickup: 0, city: 5, 
 // Early-fulfillment cutoffs (local 24h hour). Pickup before 11am, or a delivery
 // before noon — a delivery booked for 11am means cooking and leaving well before
 // 11, so the cutoff is pushed to 12 to cover the prep + travel lead time.
+// Saturdays get +1h on both cutoffs so the family can rest in.
 export const EARLY_PICKUP_CUTOFF_HOUR = 11;
 export const EARLY_DELIVERY_CUTOFF_HOUR = 12;
+export const EARLY_PICKUP_CUTOFF_HOUR_SAT = 12;
+export const EARLY_DELIVERY_CUTOFF_HOUR_SAT = 13;
 
 /**
  * True when the order's fulfillment time falls in the early window — derived
  * live from pickup_time (the field that serves both pickup and delivery), so it
  * always tracks the current time and never drifts. No time set → not early.
+ * Saturday cutoffs are 1h later than weekday cutoffs.
  */
 export function isEarlyFulfillment(order: Order): boolean {
   if (!order.pickup_time) return false;
   const hour = parseInt(order.pickup_time.split(':')[0], 10);
   if (Number.isNaN(hour)) return false;
-  const cutoff = order.delivery_type === 'pickup' ? EARLY_PICKUP_CUTOFF_HOUR : EARLY_DELIVERY_CUTOFF_HOUR;
+  const isSaturday = order.needed_date
+    ? new Date(order.needed_date + 'T00:00:00').getDay() === 6
+    : false;
+  const pickupCutoff  = isSaturday ? EARLY_PICKUP_CUTOFF_HOUR_SAT  : EARLY_PICKUP_CUTOFF_HOUR;
+  const deliveryCutoff = isSaturday ? EARLY_DELIVERY_CUTOFF_HOUR_SAT : EARLY_DELIVERY_CUTOFF_HOUR;
+  const cutoff = order.delivery_type === 'pickup' ? pickupCutoff : deliveryCutoff;
   return hour < cutoff;
 }
 
@@ -393,6 +402,18 @@ export function localYMD(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+// The nearest non-blocked date strictly after `from`. Scans forward one day at
+// a time; returns within a year in any realistic scenario.
+export function nextAvailableDate(from: string, blockedDates: ReadonlySet<string>): string {
+  const d = new Date(from + 'T00:00:00');
+  for (let i = 0; i < 366; i++) {
+    d.setDate(d.getDate() + 1);
+    const ymd = localYMD(d);
+    if (!blockedDates.has(ymd)) return ymd;
+  }
+  return localYMD(d);
 }
 
 // 7 YMD strings for the week containing anchorDate, Sunday start.

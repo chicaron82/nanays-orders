@@ -9,6 +9,7 @@ import {
   calcTotal,
   customItemsTotal,
   orderSummary,
+  nextAvailableDate,
   EARLY_ORDER_FEE,
   RUSH_ORDER_FEE,
   DELIVERY_FEE,
@@ -244,6 +245,63 @@ describe('custom items', () => {
   it('orderSummary lists the custom dish names', () => {
     const s = orderSummary(base({ custom_items: [{ name: 'Embutido', price: 40 }] }));
     expect(s).toContain('Embutido');
+  });
+});
+
+// 2026-06-06 is a Saturday; 2026-06-05 is a Friday
+const SAT = '2026-06-06';
+const FRI = '2026-06-05';
+
+describe('isEarlyFulfillment — Saturday cutoffs (+1h)', () => {
+  describe('pickup on Saturday — cutoff 12pm', () => {
+    it('flags before noon', () => {
+      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'pickup', pickup_time: '11:00' }))).toBe(true);
+      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'pickup', pickup_time: '11:59' }))).toBe(true);
+    });
+    it('does not flag at or after noon', () => {
+      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'pickup', pickup_time: '12:00' }))).toBe(false);
+      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'pickup', pickup_time: '13:00' }))).toBe(false);
+    });
+    it('11am is early on Saturday but not on a weekday pickup', () => {
+      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'pickup', pickup_time: '11:00' }))).toBe(true);
+      expect(isEarlyFulfillment(base({ needed_date: FRI, delivery_type: 'pickup', pickup_time: '11:00' }))).toBe(false);
+    });
+  });
+
+  describe('delivery on Saturday — cutoff 1pm', () => {
+    it('flags before 1pm', () => {
+      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'city', pickup_time: '12:00' }))).toBe(true);
+      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'outside', pickup_time: '12:59' }))).toBe(true);
+    });
+    it('does not flag at or after 1pm', () => {
+      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'city', pickup_time: '13:00' }))).toBe(false);
+    });
+  });
+
+  it('non-Saturday dates still use the standard cutoffs', () => {
+    expect(isEarlyFulfillment(base({ needed_date: FRI, delivery_type: 'pickup', pickup_time: '10:59' }))).toBe(true);
+    expect(isEarlyFulfillment(base({ needed_date: FRI, delivery_type: 'pickup', pickup_time: '11:00' }))).toBe(false);
+  });
+
+  it('no needed_date falls back to weekday cutoffs', () => {
+    expect(isEarlyFulfillment(base({ needed_date: undefined, delivery_type: 'pickup', pickup_time: '11:00' }))).toBe(false);
+    expect(isEarlyFulfillment(base({ needed_date: undefined, delivery_type: 'pickup', pickup_time: '10:59' }))).toBe(true);
+  });
+});
+
+describe('nextAvailableDate', () => {
+  it('returns the day after when nothing is blocked', () => {
+    expect(nextAvailableDate('2026-06-10', new Set())).toBe('2026-06-11');
+  });
+  it('skips a single blocked day', () => {
+    expect(nextAvailableDate('2026-06-10', new Set(['2026-06-11']))).toBe('2026-06-12');
+  });
+  it('skips a range of blocked days', () => {
+    const blocked = new Set(['2026-06-22', '2026-06-23', '2026-06-24', '2026-06-25', '2026-06-26', '2026-06-27', '2026-06-28', '2026-06-29', '2026-06-30', '2026-07-01']);
+    expect(nextAvailableDate('2026-06-21', blocked)).toBe('2026-07-02');
+  });
+  it('does not return the from date itself even if unblocked', () => {
+    expect(nextAvailableDate('2026-06-10', new Set())).not.toBe('2026-06-10');
   });
 });
 
