@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChefHat, CalendarDays, User, Check, AlertCircle } from 'lucide-react';
+import { m, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useOrderRequests } from '../hooks/useOrderRequests';
 import type { OrderRequest, BlockedDay } from '../types';
@@ -21,6 +22,8 @@ const ROW_BTN = 'w-8 h-8 rounded border border-stone-300 text-orange-600 font-bo
 
 export default function PublicRequestPage() {
   const { submitRequest } = useOrderRequests();
+  const totalRef = useRef<HTMLDivElement>(null);
+  const [showFloatingTotal, setShowFloatingTotal] = useState(false);
 
   // Blocked days loading
   const [blockedDays, setBlockedDays] = useState<BlockedDay[]>([]);
@@ -134,6 +137,22 @@ export default function PublicRequestPage() {
     hasItems &&
     !isDateBlocked &&
     (deliveryType === 'pickup' || address.trim().length > 0);
+
+  useEffect(() => {
+    if (!hasItems) {
+      setShowFloatingTotal(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (!totalRef.current) return;
+      const observer = new IntersectionObserver(([entry]) => {
+        setShowFloatingTotal(!entry.isIntersecting);
+      }, { threshold: 0.1 });
+      observer.observe(totalRef.current);
+      return () => observer.disconnect();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [hasItems]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -595,7 +614,7 @@ export default function PublicRequestPage() {
 
           {/* Estimated Total Card */}
           {hasItems && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl px-5 py-4 space-y-2">
+            <div ref={totalRef} className="bg-orange-50 border border-orange-200 rounded-xl px-5 py-4 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-stone-600">Fulfillment:</span>
                 <span className="text-sm font-bold text-stone-800">{deliveryType === 'pickup' ? '🏠 Pickup' : `🚗 Delivery (+${fmt(DELIVERY_FEE[deliveryType])})`}</span>
@@ -627,6 +646,32 @@ export default function PublicRequestPage() {
 
         </form>
       </div>
+
+      <AnimatePresence>
+        {showFloatingTotal && (
+          <m.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-6 right-6 md:right-8 bg-gradient-to-r from-orange-600 to-amber-500 text-white px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-3 border border-white/20 z-40 backdrop-blur-md"
+          >
+            <div className="flex flex-col">
+              <span className="text-[10px] text-white/85 uppercase tracking-wider font-bold">Estimated Total</span>
+              <span className="text-xl font-black">{fmt(total)}</span>
+            </div>
+            <div className="w-px h-8 bg-white/20" />
+            <button
+              type="button"
+              onClick={() => {
+                totalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }}
+              className="text-xs font-bold bg-white text-orange-600 px-3 py-1.5 rounded-full hover:bg-orange-50 transition-colors active:scale-95 cursor-pointer"
+            >
+              View Order
+            </button>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
