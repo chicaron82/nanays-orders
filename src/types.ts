@@ -90,3 +90,21 @@ export interface Expense {
   note?: string;
   created_at?: string;
 }
+
+export interface OrderRequest {
+  id?: string;
+  created_at?: string;
+  customer_name: string;
+  contact: string;
+  lumpia: LumpiaOrder;
+  pancit: PancitOrder;
+  custom_items?: CustomItem[];
+  needed_date: string;
+  pickup_time: string;
+  delivery_type: DeliveryType;
+  address?: string;
+  notes?: string;
+  rush_order: boolean;
+  total: number;
+  status: 'Pending' | 'Approved' | 'Declined';
+}

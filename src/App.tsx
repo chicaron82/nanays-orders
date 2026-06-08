@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { ChefHat, ClipboardList, PackageOpen, Receipt, BarChart3, Plus, LogOut, Check, X } from 'lucide-react';
-import type { Order, OrderStatus } from './types';
+import type { Order, OrderStatus, OrderRequest } from './types';
 import { useOrders } from './hooks/useOrders';
 import { useStock } from './hooks/useStock';
 import { useAuth } from './hooks/useAuth';
 import { useExpenses } from './hooks/useExpenses';
 import { useBackGuard } from './hooks/useBackGuard';
 import { useBlockedDays } from './hooks/useBlockedDays';
+import { useOrderRequests } from './hooks/useOrderRequests';
 
 import Dashboard from './components/Dashboard';
 import CalendarView from './components/CalendarView';
@@ -17,7 +18,9 @@ import InsightsView from './components/InsightsView';
 import OrderFormModal from './components/OrderFormModal';
 import OrderDetailsModal from './components/OrderDetailsModal';
 import LoginScreen from './components/LoginScreen';
-import { getRepeatCustomers, nextAvailableDate, formatDate } from './lib/utils';
+import PublicRequestPage from './components/PublicRequestPage';
+import RequestsView from './components/RequestsView';
+import { getRepeatCustomers, nextAvailableDate, formatDate, fmt } from './lib/utils';
 
 interface MainAppProps {
   onLogout: () => void;
@@ -28,14 +31,26 @@ function MainApp({ onLogout }: MainAppProps) {
   const { stock, loading: stockLoading, updateStock } = useStock();
   const { expenses, addExpense, deleteExpense } = useExpenses();
   const { blockedDays, blockedSet, blockDay, unblockDay } = useBlockedDays();
+  const { requests, approveRequest, declineRequest } = useOrderRequests();
 
-  const [tab, setTab] = useState<'orders' | 'stock' | 'expenses' | 'insights'>('orders');
+  const [tab, setTab] = useState<'orders' | 'requests' | 'stock' | 'expenses' | 'insights'>('orders');
   const [showForm, setShowForm] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [editOrder, setEditOrder] = useState<Order | null>(null);
   const [newOrderDate, setNewOrderDate] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [blockedWarning, setBlockedWarning] = useState<{ date: string; next: string; reason?: string | null } | null>(null);
+  const [approvedRequestMsg, setApprovedRequestMsg] = useState<string | null>(null);
+
+  const handleApproveRequest = async (req: OrderRequest) => {
+    try {
+      await approveRequest(req);
+      const msg = `Hey ${req.customer_name}! Your order for ${formatDate(req.needed_date)} at ${req.pickup_time} is confirmed! Total: ${fmt(req.total)} (${req.delivery_type === 'pickup' ? '🏠 Pickup' : `🚗 Delivery to: ${req.address}`}). Thank you! 🥟🍜`;
+      setApprovedRequestMsg(msg);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useBackGuard([
     { isActive: showForm,        onBack: () => { setShowForm(false); setEditOrder(null); setNewOrderDate(null); } },
@@ -163,12 +178,20 @@ function MainApp({ onLogout }: MainAppProps) {
       </div>
 
       <div className="px-6 mb-6 sticky top-4 z-40">
-        <div className="bg-black/40 backdrop-blur-xl p-1.5 rounded-2xl flex max-w-md border border-white/20 mx-auto sm:mx-0 shadow-lg">
+        <div className="bg-black/40 backdrop-blur-xl p-1.5 rounded-2xl flex max-w-xl border border-white/20 mx-auto sm:mx-0 shadow-lg">
           <button onClick={() => setTab('orders')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'orders' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
             <ClipboardList size={18} /> Calendar
           </button>
+          <button onClick={() => setTab('requests')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors relative ${tab === 'requests' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
+            <ChefHat size={18} /> Requests
+            {requests.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white font-bold text-[10px] w-4.5 h-4.5 rounded-full flex items-center justify-center animate-pulse">
+                {requests.length}
+              </span>
+            )}
+          </button>
           <button onClick={() => setTab('stock')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'stock' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
-            <PackageOpen size={18} /> Stock & Prep
+            <PackageOpen size={18} /> Stock &amp; Prep
           </button>
           <button onClick={() => setTab('expenses')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'expenses' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
             <Receipt size={18} /> Expenses
@@ -189,6 +212,14 @@ function MainApp({ onLogout }: MainAppProps) {
             onNewOrderForDate={handleNewOrderForDate}
             onBlockDay={blockDay}
             onUnblockDay={unblockDay}
+          />
+        )}
+        {tab === 'requests' && (
+          <RequestsView
+            requests={requests}
+            blockedSet={blockedSet}
+            onApprove={handleApproveRequest}
+            onDecline={declineRequest}
           />
         )}
         {tab === 'stock' && (
@@ -253,12 +284,61 @@ function MainApp({ onLogout }: MainAppProps) {
           </div>
         </div>
       )}
+
+      {approvedRequestMsg && (
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center space-y-4">
+            <div className="text-3xl">🎉</div>
+            <h3 className="font-playfair text-xl font-black text-stone-800">Order Confirmed!</h3>
+            <p className="text-xs text-stone-500">
+              Copy this message to text it to the customer:
+            </p>
+            <textarea
+              readOnly
+              value={approvedRequestMsg}
+              className="w-full h-32 border-2 border-stone-200 rounded-xl p-3 text-sm text-stone-700 font-semibold focus:border-orange-500 outline-none resize-none"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(approvedRequestMsg);
+                  toast.success('Confirmation message copied to clipboard! 📋');
+                  setApprovedRequestMsg(null);
+                }}
+                className="flex-1 bg-orange-500 text-white font-bold py-3 rounded-xl hover:bg-orange-600 transition-colors text-sm flex items-center justify-center gap-2"
+              >
+                Copy &amp; Close
+              </button>
+              <button
+                onClick={() => setApprovedRequestMsg(null)}
+                className="px-4 py-3 rounded-xl bg-stone-100 text-stone-600 font-bold text-sm hover:bg-stone-200 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default function App() {
   const { session, loading, signIn, signOut } = useAuth();
+
+  const isRequestPage =
+    window.location.pathname === '/request' ||
+    window.location.search.includes('request=true') ||
+    window.location.hash === '#/request';
+
+  if (isRequestPage) {
+    return (
+      <>
+        <PublicRequestPage />
+        <Toaster position="top-center" richColors />
+      </>
+    );
+  }
 
   if (loading) {
     return (
