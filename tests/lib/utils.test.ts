@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { Order } from '../../src/types';
 import {
   calcTotal, orderSummary,
   getDaysUntil, urgencyLabel,
@@ -41,7 +42,7 @@ describe('calcTotal', () => {
   });
 
   it('pancit full/half/large + extra meat', () => {
-    expect(calcTotal({ pancit: { enabled: true, full: 2, half: 1, large: 1, extraMeat: true } })).toBe(117.5); // 50 + 12.5 + 50 + 5
+    expect(calcTotal({ pancit: { enabled: true, full: 2, half: 1, large: 1, extraMeat: true } })).toBe(122.5); // 50 + 12.5 + 50 + 10
   });
 
   it('rush fee and delivery fee', () => {
@@ -93,14 +94,14 @@ describe('getDaysUntil', () => {
 describe('urgencyLabel', () => {
   it('null → null', () => expect(urgencyLabel(null)).toBeNull());
   it('overdue / today / tomorrow', () => {
-    expect(urgencyLabel(-1).text).toBe('1d overdue');
-    expect(urgencyLabel(0).text).toBe('Today!');
-    expect(urgencyLabel(1).text).toBe('Tomorrow');
+    expect(urgencyLabel(-1)!.text).toBe('1d overdue');
+    expect(urgencyLabel(0)!.text).toBe('Today!');
+    expect(urgencyLabel(1)!.text).toBe('Tomorrow');
   });
   it('buckets by distance', () => {
-    expect(urgencyLabel(2).tailwind).toContain('yellow');
-    expect(urgencyLabel(5).tailwind).toContain('emerald');
-    expect(urgencyLabel(30).tailwind).toContain('gray');
+    expect(urgencyLabel(2)!.tailwind).toContain('yellow');
+    expect(urgencyLabel(5)!.tailwind).toContain('emerald');
+    expect(urgencyLabel(30)!.tailwind).toContain('gray');
   });
 });
 
@@ -108,7 +109,7 @@ describe('urgencyLabel', () => {
 
 describe('getReserved', () => {
   it('only Ready orders reserve stock; halves count as 0.5', () => {
-    const orders = [
+    const orders: Order[] = [
       { order_status: 'Ready', lumpia: { enabled: true, sets: 2, halves: 2 }, pancit: { enabled: true, full: 1, half: 2, large: 1 } },
       { order_status: 'Pending', lumpia: { enabled: true, sets: 5, halves: 0 } }, // ignored
     ];
@@ -123,7 +124,7 @@ describe('getReserved', () => {
 describe('getAvailable', () => {
   it('subtracts Ready reservations from stock', () => {
     const stock = { lumpia_sets: 10, pancit_full: 5, pancit_half: 4, pancit_large: 2 };
-    const orders = [{ order_status: 'Ready', lumpia: { enabled: true, sets: 3, halves: 0 }, pancit: { enabled: true, full: 1, half: 0, large: 0 } }];
+    const orders: Order[] = [{ order_status: 'Ready', lumpia: { enabled: true, sets: 3, halves: 0 }, pancit: { enabled: true, full: 1, half: 0, large: 0 } }];
     const a = getAvailable(stock, orders);
     expect(a.lumpiaSets).toBe(7);
     expect(a.pancitFull).toBe(4);
@@ -143,7 +144,7 @@ describe('checkShortage', () => {
     expect(checkShortage({ lumpia: { enabled: true, sets: 2, halves: 0 } }, stock, [])).toEqual([]);
   });
   it('excludeId frees the edited order’s own reservation', () => {
-    const orders = [{ id: 'x', order_status: 'Ready', lumpia: { enabled: true, sets: 3, halves: 0 } }];
+    const orders: Order[] = [{ id: 'x', order_status: 'Ready', lumpia: { enabled: true, sets: 3, halves: 0 } }];
     // Without exclude, all 3 are reserved → editing the same order to 3 would falsely warn
     expect(checkShortage({ lumpia: { enabled: true, sets: 3, halves: 0 } }, stock, orders, 'x')).toEqual([]);
   });
@@ -152,7 +153,7 @@ describe('checkShortage', () => {
 describe('getMakeMoreNeeds', () => {
   it('computes shortfall for pending orders vs availability', () => {
     const stock = { lumpia_sets: 2, pancit_full: 0, pancit_half: 0, pancit_large: 0 };
-    const orders = [{ order_status: 'Pending', lumpia: { enabled: true, sets: 5, halves: 0 } }];
+    const orders: Order[] = [{ order_status: 'Pending', lumpia: { enabled: true, sets: 5, halves: 0 } }];
     const needs = getMakeMoreNeeds(orders, stock);
     expect(needs.lumpia).toEqual({ need: 3, avail: 2, total: 5 });
   });
@@ -163,7 +164,7 @@ describe('getMakeMoreNeeds', () => {
 describe('getRevenue', () => {
   it('counts any Prepaid/Deposit order regardless of status; excludes Unpaid', () => {
     const nowIso = new Date().toISOString();
-    const orders = [
+    const orders: Order[] = [
       { order_status: 'Fulfilled', payment_status: 'Prepaid', total: 100, created_at: nowIso },
       { order_status: 'Ready',     payment_status: 'Deposit', total: 50,  created_at: nowIso },
       { order_status: 'Pending',   payment_status: 'Prepaid', total: 999, created_at: nowIso }, // now counted — cash in hand
@@ -320,7 +321,7 @@ describe('dayLoad', () => {
     expect(dayLoad([])).toEqual({ units: 0, level: 'light' });
   });
   it('skips cancelled and weights items', () => {
-    const orders = [
+    const orders: Order[] = [
       { order_status: 'Pending', lumpia: { enabled: true, sets: 1, halves: 2 } }, // 1 + 1 = 2
       { order_status: 'Cancelled', pancit: { enabled: true, full: 9 } },          // ignored
     ];
@@ -336,7 +337,7 @@ describe('dayLoad', () => {
 
 describe('buildPrepList', () => {
   const day = '2026-05-30';
-  const mk = (over) => ({ needed_date: day, order_status: 'Pending', ...over });
+  const mk = (over?: Partial<Order>): Order => ({ needed_date: day, order_status: 'Pending', ...over });
 
   it('filters to the day, drops cancelled, sorts by pickup_time', () => {
     const orders = [

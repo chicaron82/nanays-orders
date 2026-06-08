@@ -210,6 +210,8 @@ function MainApp({ onLogout }: MainAppProps) {
         allOrders={orders}
         stock={stock}
         initialDate={newOrderDate}
+        blockedSet={blockedSet}
+        blockedDays={blockedDays}
       />
 
       <OrderDetailsModal

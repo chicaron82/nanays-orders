@@ -1,6 +1,6 @@
 import { m, AnimatePresence } from 'framer-motion';
 import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock, RotateCcw, Plus } from 'lucide-react';
-import type { Order, Stock } from '../types';
+import type { Order, Stock, BlockedDay } from '../types';
 import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE, EARLY_ORDER_FEE, isEarlyFulfillment } from '../lib/utils';
 import { useOrderForm } from '../hooks/useOrderForm';
 
@@ -12,18 +12,21 @@ interface Props {
   allOrders?: Order[];
   stock?: Stock | null;
   initialDate?: string | null;
+  blockedSet?: ReadonlySet<string>;
+  blockedDays?: BlockedDay[];
 }
 
 const ROW_BTN = 'w-7 h-7 rounded border-2 border-stone-200 text-orange-600 font-bold hover:bg-orange-50 flex items-center justify-center text-sm transition-colors';
 
-export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = null, allOrders = [], stock = null, initialDate = null }: Props) {
+export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = null, allOrders = [], stock = null, initialDate = null, blockedSet, blockedDays = [] }: Props) {
   const {
     form, showSuggestions, setShowSuggestions,
     nameSuggestions, setField, formatPhone,
     handleSelectSuggestion, handleSubmit, hasItems, total,
     repeatAvailable, applyRepeatLast,
     addCustomItem, updateCustomItem, removeCustomItem,
-  } = useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave });
+    isDateBlocked,
+  } = useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave, blockedSet });
 
   if (!isOpen) return null;
 
@@ -345,7 +348,12 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label htmlFor="order-date" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><CalendarDays size={14}/> Date Needed *</label>
-                <input id="order-date" name="needed_date" type="date" value={form.needed_date ?? ''} onChange={e => setField('needed_date', e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors" />
+                <input id="order-date" name="needed_date" type="date" value={form.needed_date ?? ''} onChange={e => setField('needed_date', e.target.value)} className={`w-full border-2 rounded-xl px-4 py-2.5 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors ${isDateBlocked ? 'border-red-400 focus-visible:border-red-500' : 'border-stone-200 focus-visible:border-orange-500'}`} />
+                {isDateBlocked && (
+                  <p className="text-xs text-red-500 mt-1 font-semibold">
+                    🔒 Blocked: {blockedDays.find(d => d.date === form.needed_date)?.reason || 'Family Day / Off'}
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="order-time" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><Clock size={14}/> {form.delivery_type === 'pickup' ? 'Pickup Time' : 'Delivery Time'}</label>
@@ -404,7 +412,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
             </div>
 
             {/* Submit */}
-            <button onClick={handleSubmit} disabled={!form.customer_name?.trim() || !form.needed_date || !hasItems}
+            <button onClick={handleSubmit} disabled={!form.customer_name?.trim() || !form.needed_date || !hasItems || isDateBlocked}
               className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2">
               <Save size={20} /> {editOrder ? 'Save Changes' : 'Add Order'}
             </button>

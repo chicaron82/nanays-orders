@@ -17,7 +17,7 @@ npm run test:watch  # vitest watch mode
 
 ## Stack
 
-- React 19 — **plain JSX, no TypeScript**
+- React 19 with TypeScript
 - Supabase (Postgres + realtime subscriptions + auth)
 - Vite 8 + Tailwind CSS v4
 - framer-motion (animation), sonner (toasts), lucide-react (icons)
@@ -27,20 +27,20 @@ npm run test:watch  # vitest watch mode
 
 ```
 src/
-  App.jsx          top-level shell + view switching
+  App.tsx          top-level shell + view switching
   components/      one file per screen/modal — Dashboard, OrderFormModal,
                    OrderDetailsModal, StockManager, ExpenseLog, CalendarView, LoginScreen
   hooks/           data + state, each owns its Supabase I/O — useOrders, useStock,
                    useExpenses, useAuth, useOrderForm, useBackGuard
   lib/
-    supabase.js    the Supabase client
-    utils.js       ALL pure business logic (pricing, stock math, calendar, urgency)
+    supabase.ts    the Supabase client
+    utils.ts       ALL pure business logic (pricing, stock math, calendar, urgency)
 ```
 
-**Where logic lives:** `lib/utils.js` is the pure core — pricing (`calcTotal`), stock
+**Where logic lives:** `lib/utils.ts` is the pure core — pricing (`calcTotal`), stock
 reservation/availability (`getReserved` / `getAvailable` / `checkShortage` / `getMakeMoreNeeds`),
 revenue, fulfillability warnings (`getIngredientWarnings`), and calendar math. It is fully
-unit-tested in `tests/lib/utils.test.js`. Keep hooks and components thin around it.
+unit-tested in `tests/lib/utils.test.ts`. Keep hooks and components thin around it.
 
 **Realtime pattern:** each data hook subscribes to a Supabase channel inside a `useEffect` and
 refetches on change. The fetch function is declared **inside** the effect (it's used nowhere else)
@@ -52,7 +52,7 @@ Follow this shape for new data hooks.
 - **`docs/` is a done idea-inbox, not a backlog.** Aaron drops crew ideas/fixes there from the
   lot; everything in it is already implemented and may have evolved past its note. **The code is
   the source of truth.** See `docs/INDEX.md`. Never treat a `docs/` file as open work.
-- **New pure logic in `lib/utils.js` gets a test** in `tests/lib/utils.test.js`, same commit. The
+- **New pure logic in `lib/utils.ts` gets a test** in `tests/lib/utils.test.ts`, same commit. The
   money and stock math must not silently break.
 - **Line count is judgment, not law.** A long-but-cohesive component (e.g. a big form) is fine —
   split god objects, not cohesive files. Don't refactor to hit a number.

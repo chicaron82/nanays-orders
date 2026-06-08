@@ -19,9 +19,10 @@ interface UseOrderFormProps {
   allOrders: Order[];
   initialDate?: string | null;
   onSave: (order: Order) => void;
+  blockedSet?: ReadonlySet<string>;
 }
 
-export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave }: UseOrderFormProps) {
+export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave, blockedSet }: UseOrderFormProps) {
   const [form, setForm] = useState<OrderForm>(initialForm);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -105,10 +106,16 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
   const removeCustomItem = (i: number) =>
     setForm(f => ({ ...f, custom_items: (f.custom_items || []).filter((_, idx) => idx !== i) }));
 
+  const isDateBlocked = !!(
+    form.needed_date &&
+    blockedSet?.has(form.needed_date) &&
+    (!editOrder || editOrder.needed_date !== form.needed_date)
+  );
+
   const total = calcTotal(form);
 
   const handleSubmit = () => {
-    if (!form.customer_name?.trim() || !form.needed_date || !hasItems) return;
+    if (!form.customer_name?.trim() || !form.needed_date || !hasItems || isDateBlocked) return;
     const finalOrder: OrderForm = {
       ...form,
       total,
@@ -128,5 +135,6 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
     handleSelectSuggestion, handleSubmit, hasItems, total,
     repeatAvailable, applyRepeatLast,
     addCustomItem, updateCustomItem, removeCustomItem,
+    isDateBlocked,
   };
 }

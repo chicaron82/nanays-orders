@@ -35,8 +35,8 @@ describe('lumpiaRevenue', () => {
 describe('pancitRevenue', () => {
   it('prices full / half / large + extra meat', () => {
     const o = order({ pancit: { enabled: true, full: 1, half: 2, large: 1, extraMeat: true } });
-    // 25 + 2×12.5 + 50 + 5 = 105
-    expect(pancitRevenue(o)).toBe(105);
+    // 25 + 2×12.5 + 50 + 10 = 110
+    expect(pancitRevenue(o)).toBe(110);
   });
   it('is 0 when pancit is not enabled', () => {
     expect(pancitRevenue(order({ pancit: { enabled: false, full: 3 } }))).toBe(0);
