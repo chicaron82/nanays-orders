@@ -3,7 +3,7 @@ import { ChefHat, CalendarDays, User, Check, AlertCircle } from 'lucide-react';
 import { m, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useOrderRequests } from '../hooks/useOrderRequests';
-import type { OrderRequest, BlockedDay } from '../types';
+import type { OrderRequest, BlockedDay, Order } from '../types';
 import {
   calcTotal,
   fmt,
@@ -87,8 +87,8 @@ export default function PublicRequestPage() {
   };
 
   // Build temporary order object for pricing library reuse
-  const orderObject = useMemo(() => {
-    const o: any = {
+  const orderObject = useMemo<Order>(() => {
+    const o: Order = {
       needed_date: neededDate,
       pickup_time: pickupTime,
       delivery_type: deliveryType,
@@ -140,8 +140,10 @@ export default function PublicRequestPage() {
 
   useEffect(() => {
     if (!hasItems) {
-      setShowFloatingTotal(false);
-      return;
+      const t = setTimeout(() => {
+        setShowFloatingTotal(false);
+      }, 0);
+      return () => clearTimeout(t);
     }
     const timer = setTimeout(() => {
       if (!totalRef.current) return;
@@ -387,18 +389,18 @@ export default function PublicRequestPage() {
                   <div className="pt-2 border-t border-stone-100">
                     <div className="text-xs text-stone-400 mb-2">Sauces (optional · {fmt(PANCIT_SAUCE_PRICE['sweet_and_sour'])} each)</div>
                     <div className="flex gap-2">
-                      {[
+                      {([
                         { key: 'sweet_and_sour', label: 'Sweet & Sour' },
                         { key: 'sweet_chili', label: 'Sweet Chili' },
-                      ].map(s => {
-                        const isSelected = lumpiaSauces.includes(s.key as any);
+                      ] as const).map(s => {
+                        const isSelected = lumpiaSauces.includes(s.key);
                         return (
                           <button
                             key={s.key}
                             type="button"
                             onClick={() => {
                               setLumpiaSauces(prev =>
-                                isSelected ? prev.filter(x => x !== s.key) : [...prev, s.key as any]
+                                isSelected ? prev.filter(x => x !== s.key) : [...prev, s.key]
                               );
                             }}
                             className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${isSelected ? 'bg-orange-500 border-orange-500 text-white' : 'border-stone-200 text-stone-500'}`}
@@ -548,7 +550,7 @@ export default function PublicRequestPage() {
                 <select
                   id="req-delivery"
                   value={deliveryType}
-                  onChange={e => setDeliveryType(e.target.value as any)}
+                  onChange={e => setDeliveryType(e.target.value as 'pickup' | 'city' | 'outside')}
                   className="w-full border-2 border-stone-200 bg-white rounded-xl px-4 py-2.5 outline-none focus:border-orange-500 transition-colors"
                 >
                   <option value="pickup">🏠 Pickup (free)</option>
@@ -648,7 +650,7 @@ export default function PublicRequestPage() {
       </div>
 
       <AnimatePresence>
-        {showFloatingTotal && (
+        {hasItems && showFloatingTotal && (
           <m.div
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
