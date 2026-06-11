@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fuzzyMatch, calcTotal, lastOrderFor } from '../lib/utils';
+import { fuzzyMatch, calcTotal, orderSubtotal, discountAmount, lastOrderFor } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import type { Order, OrderForm } from '../types';
 
@@ -11,6 +11,7 @@ const initialForm: OrderForm = {
   needed_date: "", pickup_time: "", delivery_type: "pickup", address: "",
   payment_status: "Unpaid", deposit_amount: null, notes: "", preferences: "",
   rush_order: false, early_fee_waived: false, order_status: "Pending", saveCustomer: false,
+  discount_type: "flat", discount_value: null, discount_label: "",
 };
 
 interface UseOrderFormProps {
@@ -82,6 +83,14 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
   const repeatSource = !editOrder && q.trim() ? lastOrderFor(q, allOrders) : undefined;
   const repeatAvailable = !!repeatSource;
 
+  // Loyalty nudge: how many past (non-cancelled) orders match this customer.
+  // Informs sis's thank-you-discount decision — never makes it for her.
+  const repeatOrderCount = q.trim()
+    ? allOrders.filter(o =>
+        o.id !== editOrder?.id && o.order_status !== 'Cancelled' && fuzzyMatch(o.customer_name, q)
+      ).length
+    : 0;
+
   const applyRepeatLast = () => {
     if (!repeatSource) return;
     setForm(f => ({
@@ -112,15 +121,21 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
     (!editOrder || editOrder.needed_date !== form.needed_date)
   );
 
+  const subtotal = orderSubtotal(form);
+  const discount = discountAmount(form, subtotal);
   const total = calcTotal(form);
 
   const handleSubmit = () => {
     if (!form.customer_name?.trim() || !form.needed_date || !hasItems || isDateBlocked) return;
+    const hasDiscount = (Number(form.discount_value) || 0) > 0;
     const finalOrder: OrderForm = {
       ...form,
       total,
       deposit_amount: form.deposit_amount ?? null,
       custom_items: validCustomItems.map(c => ({ name: c.name.trim(), price: Number(c.price) || 0 })),
+      // A label without a value is noise — persist discount fields only as a pair.
+      discount_value: hasDiscount ? Number(form.discount_value) : null,
+      discount_label: hasDiscount ? (form.discount_label?.trim() || '') : '',
     };
     if (finalOrder.saveCustomer) {
       supabase.from('customers').upsert({ name: finalOrder.customer_name, contact: finalOrder.contact, preferences: finalOrder.preferences }).then();
@@ -132,8 +147,8 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
   return {
     form, showSuggestions, setShowSuggestions,
     nameSuggestions, setField, formatPhone,
-    handleSelectSuggestion, handleSubmit, hasItems, total,
-    repeatAvailable, applyRepeatLast,
+    handleSelectSuggestion, handleSubmit, hasItems, total, subtotal, discount,
+    repeatAvailable, applyRepeatLast, repeatOrderCount,
     addCustomItem, updateCustomItem, removeCustomItem,
     isDateBlocked,
   };

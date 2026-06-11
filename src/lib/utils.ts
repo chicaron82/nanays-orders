@@ -55,7 +55,8 @@ export function customItemsTotal(order: Order): number {
   return (order.custom_items || []).reduce((s, c) => s + (Number(c.price) || 0), 0);
 }
 
-export function calcTotal(order: Order): number {
+/** Pre-discount total — items + fees. The number a discount applies to. */
+export function orderSubtotal(order: Order): number {
   let t = 0;
   if (order.lumpia?.enabled) {
     t += LUMPIA_PRICE[lumpiaStyleFor(order.lumpia, 'sets')] * (order.lumpia.sets || 0);
@@ -73,6 +74,23 @@ export function calcTotal(order: Order): number {
   t += earlyFeeApplies(order) ? EARLY_ORDER_FEE : 0;
   t += order.delivery_type ? (DELIVERY_FEE[order.delivery_type] || 0) : 0;
   return t;
+}
+
+/**
+ * What the goodwill discount takes off the subtotal — percent or flat,
+ * rounded to cents and clamped to [0, subtotal] so a total can't go negative.
+ * 0 when there's no positive discount_value.
+ */
+export function discountAmount(order: Order, subtotal: number = orderSubtotal(order)): number {
+  const v = Number(order.discount_value) || 0;
+  if (v <= 0) return 0;
+  const raw = order.discount_type === 'percent' ? (subtotal * v) / 100 : v;
+  return Math.min(Math.round(raw * 100) / 100, subtotal);
+}
+
+export function calcTotal(order: Order): number {
+  const subtotal = orderSubtotal(order);
+  return subtotal - discountAmount(order, subtotal);
 }
 
 export function orderSummary(order: Order): string {
@@ -319,6 +337,10 @@ export function buildOrderMessage(order: Order): string {
   const lines = [`${order.customer_name || 'Order'} — Order Confirmation`, orderSummary(order)];
   const when = `📅 ${formatDate(order.needed_date)}${order.pickup_time ? ` @ ${order.pickup_time}` : ''}`;
   lines.push(when);
+  // The discount line is the goodwill moment — the customer should SEE the
+  // storm apology / loyalty thank-you, not just a quietly smaller total.
+  const disc = discountAmount(order);
+  if (disc > 0) lines.push(`🏷️ ${order.discount_label?.trim() || 'Discount'} −${fmt(disc)}`);
   const owing = amountOwing(order);
   const tip = tipAmount(order);
   if (order.payment_status === 'Prepaid') {

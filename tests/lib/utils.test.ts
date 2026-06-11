@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Order } from '../../src/types';
 import {
-  calcTotal, orderSummary,
+  calcTotal, orderSubtotal, discountAmount, orderSummary,
   getDaysUntil, urgencyLabel,
   getReserved, getAvailable, checkShortage, getMakeMoreNeeds,
   getRevenue, isSettled,
@@ -172,6 +172,43 @@ describe('getMakeMoreNeeds', () => {
   });
 });
 
+// ─── DISCOUNT ────────────────────────────────────────────────────────────────────
+
+describe('discountAmount / calcTotal with discount', () => {
+  const base: Order = { pancit: { enabled: true, full: 2, half: 0, large: 0 }, delivery_type: 'pickup' };
+
+  it('flat discount comes straight off the subtotal', () => {
+    const o: Order = { ...base, discount_type: 'flat', discount_value: 10 };
+    const sub = orderSubtotal(o);
+    expect(discountAmount(o, sub)).toBe(10);
+    expect(calcTotal(o)).toBe(sub - 10);
+  });
+
+  it('percent discount derives from the subtotal, rounded to cents', () => {
+    const o: Order = { ...base, discount_type: 'percent', discount_value: 15 };
+    const sub = orderSubtotal(o);
+    expect(discountAmount(o, sub)).toBe(Math.round(sub * 15) / 100);
+    expect(calcTotal(o)).toBe(sub - Math.round(sub * 15) / 100);
+  });
+
+  it('a discount larger than the subtotal clamps — the total floors at $0, never negative', () => {
+    const o: Order = { ...base, discount_type: 'flat', discount_value: 99999 };
+    expect(calcTotal(o)).toBe(0);
+  });
+
+  it('no value, zero, or negative → no discount', () => {
+    expect(discountAmount(base, 100)).toBe(0);
+    expect(discountAmount({ ...base, discount_type: 'flat', discount_value: 0 }, 100)).toBe(0);
+    expect(discountAmount({ ...base, discount_type: 'percent', discount_value: -5 }, 100)).toBe(0);
+  });
+
+  it('discount stacks after fees — rush/early/delivery are part of the subtotal it applies to', () => {
+    const o: Order = { ...base, rush_order: true, discount_type: 'percent', discount_value: 10 };
+    const sub = orderSubtotal(o); // includes the rush fee
+    expect(calcTotal(o)).toBe(sub - Math.round(sub * 10) / 100);
+  });
+});
+
 // ─── SETTLED ─────────────────────────────────────────────────────────────────────
 
 describe('isSettled', () => {
@@ -279,6 +316,14 @@ describe('buildOrderMessage', () => {
   });
   it('shows fully paid for Prepaid orders', () => {
     expect(buildOrderMessage({ ...base, payment_status: 'Prepaid' })).toContain('Fully paid');
+  });
+  it('includes the discount line with its label — the goodwill moment', () => {
+    const msg = buildOrderMessage({ ...base, payment_status: 'Unpaid', discount_type: 'flat', discount_value: 10, discount_label: 'Moved date 🙏' });
+    expect(msg).toContain('🏷️ Moved date 🙏 −$10.00');
+  });
+  it('falls back to "Discount" when there is no label, and omits the line entirely when there is no discount', () => {
+    expect(buildOrderMessage({ ...base, payment_status: 'Unpaid', discount_type: 'flat', discount_value: 5 })).toContain('🏷️ Discount −$5.00');
+    expect(buildOrderMessage({ ...base, payment_status: 'Unpaid' })).not.toContain('🏷️');
   });
 });
 

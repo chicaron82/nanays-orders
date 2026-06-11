@@ -4,6 +4,7 @@
 
 export type OrderStatus = 'Pending' | 'Ready' | 'Fulfilled' | 'Cancelled';
 export type PaymentStatus = 'Unpaid' | 'Deposit' | 'Prepaid';
+export type DiscountType = 'percent' | 'flat';
 export type DeliveryType = 'pickup' | 'city' | 'outside';
 export type LumpiaSauce = 'sweet_and_sour' | 'sweet_chili';
 export type StockLevel = 'plenty' | 'low' | 'out';
@@ -51,6 +52,12 @@ export interface Order {
   preferences?: string;
   rush_order?: boolean;
   early_fee_waived?: boolean;  // Christine's override: suppress the early-fulfillment fee
+  // Goodwill discount — one mechanism, many reasons (storm delay, loyalty thank-you).
+  // type+value are stored (not a precomputed amount) so editing items re-derives a
+  // percent correctly; the free-text label is the human explanation.
+  discount_type?: DiscountType;
+  discount_value?: number | null;
+  discount_label?: string;
   order_status?: OrderStatus;
   total?: number;
   created_at?: string;

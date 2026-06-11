@@ -3,7 +3,7 @@ import { m, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Edit2, AlertTriangle, Calendar, MapPin, Phone, MessageSquare, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Order, Stock, PaymentStatus } from '../types';
-import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, buildOrderMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, PAYMENT_STATUS } from '../lib/utils';
+import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, buildOrderMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, PAYMENT_STATUS } from '../lib/utils';
 
 interface Props {
   order: Order | null;
@@ -186,6 +186,11 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
             <div className="bg-gradient-to-r from-orange-600 to-amber-500 rounded-xl p-5 flex justify-between items-center text-white shadow-lg">
               <div>
                 <div className="text-sm font-bold opacity-80 uppercase tracking-wider">Total</div>
+                {!cancelled && discountAmount(order) > 0 && (
+                  <div className="text-xs opacity-90 mt-1 font-semibold">
+                    🏷️ −{fmt(discountAmount(order))}{order.discount_label?.trim() ? ` · ${order.discount_label.trim()}` : ''}
+                  </div>
+                )}
                 <div className="text-xs opacity-70 mt-1">
                   {cancelled && `✗ Cancelled`}
                   {!cancelled && order.payment_status === 'Unpaid' && `Balance Due: ${fmt(total)}`}

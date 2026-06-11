@@ -22,8 +22,8 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
   const {
     form, showSuggestions, setShowSuggestions,
     nameSuggestions, setField, formatPhone,
-    handleSelectSuggestion, handleSubmit, hasItems, total,
-    repeatAvailable, applyRepeatLast,
+    handleSelectSuggestion, handleSubmit, hasItems, total, subtotal, discount,
+    repeatAvailable, applyRepeatLast, repeatOrderCount,
     addCustomItem, updateCustomItem, removeCustomItem,
     isDateBlocked,
   } = useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave, blockedSet });
@@ -309,13 +309,76 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
               </button>
             </div>
 
+            {/* Discount — goodwill gesture: storm delay, loyalty thank-you */}
+            <div>
+              <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+                🏷️ Discount <span className="font-normal normal-case text-stone-400">— optional</span>
+              </label>
+              {repeatOrderCount >= 2 && (
+                <div className="text-xs font-semibold text-amber-600 mb-2">
+                  ⭐ {form.customer_name?.trim()} has ordered {repeatOrderCount} times — maybe a thank-you?
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg border-2 border-stone-200 overflow-hidden shrink-0">
+                  {(['flat', 'percent'] as const).map(t => (
+                    <button key={t} type="button" onClick={() => setField('discount_type', t)}
+                      className={`px-3 py-2 text-sm font-bold transition-colors ${
+                        (form.discount_type ?? 'flat') === t ? 'bg-stone-800 text-white' : 'bg-white text-stone-500 hover:bg-stone-50'
+                      }`}
+                    >
+                      {t === 'flat' ? '$' : '%'}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="number" min={0} step={form.discount_type === 'percent' ? 1 : 0.01}
+                  value={form.discount_value ?? ''}
+                  onChange={e => setField('discount_value', e.target.value === '' ? null : Number(e.target.value))}
+                  placeholder="0"
+                  className="w-20 shrink-0 border-2 border-stone-200 rounded-lg px-3 py-2 text-sm focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors"
+                />
+                <input
+                  type="text" value={form.discount_label ?? ''}
+                  onChange={e => setField('discount_label', e.target.value)}
+                  placeholder="Why? e.g. moved date"
+                  className="flex-1 min-w-0 border-2 border-stone-200 rounded-lg px-3 py-2 text-sm focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors"
+                />
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {['Moved date 🙏', 'Thank you for coming back ⭐'].map(preset => (
+                  <button key={preset} type="button" onClick={() => setField('discount_label', preset)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border-2 transition-colors ${
+                      form.discount_label === preset ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-stone-200 text-stone-500 hover:border-amber-300 hover:text-amber-600'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Running subtotal */}
             {(form.lumpia?.enabled || form.pancit?.enabled || (form.custom_items?.some(c => c.name?.trim() && c.price > 0))) && (
-              <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-                <span className="text-sm font-semibold text-stone-600">
-                  {form.delivery_type !== 'pickup' ? 'Total (incl. delivery)' : 'Total'}
-                </span>
-                <span className="text-xl font-black text-orange-600">{fmt(total)}</span>
+              <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 space-y-1">
+                {discount > 0 && (
+                  <>
+                    <div className="flex items-center justify-between text-sm text-stone-500">
+                      <span>Subtotal</span>
+                      <span className="font-semibold">{fmt(subtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-amber-700">
+                      <span>🏷️ {form.discount_label?.trim() || 'Discount'}</span>
+                      <span className="font-semibold">−{fmt(discount)}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-stone-600">
+                    {form.delivery_type !== 'pickup' ? 'Total (incl. delivery)' : 'Total'}
+                  </span>
+                  <span className="text-xl font-black text-orange-600">{fmt(total)}</span>
+                </div>
               </div>
             )}
 

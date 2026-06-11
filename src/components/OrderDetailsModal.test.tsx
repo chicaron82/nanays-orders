@@ -112,6 +112,23 @@ describe('OrderDetailsModal — payment controls', () => {
   });
 });
 
+describe('OrderDetailsModal — discount line', () => {
+  it('shows the discount and its label on the total card', () => {
+    renderModal(order({ discount_type: 'flat', discount_value: 10, discount_label: 'Moved date 🙏' }));
+    expect(screen.getByText(/−\$10\.00 · Moved date 🙏/)).toBeInTheDocument();
+  });
+
+  it('no discount → no line', () => {
+    renderModal(order());
+    expect(screen.queryByText(/🏷️/)).not.toBeInTheDocument();
+  });
+
+  it('a cancelled order hides the discount line', () => {
+    renderModal(order({ order_status: 'Cancelled', discount_type: 'flat', discount_value: 10 }));
+    expect(screen.queryByText(/−\$10\.00/)).not.toBeInTheDocument();
+  });
+});
+
 describe('OrderDetailsModal — cancelled in the payment row', () => {
   it('there is no separate status section', () => {
     renderModal(order());
