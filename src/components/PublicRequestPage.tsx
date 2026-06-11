@@ -4,6 +4,7 @@ import { m, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useOrderRequests } from '../hooks/useOrderRequests';
 import ItemRowPicker from './ItemRowPicker';
+import BuildStamp from './BuildStamp';
 import type { OrderRequest, BlockedDay, Order } from '../types';
 import {
   calcTotal,
@@ -622,6 +623,8 @@ export default function PublicRequestPage() {
           </m.div>
         )}
       </AnimatePresence>
+
+      <BuildStamp />
     </div>
   );
 }

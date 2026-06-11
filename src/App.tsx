@@ -20,6 +20,7 @@ import OrderDetailsModal from './components/OrderDetailsModal';
 import LoginScreen from './components/LoginScreen';
 import PublicRequestPage from './components/PublicRequestPage';
 import RequestsView from './components/RequestsView';
+import BuildStamp from './components/BuildStamp';
 import { getRepeatCustomers, nextAvailableDate, formatDate, buildRequestConfirmMessage, buildRequestDeclineMessage } from './lib/utils';
 
 interface MainAppProps {
@@ -295,6 +296,8 @@ function MainApp({ onLogout }: MainAppProps) {
           </div>
         </div>
       )}
+
+      <BuildStamp tone="light" />
     </div>
   );
 }
