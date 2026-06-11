@@ -78,6 +78,7 @@ export default function PublicRequestPage() {
   // Status
   const [submittedRequest, setSubmittedRequest] = useState<OrderRequest | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [attempted, setAttempted] = useState(false);
 
   const formatPhone = (raw: string) => {
     const d = raw.replace(/\D/g, '').slice(0, 10);
@@ -156,9 +157,17 @@ export default function PublicRequestPage() {
     return () => clearTimeout(timer);
   }, [hasItems]);
 
+  const nameError     = attempted && customerName.trim().length === 0;
+  const contactError  = attempted && contact.replace(/\D/g, '').length < 10;
+  const dateError     = attempted && neededDate.length === 0;
+  const timeError     = attempted && pickupTime.length === 0;
+  const itemsError    = attempted && !hasItems;
+  const addressError  = attempted && deliveryType !== 'pickup' && address.trim().length === 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid || submitting) return;
+    if (!isValid) { setAttempted(true); return; }
+    if (submitting) return;
 
     try {
       setSubmitting(true);
@@ -285,8 +294,9 @@ export default function PublicRequestPage() {
                   placeholder="e.g., Tita Cora"
                   value={customerName}
                   onChange={e => setCustomerName(e.target.value)}
-                  className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 outline-none focus:border-orange-500 transition-colors"
+                  className={`w-full border-2 rounded-xl px-4 py-2.5 outline-none transition-colors ${nameError ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-orange-500'}`}
                 />
+                {nameError && <p className="text-xs text-red-500 mt-1">Please enter your name.</p>}
               </div>
               <div>
                 <label htmlFor="customer-contact" className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Cell Phone Number *</label>
@@ -297,8 +307,9 @@ export default function PublicRequestPage() {
                   placeholder="204-555-0100"
                   value={contact}
                   onChange={e => setContact(formatPhone(e.target.value))}
-                  className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 outline-none focus:border-orange-500 transition-colors"
+                  className={`w-full border-2 rounded-xl px-4 py-2.5 outline-none transition-colors ${contactError ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-orange-500'}`}
                 />
+                {contactError && <p className="text-xs text-red-500 mt-1">Please enter a 10-digit phone number so Christine can reach you.</p>}
               </div>
             </div>
           </div>
@@ -308,6 +319,10 @@ export default function PublicRequestPage() {
             <h2 className="font-playfair text-lg font-black text-stone-800 flex items-center gap-2 border-b border-stone-100 pb-2">
               <ChefHat size={18} className="text-orange-500" /> Menu Selection
             </h2>
+
+            {itemsError && (
+              <p className="text-xs text-red-500 -mt-2">Please select at least one item.</p>
+            )}
 
             {/* Lumpia */}
             <div className={`border-2 rounded-xl overflow-hidden transition-colors ${lumpiaEnabled ? 'border-orange-400' : 'border-stone-200'}`}>
@@ -529,8 +544,9 @@ export default function PublicRequestPage() {
                   type="date"
                   value={neededDate}
                   onChange={e => setNeededDate(e.target.value)}
-                  className={`w-full border-2 rounded-xl px-4 py-2.5 outline-none transition-colors ${isDateBlocked ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-orange-500'}`}
+                  className={`w-full border-2 rounded-xl px-4 py-2.5 outline-none transition-colors ${isDateBlocked ? 'border-red-400 focus:border-red-500' : dateError ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-orange-500'}`}
                 />
+                {dateError && <p className="text-xs text-red-500 mt-1">Please select a date.</p>}
               </div>
 
               <div>
@@ -541,8 +557,9 @@ export default function PublicRequestPage() {
                   type="time"
                   value={pickupTime}
                   onChange={e => setPickupTime(e.target.value)}
-                  className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 outline-none focus:border-orange-500 transition-colors"
+                  className={`w-full border-2 rounded-xl px-4 py-2.5 outline-none transition-colors ${timeError ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-orange-500'}`}
                 />
+                {timeError && <p className="text-xs text-red-500 mt-1">Please select a time.</p>}
               </div>
 
               <div>
@@ -580,8 +597,9 @@ export default function PublicRequestPage() {
                   placeholder="Street address, City"
                   value={address}
                   onChange={e => setAddress(e.target.value)}
-                  className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 outline-none focus:border-orange-500 transition-colors"
+                  className={`w-full border-2 rounded-xl px-4 py-2.5 outline-none transition-colors ${addressError ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-orange-500'}`}
                 />
+                {addressError && <p className="text-xs text-red-500 mt-1">Please enter a delivery address.</p>}
               </div>
             )}
           </div>
@@ -640,7 +658,7 @@ export default function PublicRequestPage() {
           {/* Submit */}
           <button
             type="submit"
-            disabled={!isValid || submitting}
+            disabled={submitting}
             className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2 text-lg"
           >
             {submitting ? 'Submitting...' : 'Send Order Request'}
