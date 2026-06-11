@@ -1,4 +1,4 @@
-import type { Order, LumpiaOrder, Stock, DeliveryType, LumpiaSauce, PaymentStatus } from '../types';
+import type { Order, OrderRequest, LumpiaOrder, Stock, DeliveryType, LumpiaSauce, PaymentStatus } from '../types';
 
 // ─── PRICING ─────────────────────────────────────────────────────────────────
 export const LUMPIA_PRICE = { uncooked: 30, cooked: 35 };
@@ -371,6 +371,30 @@ export function buildReadyMessage(order: Order): string {
   const owing = amountOwing(order);
   const money = owing > 0 ? `Balance: ${fmt(owing)}. Thank you! 🧡` : `All paid ✓ — see you soon! 🧡`;
   return `${greeting} 🥟 ${where} ${money}`;
+}
+
+/** Confirmation text to paste to the customer when their request is approved. */
+export function buildRequestConfirmMessage(req: OrderRequest): string {
+  const items = orderSummary(req as unknown as Order);
+  const when = `📅 ${formatDate(req.needed_date)}${req.pickup_time ? ` at ${req.pickup_time}` : ''}`;
+  const where = req.delivery_type === 'pickup'
+    ? '🏠 Pickup'
+    : `🚗 Delivery to ${req.address || ''}`.trimEnd();
+  return [
+    `Hi ${req.customer_name}! 🎉 Your order is confirmed!`,
+    '',
+    items,
+    when,
+    where,
+    `💵 Total: ${fmt(req.total)}`,
+    '',
+    'Looking forward to it! 🥟🍜',
+  ].join('\n');
+}
+
+/** Short polite decline text to paste to the customer when their request can't be taken. */
+export function buildRequestDeclineMessage(req: OrderRequest): string {
+  return `Hi ${req.customer_name}, thank you so much for reaching out! Unfortunately we're not able to take your request at this time. We hope to serve you soon! 🙏🧡`;
 }
 
 export const PAYMENT_STATUS: PaymentStatus[] = ["Unpaid", "Deposit", "Prepaid"];

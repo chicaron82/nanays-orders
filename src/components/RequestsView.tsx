@@ -6,7 +6,7 @@ interface RequestsViewProps {
   requests: OrderRequest[];
   blockedSet: ReadonlySet<string>;
   onApprove: (request: OrderRequest) => void;
-  onDecline: (id: string) => void;
+  onDecline: (request: OrderRequest) => void;
 }
 
 export default function RequestsView({ requests, blockedSet, onApprove, onDecline }: RequestsViewProps) {
@@ -109,11 +109,7 @@ export default function RequestsView({ requests, blockedSet, onApprove, onDeclin
                   <Check size={16} /> Approve
                 </button>
                 <button
-                  onClick={() => {
-                    if (confirm(`Are you sure you want to decline ${req.customer_name}'s request?`)) {
-                      onDecline(req.id!);
-                    }
-                  }}
+                  onClick={() => onDecline(req)}
                   className="flex-1 md:flex-initial bg-white border border-stone-200 text-red-500 font-bold py-3 px-4 rounded-xl hover:bg-red-50 hover:border-red-200 transition-colors flex items-center justify-center gap-2 active:scale-95 text-sm"
                 >
                   <Trash2 size={16} /> Decline

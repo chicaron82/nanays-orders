@@ -20,7 +20,7 @@ import OrderDetailsModal from './components/OrderDetailsModal';
 import LoginScreen from './components/LoginScreen';
 import PublicRequestPage from './components/PublicRequestPage';
 import RequestsView from './components/RequestsView';
-import { getRepeatCustomers, nextAvailableDate, formatDate, fmt } from './lib/utils';
+import { getRepeatCustomers, nextAvailableDate, formatDate, buildRequestConfirmMessage, buildRequestDeclineMessage } from './lib/utils';
 
 interface MainAppProps {
   onLogout: () => void;
@@ -40,13 +40,21 @@ function MainApp({ onLogout }: MainAppProps) {
   const [newOrderDate, setNewOrderDate] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [blockedWarning, setBlockedWarning] = useState<{ date: string; next: string; reason?: string | null } | null>(null);
-  const [approvedRequestMsg, setApprovedRequestMsg] = useState<string | null>(null);
+  const [requestMsg, setRequestMsg] = useState<{ msg: string; title: string; emoji: string } | null>(null);
 
   const handleApproveRequest = async (req: OrderRequest) => {
     try {
       await approveRequest(req);
-      const msg = `Hey ${req.customer_name}! Your order for ${formatDate(req.needed_date)} at ${req.pickup_time} is confirmed! Total: ${fmt(req.total)} (${req.delivery_type === 'pickup' ? '🏠 Pickup' : `🚗 Delivery to: ${req.address}`}). Thank you! 🥟🍜`;
-      setApprovedRequestMsg(msg);
+      setRequestMsg({ emoji: '🎉', title: 'Order Confirmed!', msg: buildRequestConfirmMessage(req) });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeclineRequest = async (req: OrderRequest) => {
+    try {
+      await declineRequest(req.id!);
+      setRequestMsg({ emoji: '🙏', title: 'Request Declined', msg: buildRequestDeclineMessage(req) });
     } catch (e) {
       console.error(e);
     }
@@ -190,7 +198,7 @@ function MainApp({ onLogout }: MainAppProps) {
             requests={requests}
             blockedSet={blockedSet}
             onApprove={handleApproveRequest}
-            onDecline={declineRequest}
+            onDecline={handleDeclineRequest}
           />
         )}
         {tab === 'stock' && (
@@ -255,32 +263,30 @@ function MainApp({ onLogout }: MainAppProps) {
         </div>
       )}
 
-      {approvedRequestMsg && (
+      {requestMsg && (
         <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center space-y-4">
-            <div className="text-3xl">🎉</div>
-            <h3 className="font-playfair text-xl font-black text-stone-800">Order Confirmed!</h3>
-            <p className="text-xs text-stone-500">
-              Copy this message to text it to the customer:
-            </p>
+            <div className="text-3xl">{requestMsg.emoji}</div>
+            <h3 className="font-playfair text-xl font-black text-stone-800">{requestMsg.title}</h3>
+            <p className="text-xs text-stone-500">Copy this message to text it to the customer:</p>
             <textarea
               readOnly
-              value={approvedRequestMsg}
+              value={requestMsg.msg}
               className="w-full h-32 border-2 border-stone-200 rounded-xl p-3 text-sm text-stone-700 font-semibold focus:border-orange-500 outline-none resize-none"
             />
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(approvedRequestMsg);
-                  toast.success('Confirmation message copied to clipboard! 📋');
-                  setApprovedRequestMsg(null);
+                  navigator.clipboard.writeText(requestMsg.msg);
+                  toast.success('Message copied! 📋');
+                  setRequestMsg(null);
                 }}
                 className="flex-1 bg-orange-500 text-white font-bold py-3 rounded-xl hover:bg-orange-600 transition-colors text-sm flex items-center justify-center gap-2"
               >
                 Copy &amp; Close
               </button>
               <button
-                onClick={() => setApprovedRequestMsg(null)}
+                onClick={() => setRequestMsg(null)}
                 className="px-4 py-3 rounded-xl bg-stone-100 text-stone-600 font-bold text-sm hover:bg-stone-200 transition-colors"
               >
                 Close
