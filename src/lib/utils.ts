@@ -357,6 +357,22 @@ export function buildOrderMessage(order: Order): string {
   return lines.join('\n');
 }
 
+/**
+ * The "come get it" text — pasted to the customer when the food is done.
+ * Deliberately NOT a status: sis texts people, she doesn't track state (the
+ * Ready pill died unused). The ready moment is also the natural payment-chase
+ * moment, so the balance rides along when something's owed.
+ */
+export function buildReadyMessage(order: Order): string {
+  const greeting = order.customer_name ? `Hi ${order.customer_name}!` : 'Hi!';
+  const where = order.delivery_type === 'pickup'
+    ? `Your order is ready for pickup${order.pickup_time ? ` — see you at ${order.pickup_time}` : ''}!`
+    : `Your order is ready and heading your way${order.address ? ` to ${order.address}` : ''}! 🚗`;
+  const owing = amountOwing(order);
+  const money = owing > 0 ? `Balance: ${fmt(owing)}. Thank you! 🧡` : `All paid ✓ — see you soon! 🧡`;
+  return `${greeting} 🥟 ${where} ${money}`;
+}
+
 export const PAYMENT_STATUS: PaymentStatus[] = ["Unpaid", "Deposit", "Prepaid"];
 
 // ─── FULFILLABILITY WARNINGS ─────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import {
   getReserved, getAvailable, checkShortage, getMakeMoreNeeds,
   getRevenue, isSettled,
   fuzzyMatch, getRepeatCustomers, isRepeat, lastOrderFor,
-  formatDate, fmt, buildOrderMessage,
+  formatDate, fmt, buildOrderMessage, buildReadyMessage,
   getIngredientWarnings,
   localYMD, getWeekDays, getMonthGrid,
   dayLoad, LOAD_THRESHOLDS,
@@ -324,6 +324,32 @@ describe('buildOrderMessage', () => {
   it('falls back to "Discount" when there is no label, and omits the line entirely when there is no discount', () => {
     expect(buildOrderMessage({ ...base, payment_status: 'Unpaid', discount_type: 'flat', discount_value: 5 })).toContain('🏷️ Discount −$5.00');
     expect(buildOrderMessage({ ...base, payment_status: 'Unpaid' })).not.toContain('🏷️');
+  });
+});
+
+describe('buildReadyMessage', () => {
+  const base = { customer_name: 'Sadie', total: 85, payment_status: 'Unpaid' as const };
+
+  it('pickup: ready text with the time and the balance chase', () => {
+    const msg = buildReadyMessage({ ...base, delivery_type: 'pickup', pickup_time: '10:30' });
+    expect(msg).toBe('Hi Sadie! 🥟 Your order is ready for pickup — see you at 10:30! Balance: $85.00. Thank you! 🧡');
+  });
+
+  it('delivery: heading-your-way with the address', () => {
+    const msg = buildReadyMessage({ ...base, delivery_type: 'city', address: '1 Main St' });
+    expect(msg).toContain('ready and heading your way to 1 Main St! 🚗');
+    expect(msg).toContain('Balance: $85.00');
+  });
+
+  it('fully paid: all-paid sign-off, no balance line', () => {
+    const msg = buildReadyMessage({ ...base, payment_status: 'Prepaid', delivery_type: 'pickup' });
+    expect(msg).toContain('All paid ✓ — see you soon! 🧡');
+    expect(msg).not.toContain('Balance');
+  });
+
+  it('a deposit-covered order also reads as all paid', () => {
+    const msg = buildReadyMessage({ ...base, payment_status: 'Deposit', deposit_amount: 85, delivery_type: 'pickup' });
+    expect(msg).toContain('All paid ✓');
   });
 });
 

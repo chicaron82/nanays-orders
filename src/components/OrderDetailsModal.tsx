@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Edit2, AlertTriangle, Calendar, MapPin, Phone, MessageSquare, Share2 } from 'lucide-react';
+import { X, Trash2, Edit2, AlertTriangle, Calendar, MapPin, Phone, MessageSquare, Share2, BellRing } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Order, Stock, PaymentStatus } from '../types';
-import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, buildOrderMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, PAYMENT_STATUS } from '../lib/utils';
+import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, buildOrderMessage, buildReadyMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, PAYMENT_STATUS } from '../lib/utils';
 
 interface Props {
   order: Order | null;
@@ -65,20 +65,21 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
   const commitPaid = (tipAmt: number) =>
     onPaymentChange(order.id!, { payment_status: 'Prepaid', deposit_amount: null, tip_amount: tipAmt });
 
-  const handleShare = async () => {
-    const text = buildOrderMessage(order);
+  const shareText = async (text: string, copiedMsg: string) => {
     try {
       await navigator.share({ text });
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return;
       try {
         await navigator.clipboard.writeText(text);
-        toast.success('Order copied 📋');
+        toast.success(copiedMsg);
       } catch {
         toast.error('Could not share or copy');
       }
     }
   };
+  const handleShare = () => shareText(buildOrderMessage(order), 'Order copied 📋');
+  const handleShareReady = () => shareText(buildReadyMessage(order), 'Ready message copied 📋');
 
   return (
     <AnimatePresence>
@@ -98,7 +99,11 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
             </div>
             <div className="flex flex-col items-end gap-3">
               <div className="flex items-center gap-2">
-                <button onClick={handleShare} aria-label="Share order" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><Share2 size={16}/></button>
+                {!cancelled && (
+                  <button onClick={handleShareReady} aria-label="Share ready message" title="Order is ready — text the customer"
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><BellRing size={16}/></button>
+                )}
+                <button onClick={handleShare} aria-label="Share order" title="Order confirmation" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><Share2 size={16}/></button>
                 <button onClick={onClose} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><X size={18}/></button>
               </div>
               {urgency && !cancelled && !settled && (

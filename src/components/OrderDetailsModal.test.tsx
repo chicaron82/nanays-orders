@@ -112,6 +112,19 @@ describe('OrderDetailsModal — payment controls', () => {
   });
 });
 
+describe('OrderDetailsModal — ready-message share', () => {
+  it('shows the ready-message bell next to the share button', () => {
+    renderModal(order());
+    expect(screen.getByLabelText('Share ready message')).toBeInTheDocument();
+    expect(screen.getByLabelText('Share order')).toBeInTheDocument();
+  });
+
+  it('hides the bell for a cancelled order', () => {
+    renderModal(order({ order_status: 'Cancelled' }));
+    expect(screen.queryByLabelText('Share ready message')).not.toBeInTheDocument();
+  });
+});
+
 describe('OrderDetailsModal — discount line', () => {
   it('shows the discount and its label on the total card', () => {
     renderModal(order({ discount_type: 'flat', discount_value: 10, discount_label: 'Moved date 🙏' }));
