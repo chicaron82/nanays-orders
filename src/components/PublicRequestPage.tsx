@@ -3,6 +3,7 @@ import { ChefHat, CalendarDays, User, Check, AlertCircle } from 'lucide-react';
 import { m, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useOrderRequests } from '../hooks/useOrderRequests';
+import ItemRowPicker from './ItemRowPicker';
 import type { OrderRequest, BlockedDay, Order } from '../types';
 import {
   calcTotal,
@@ -17,8 +18,6 @@ import {
   isEarlyFulfillment,
   formatDate,
 } from '../lib/utils';
-
-const ROW_BTN = 'w-8 h-8 rounded border border-stone-300 text-orange-600 font-bold hover:bg-orange-50 flex items-center justify-center text-sm transition-colors active:scale-95';
 
 export default function PublicRequestPage() {
   const { submitRequest } = useOrderRequests();
@@ -126,17 +125,26 @@ export default function PublicRequestPage() {
   const isDateBlocked = !!(neededDate && blockedSet.has(neededDate));
   const dateBlockReason = blockedDays.find(d => d.date === neededDate)?.reason;
 
+  // Minimum 2-day lead time so there's prep runway — earliest selectable date is 2 days out.
+  const minDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    return d.toLocaleDateString('en-CA');
+  })();
+  const isDateTooSoon = !!(neededDate && neededDate < minDate);
+
   const hasItems =
     (lumpiaEnabled && (lumpiaSets + lumpiaHalves > 0)) ||
     (pancitEnabled && (pancitFull + pancitHalf + pancitLarge > 0));
 
   const isValid =
     customerName.trim().length > 0 &&
-    contact.trim().length >= 10 &&
+    contact.replace(/\D/g, '').length === 10 &&
     neededDate.length > 0 &&
     pickupTime.length > 0 &&
     hasItems &&
     !isDateBlocked &&
+    !isDateTooSoon &&
     (deliveryType === 'pickup' || address.trim().length > 0);
 
   useEffect(() => {
@@ -343,62 +351,24 @@ export default function PublicRequestPage() {
               {lumpiaEnabled && (
                 <div className="px-4 py-3 bg-white border-t border-stone-100 space-y-3">
                   {/* Full Set */}
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setLumpiaSets(lumpiaSets > 0 ? 0 : 1)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${lumpiaSets > 0 ? 'bg-orange-500 border-orange-500' : 'border-stone-300'}`}
-                    >
-                      {lumpiaSets > 0 && <Check size={11} className="text-white" />}
-                    </button>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-stone-700">Full Batch (100 pcs)</div>
-                      <div className="text-xs text-stone-400">{fmt(LUMPIA_PRICE[lumpiaSetsCooked ? 'cooked' : 'uncooked'])}</div>
-                    </div>
-                    {lumpiaSets > 0 && (
-                      <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => setLumpiaSets(Math.max(1, lumpiaSets - 1))} className={ROW_BTN}>−</button>
-                        <span className="font-bold text-sm w-4 text-center">{lumpiaSets}</span>
-                        <button type="button" onClick={() => setLumpiaSets(lumpiaSets + 1)} className={ROW_BTN}>+</button>
-                        <button
-                          type="button"
-                          onClick={() => setLumpiaSetsCooked(!lumpiaSetsCooked)}
-                          className={`ml-1 px-2.5 py-1 rounded-full border text-xs font-semibold transition-colors ${lumpiaSetsCooked ? 'bg-amber-50 border-amber-400 text-amber-700' : 'border-stone-200 text-stone-400'}`}
-                        >
-                          {lumpiaSetsCooked ? 'cooked' : 'frozen'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <ItemRowPicker
+                    label="Full Batch (100 pcs)"
+                    price={fmt(LUMPIA_PRICE[lumpiaSetsCooked ? 'cooked' : 'uncooked'])}
+                    count={lumpiaSets}
+                    onChange={setLumpiaSets}
+                    cooked={lumpiaSetsCooked}
+                    onCookedChange={setLumpiaSetsCooked}
+                  />
 
                   {/* Half Set */}
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setLumpiaHalves(lumpiaHalves > 0 ? 0 : 1)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${lumpiaHalves > 0 ? 'bg-orange-500 border-orange-500' : 'border-stone-300'}`}
-                    >
-                      {lumpiaHalves > 0 && <Check size={11} className="text-white" />}
-                    </button>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-stone-700">Half Batch (50 pcs)</div>
-                      <div className="text-xs text-stone-400">{fmt(LUMPIA_HALF_PRICE[lumpiaHalvesCooked ? 'cooked' : 'uncooked'])}</div>
-                    </div>
-                    {lumpiaHalves > 0 && (
-                      <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => setLumpiaHalves(Math.max(1, lumpiaHalves - 1))} className={ROW_BTN}>−</button>
-                        <span className="font-bold text-sm w-4 text-center">{lumpiaHalves}</span>
-                        <button type="button" onClick={() => setLumpiaHalves(lumpiaHalves + 1)} className={ROW_BTN}>+</button>
-                        <button
-                          type="button"
-                          onClick={() => setLumpiaHalvesCooked(!lumpiaHalvesCooked)}
-                          className={`ml-1 px-2.5 py-1 rounded-full border text-xs font-semibold transition-colors ${lumpiaHalvesCooked ? 'bg-amber-50 border-amber-400 text-amber-700' : 'border-stone-200 text-stone-400'}`}
-                        >
-                          {lumpiaHalvesCooked ? 'cooked' : 'frozen'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <ItemRowPicker
+                    label="Half Batch (50 pcs)"
+                    price={fmt(LUMPIA_HALF_PRICE[lumpiaHalvesCooked ? 'cooked' : 'uncooked'])}
+                    count={lumpiaHalves}
+                    onChange={setLumpiaHalves}
+                    cooked={lumpiaHalvesCooked}
+                    onCookedChange={setLumpiaHalvesCooked}
+                  />
 
                   {/* Sauces */}
                   <div className="pt-2 border-t border-stone-100">
@@ -449,70 +419,28 @@ export default function PublicRequestPage() {
               {pancitEnabled && (
                 <div className="px-4 py-3 bg-white border-t border-stone-100 space-y-3">
                   {/* Small */}
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setPancitHalf(pancitHalf > 0 ? 0 : 1)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${pancitHalf > 0 ? 'bg-orange-500 border-orange-500' : 'border-stone-300'}`}
-                    >
-                      {pancitHalf > 0 && <Check size={11} className="text-white" />}
-                    </button>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-stone-700">Small Tray (serves 3-5)</div>
-                      <div className="text-xs text-stone-400">{fmt(PANCIT_PRICE.half)}</div>
-                    </div>
-                    {pancitHalf > 0 && (
-                      <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => setPancitHalf(Math.max(1, pancitHalf - 1))} className={ROW_BTN}>−</button>
-                        <span className="font-bold text-sm w-4 text-center">{pancitHalf}</span>
-                        <button type="button" onClick={() => setPancitHalf(pancitHalf + 1)} className={ROW_BTN}>+</button>
-                      </div>
-                    )}
-                  </div>
+                  <ItemRowPicker
+                    label="Small Tray (serves 3-5)"
+                    price={fmt(PANCIT_PRICE.half)}
+                    count={pancitHalf}
+                    onChange={setPancitHalf}
+                  />
 
                   {/* Regular */}
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setPancitFull(pancitFull > 0 ? 0 : 1)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${pancitFull > 0 ? 'bg-orange-500 border-orange-500' : 'border-stone-300'}`}
-                    >
-                      {pancitFull > 0 && <Check size={11} className="text-white" />}
-                    </button>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-stone-700">Regular Tray (serves 8-10)</div>
-                      <div className="text-xs text-stone-400">{fmt(PANCIT_PRICE.full)}</div>
-                    </div>
-                    {pancitFull > 0 && (
-                      <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => setPancitFull(Math.max(1, pancitFull - 1))} className={ROW_BTN}>−</button>
-                        <span className="font-bold text-sm w-4 text-center">{pancitFull}</span>
-                        <button type="button" onClick={() => setPancitFull(pancitFull + 1)} className={ROW_BTN}>+</button>
-                      </div>
-                    )}
-                  </div>
+                  <ItemRowPicker
+                    label="Regular Tray (serves 8-10)"
+                    price={fmt(PANCIT_PRICE.full)}
+                    count={pancitFull}
+                    onChange={setPancitFull}
+                  />
 
                   {/* Large */}
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setPancitLarge(pancitLarge > 0 ? 0 : 1)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${pancitLarge > 0 ? 'bg-orange-500 border-orange-500' : 'border-stone-300'}`}
-                    >
-                      {pancitLarge > 0 && <Check size={11} className="text-white" />}
-                    </button>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-stone-700">Large Tray (serves 15-20)</div>
-                      <div className="text-xs text-stone-400">{fmt(PANCIT_PRICE.large)}</div>
-                    </div>
-                    {pancitLarge > 0 && (
-                      <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => setPancitLarge(Math.max(1, pancitLarge - 1))} className={ROW_BTN}>−</button>
-                        <span className="font-bold text-sm w-4 text-center">{pancitLarge}</span>
-                        <button type="button" onClick={() => setPancitLarge(pancitLarge + 1)} className={ROW_BTN}>+</button>
-                      </div>
-                    )}
-                  </div>
+                  <ItemRowPicker
+                    label="Large Tray (serves 15-20)"
+                    price={fmt(PANCIT_PRICE.large)}
+                    count={pancitLarge}
+                    onChange={setPancitLarge}
+                  />
 
                   {/* Extra Meat */}
                   <div className="pt-2 border-t border-stone-100">
@@ -542,11 +470,13 @@ export default function PublicRequestPage() {
                   id="req-date"
                   required
                   type="date"
+                  min={minDate}
                   value={neededDate}
                   onChange={e => setNeededDate(e.target.value)}
-                  className={`w-full border-2 rounded-xl px-4 py-2.5 outline-none transition-colors ${isDateBlocked ? 'border-red-400 focus:border-red-500' : dateError ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-orange-500'}`}
+                  className={`w-full border-2 rounded-xl px-4 py-2.5 outline-none transition-colors ${isDateBlocked || isDateTooSoon || dateError ? 'border-red-400 focus:border-red-500' : 'border-stone-200 focus:border-orange-500'}`}
                 />
                 {dateError && <p className="text-xs text-red-500 mt-1">Please select a date.</p>}
+                {isDateTooSoon && <p className="text-xs text-red-500 mt-1">Please pick a date at least 2 days out — Nanay needs time to prep. 🍳</p>}
               </div>
 
               <div>
