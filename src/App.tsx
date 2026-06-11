@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Toaster, toast } from 'sonner';
 import { ChefHat, ClipboardList, PackageOpen, Receipt, BarChart3, Plus, LogOut, Check, X } from 'lucide-react';
-import type { Order, OrderStatus, OrderRequest } from './types';
+import type { Order, OrderRequest } from './types';
 import { useOrders } from './hooks/useOrders';
 import { useStock } from './hooks/useStock';
 import { useAuth } from './hooks/useAuth';
@@ -59,35 +59,6 @@ function MainApp({ onLogout }: MainAppProps) {
 
   const repeatMap = getRepeatCustomers(orders);
   const repeatCount = Object.values(repeatMap).filter(count => count >= 2).length;
-
-  const handleStatusChange = (id: string | number, newStatus: OrderStatus) => {
-    updateOrder(id, { order_status: newStatus });
-    if (selectedOrder?.id === id) {
-      setSelectedOrder({ ...selectedOrder, order_status: newStatus });
-    }
-
-    if (newStatus === 'Fulfilled') {
-      const order = orders.find(o => o.id === id);
-      if (order) {
-        const deductions: typeof stock = {};
-        if (order.lumpia?.enabled) {
-          // halves count as 0.5 sets for display/calc, but lumpia_sets is an integer column.
-          // Math.round here so 1 half = 1 set deducted; use Math.floor to only deduct on whole sets.
-          const sets = Math.round((order.lumpia.sets || 0) + (order.lumpia.halves || 0) * 0.5);
-          if (sets > 0) deductions.lumpia_sets = Math.max(0, (stock.lumpia_sets || 0) - sets);
-        }
-        if (order.pancit?.enabled) {
-          if ((order.pancit.full || 0) > 0) deductions.pancit_full = Math.max(0, (stock.pancit_full || 0) - order.pancit.full!);
-          if ((order.pancit.half || 0) > 0) deductions.pancit_half = Math.max(0, (stock.pancit_half || 0) - order.pancit.half!);
-          if ((order.pancit.large || 0) > 0) deductions.pancit_large = Math.max(0, (stock.pancit_large || 0) - order.pancit.large!);
-        }
-        if (Object.keys(deductions).length > 0) {
-          // Pass only the changed fields — avoids overwriting unrelated stock values in a concurrent session.
-          updateStock(deductions, { silent: true });
-        }
-      }
-    }
-  };
 
   const handlePaymentChange = (id: string | number, patch: Partial<Order>) => {
     updateOrder(id, patch);
@@ -254,7 +225,6 @@ function MainApp({ onLogout }: MainAppProps) {
         onClose={() => setSelectedOrder(null)}
         onEdit={openEdit}
         onDelete={deleteOrder}
-        onStatusChange={handleStatusChange}
         onPaymentChange={handlePaymentChange}
       />
 

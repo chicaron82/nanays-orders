@@ -27,7 +27,7 @@ function renderModal(o: Order, props: Partial<Parameters<typeof OrderDetailsModa
     <OrderDetailsModal
       order={o} stock={stock} allOrders={[o]} isOpen
       onClose={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()}
-      onStatusChange={vi.fn()} onPaymentChange={onPaymentChange}
+      onPaymentChange={onPaymentChange}
       {...props}
     />,
   );
@@ -40,7 +40,7 @@ describe('OrderDetailsModal — render gating', () => {
       <OrderDetailsModal
         order={order()} stock={stock} allOrders={[]} isOpen={false}
         onClose={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()}
-        onStatusChange={vi.fn()} onPaymentChange={vi.fn()}
+        onPaymentChange={vi.fn()}
       />,
     );
     expect(container).toBeEmptyDOMElement();
@@ -109,5 +109,32 @@ describe('OrderDetailsModal — payment controls', () => {
     fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '50' } });
     fireEvent.click(screen.getByText('Change given'));
     expect(onPaymentChange).toHaveBeenCalledWith(1, expect.objectContaining({ payment_status: 'Prepaid', tip_amount: 0 }));
+  });
+});
+
+describe('OrderDetailsModal — cancelled in the payment row', () => {
+  it('there is no separate status section', () => {
+    renderModal(order());
+    expect(screen.queryByText('Update Status')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ready')).not.toBeInTheDocument();
+    expect(screen.queryByText('Fulfilled')).not.toBeInTheDocument();
+  });
+
+  it('tapping Cancelled cancels the order without touching payment', () => {
+    const { onPaymentChange } = renderModal(order());
+    fireEvent.click(screen.getByText('Cancelled'));
+    expect(onPaymentChange).toHaveBeenCalledWith(1, { order_status: 'Cancelled' });
+  });
+
+  it('a cancelled order shows ✗ Cancelled, not a balance due', () => {
+    renderModal(order({ order_status: 'Cancelled' }));
+    expect(screen.getByText('✗ Cancelled')).toBeInTheDocument();
+    expect(screen.queryByText(/Balance Due/)).not.toBeInTheDocument();
+  });
+
+  it('picking a payment state un-cancels the order', () => {
+    const { onPaymentChange } = renderModal(order({ order_status: 'Cancelled' }));
+    fireEvent.click(screen.getByText('Unpaid'));
+    expect(onPaymentChange).toHaveBeenCalledWith(1, expect.objectContaining({ payment_status: 'Unpaid', order_status: 'Pending' }));
   });
 });

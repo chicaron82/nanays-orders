@@ -1,4 +1,4 @@
-import type { Order, LumpiaOrder, Stock, DeliveryType, LumpiaSauce, OrderStatus, PaymentStatus } from '../types';
+import type { Order, LumpiaOrder, Stock, DeliveryType, LumpiaSauce, PaymentStatus } from '../types';
 
 // ─── PRICING ─────────────────────────────────────────────────────────────────
 export const LUMPIA_PRICE = { uncooked: 30, cooked: 35 };
@@ -137,6 +137,19 @@ export function tipAmount(order: Order): number {
   return Math.max(0, amountReceived(order) - (order.total ?? calcTotal(order)));
 }
 
+/**
+ * An order whose money is fully in — the payment-driven notion of "done".
+ * The order lifecycle is payment-only (the status pills were removed June 2026;
+ * they were never used), so a settled order is the closed transaction: marked
+ * Paid, or a Deposit that covers the whole total. Cancelled orders are not
+ * settled — they're closed by cancellation, not completion.
+ */
+export function isSettled(order: Order): boolean {
+  if (order.order_status === 'Cancelled') return false;
+  if (order.payment_status === 'Prepaid') return true;
+  return order.payment_status === 'Deposit' && amountOwing(order) === 0;
+}
+
 // ─── URGENCY ─────────────────────────────────────────────────────────────────
 export function getDaysUntil(dateStr?: string | null): number | null {
   if (!dateStr) return null;
@@ -204,8 +217,16 @@ export function checkShortage(order: Order, stock: Stock | null | undefined, ord
 export interface MakeMoreNeed { need: number; avail: number; total: number; }
 export interface MakeMoreNeeds { lumpia: MakeMoreNeed; pancitFull: MakeMoreNeed; pancitHalf: MakeMoreNeed; pancitLarge: MakeMoreNeed; }
 
-export function getMakeMoreNeeds(orders: Order[], stock: Stock | null | undefined): MakeMoreNeeds {
-  const pending = orders.filter(o => o.order_status === "Pending");
+export function getMakeMoreNeeds(orders: Order[], stock: Stock | null | undefined, today: string = localYMD(new Date())): MakeMoreNeeds {
+  // Demand = upcoming, non-cancelled orders. Status used to gate this on
+  // "Pending", which meant orders that were never flipped (i.e. all of them)
+  // drove the make-more numbers forever, even years after pickup. Keying on
+  // the needed date matches reality: past orders don't need cooking. Orders
+  // without a date are assumed upcoming. (Legacy Ready/Fulfilled rows stay
+  // excluded — they were already made.)
+  const pending = orders.filter(o =>
+    o.order_status === "Pending" && (!o.needed_date || o.needed_date >= today)
+  );
   const avail = getAvailable(stock, orders);
   let needLumpia = 0, needFull = 0, needHalf = 0, needLarge = 0;
   pending.forEach(o => {
@@ -314,7 +335,6 @@ export function buildOrderMessage(order: Order): string {
   return lines.join('\n');
 }
 
-export const ORDER_STATUS: OrderStatus[] = ["Pending", "Ready", "Fulfilled", "Cancelled"];
 export const PAYMENT_STATUS: PaymentStatus[] = ["Unpaid", "Deposit", "Prepaid"];
 
 // ─── FULFILLABILITY WARNINGS ─────────────────────────────────────────────────

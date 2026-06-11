@@ -39,9 +39,19 @@ describe('OrderChip', () => {
     expect(screen.queryByText(/owes/)).not.toBeInTheDocument();
   });
 
-  it('does not flag a fulfilled order as unpaid', () => {
+  it('does not flag a legacy fulfilled order as unpaid', () => {
     render(<OrderChip order={order({ payment_status: 'Unpaid', order_status: 'Fulfilled' })} />);
     expect(screen.queryByText('Unpaid')).not.toBeInTheDocument();
+  });
+
+  it('a paid order reads as done — name struck through', () => {
+    render(<OrderChip order={order({ payment_status: 'Prepaid' })} />);
+    expect(screen.getByText('Rosa').className).toContain('line-through');
+  });
+
+  it('an unpaid order is not struck through', () => {
+    render(<OrderChip order={order({ payment_status: 'Unpaid' })} />);
+    expect(screen.getByText('Rosa').className).not.toContain('line-through');
   });
 
   it('renders a Cancelled pill instead of the delivery badge', () => {

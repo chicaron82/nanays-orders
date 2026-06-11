@@ -4,7 +4,7 @@ import {
   calcTotal, orderSummary,
   getDaysUntil, urgencyLabel,
   getReserved, getAvailable, checkShortage, getMakeMoreNeeds,
-  getRevenue,
+  getRevenue, isSettled,
   fuzzyMatch, getRepeatCustomers, isRepeat, lastOrderFor,
   formatDate, fmt, buildOrderMessage,
   getIngredientWarnings,
@@ -156,6 +156,39 @@ describe('getMakeMoreNeeds', () => {
     const orders: Order[] = [{ order_status: 'Pending', lumpia: { enabled: true, sets: 5, halves: 0 } }];
     const needs = getMakeMoreNeeds(orders, stock);
     expect(needs.lumpia).toEqual({ need: 3, avail: 2, total: 5 });
+  });
+
+  it('past orders no longer drive demand; undated orders count as upcoming', () => {
+    const stock = { lumpia_sets: 0, pancit_full: 0, pancit_half: 0, pancit_large: 0 };
+    const orders: Order[] = [
+      { order_status: 'Pending', needed_date: ymd(-3), lumpia: { enabled: true, sets: 4, halves: 0 } }, // picked up days ago
+      { order_status: 'Pending', needed_date: ymd(0),  lumpia: { enabled: true, sets: 2, halves: 0 } }, // today
+      { order_status: 'Pending', needed_date: ymd(2),  lumpia: { enabled: true, sets: 1, halves: 0 } }, // upcoming
+      { order_status: 'Pending',                       lumpia: { enabled: true, sets: 1, halves: 0 } }, // no date → assume upcoming
+      { order_status: 'Cancelled', needed_date: ymd(2), lumpia: { enabled: true, sets: 9, halves: 0 } },
+    ];
+    const needs = getMakeMoreNeeds(orders, stock);
+    expect(needs.lumpia.total).toBe(4); // 2 + 1 + 1; past 4 and cancelled 9 excluded
+  });
+});
+
+// ─── SETTLED ─────────────────────────────────────────────────────────────────────
+
+describe('isSettled', () => {
+  it('Paid is settled', () => {
+    expect(isSettled({ payment_status: 'Prepaid', total: 50 })).toBe(true);
+  });
+  it('a deposit covering the full total is settled', () => {
+    expect(isSettled({ payment_status: 'Deposit', total: 50, deposit_amount: 50 })).toBe(true);
+  });
+  it('a partial deposit is not settled', () => {
+    expect(isSettled({ payment_status: 'Deposit', total: 50, deposit_amount: 20 })).toBe(false);
+  });
+  it('Unpaid is not settled', () => {
+    expect(isSettled({ payment_status: 'Unpaid', total: 50 })).toBe(false);
+  });
+  it('a cancelled order is never settled, even if it was paid', () => {
+    expect(isSettled({ order_status: 'Cancelled', payment_status: 'Prepaid', total: 50 })).toBe(false);
   });
 });
 

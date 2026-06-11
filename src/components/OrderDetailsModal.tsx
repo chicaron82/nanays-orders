@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Edit2, AlertTriangle, Calendar, MapPin, Phone, MessageSquare, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Order, Stock, OrderStatus, PaymentStatus } from '../types';
-import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, buildOrderMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, ORDER_STATUS, PAYMENT_STATUS } from '../lib/utils';
+import type { Order, Stock, PaymentStatus } from '../types';
+import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, buildOrderMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, PAYMENT_STATUS } from '../lib/utils';
 
 interface Props {
   order: Order | null;
@@ -13,11 +13,10 @@ interface Props {
   onClose: () => void;
   onEdit: (order: Order) => void;
   onDelete: (id: string | number) => void;
-  onStatusChange: (id: string | number, status: OrderStatus) => void;
   onPaymentChange: (id: string | number, patch: Partial<Order>) => void;
 }
 
-export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onClose, onEdit, onDelete, onStatusChange, onPaymentChange }: Props) {
+export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onClose, onEdit, onDelete, onPaymentChange }: Props) {
   const [depositInput, setDepositInput] = useState(
     () => (order?.deposit_amount != null ? String(order.deposit_amount) : '')
   );
@@ -42,6 +41,8 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
   const owing = amountOwing(order);
   const tip = tipAmount(order);
   const paidSurplus = Math.max(0, (Number(paidInput) || 0) - total);
+  const cancelled = order.order_status === 'Cancelled';
+  const settled = isSettled(order);
 
   const detailShortage = checkShortage(order, stock, allOrders.filter(x => x.id !== order.id && x.order_status === 'Ready'));
   const days = getDaysUntil(order.needed_date);
@@ -50,11 +51,15 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
   const handlePaymentStatus = (p: PaymentStatus) => {
     onPaymentChange(order.id!, {
       payment_status: p,
+      // Picking a payment state un-cancels — the pill row is one selector.
+      order_status: 'Pending',
       deposit_amount: p === 'Deposit' ? (order.deposit_amount ?? null) : null,
       // Tip only applies while Paid; switching to Unpaid/Deposit clears it.
       tip_amount: p === 'Prepaid' ? (Number(order.tip_amount) || 0) : 0,
     });
   };
+
+  const handleCancelOrder = () => onPaymentChange(order.id!, { order_status: 'Cancelled' });
 
   // Mark Paid in full, recording any overage as a tip (vs. change given back).
   const commitPaid = (tipAmt: number) =>
@@ -96,14 +101,14 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
                 <button onClick={handleShare} aria-label="Share order" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><Share2 size={16}/></button>
                 <button onClick={onClose} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors"><X size={18}/></button>
               </div>
-              {urgency && order.order_status === 'Pending' && (
+              {urgency && !cancelled && !settled && (
                 <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${urgency.tailwind}`}>{urgency.text}</span>
               )}
             </div>
           </div>
 
           <div className="p-6 space-y-6">
-            {detailShortage.length > 0 && order.order_status === 'Pending' && (
+            {detailShortage.length > 0 && !cancelled && !settled && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 text-red-800">
                 <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" />
                 <div>
@@ -182,11 +187,12 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
               <div>
                 <div className="text-sm font-bold opacity-80 uppercase tracking-wider">Total</div>
                 <div className="text-xs opacity-70 mt-1">
-                  {order.payment_status === 'Unpaid' && `Balance Due: ${fmt(total)}`}
-                  {order.payment_status === 'Deposit' && owing > 0 && `Deposit: ${fmt(deposit)} · Bal: ${fmt(owing)}`}
-                  {order.payment_status === 'Deposit' && owing === 0 && tip > 0 && `Paid: ${fmt(deposit)} · +${fmt(tip)} tip ✓`}
-                  {order.payment_status === 'Deposit' && owing === 0 && tip === 0 && `✓ Fully Paid`}
-                  {order.payment_status === 'Prepaid' && (tip > 0 ? `Paid ${fmt(total + tip)} · +${fmt(tip)} tip ✓` : `✓ Fully Paid`)}
+                  {cancelled && `✗ Cancelled`}
+                  {!cancelled && order.payment_status === 'Unpaid' && `Balance Due: ${fmt(total)}`}
+                  {!cancelled && order.payment_status === 'Deposit' && owing > 0 && `Deposit: ${fmt(deposit)} · Bal: ${fmt(owing)}`}
+                  {!cancelled && order.payment_status === 'Deposit' && owing === 0 && tip > 0 && `Paid: ${fmt(deposit)} · +${fmt(tip)} tip ✓`}
+                  {!cancelled && order.payment_status === 'Deposit' && owing === 0 && tip === 0 && `✓ Fully Paid`}
+                  {!cancelled && order.payment_status === 'Prepaid' && (tip > 0 ? `Paid ${fmt(total + tip)} · +${fmt(tip)} tip ✓` : `✓ Fully Paid`)}
                 </div>
               </div>
               <div className="font-playfair text-4xl font-black">{fmt(total)}</div>
@@ -223,41 +229,28 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
             )}
 
             <div className="border-t border-stone-200 pt-6">
-              <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-3">Update Status</label>
-              <div className="flex flex-wrap gap-2">
-                {ORDER_STATUS.map(s => {
-                  const isActive = order.order_status === s;
-                  const isReadyWarn = s === 'Ready' && detailShortage.length > 0 && order.order_status === 'Pending';
-                  return (
-                    <button key={s} onClick={() => onStatusChange(order.id!, s)}
-                      className={`px-4 py-2 rounded-full font-bold text-xs transition-colors ${
-                        isActive ? 'bg-stone-800 text-white shadow-md' :
-                        isReadyWarn ? 'bg-white border-2 border-red-200 text-red-500 hover:bg-red-50' :
-                        'bg-white border-2 border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300'
-                      }`}
-                    >
-                      {isReadyWarn ? '⚠️ Ready' : s}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="border-t border-stone-200 pt-6">
               <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-3">Payment</label>
               <div className="flex flex-wrap gap-2">
                 {PAYMENT_STATUS.map(p => (
                   <button key={p} onClick={() => handlePaymentStatus(p)}
                     className={`px-4 py-2 rounded-full font-bold text-xs transition-colors ${
-                      order.payment_status === p ? 'bg-stone-800 text-white shadow-md' :
+                      !cancelled && order.payment_status === p ? 'bg-stone-800 text-white shadow-md' :
                       'bg-white border-2 border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300'
                     }`}
                   >
                     {p === 'Prepaid' ? 'Paid ✓' : p}
                   </button>
                 ))}
+                <button onClick={handleCancelOrder}
+                  className={`px-4 py-2 rounded-full font-bold text-xs transition-colors ${
+                    cancelled ? 'bg-red-600 text-white shadow-md' :
+                    'bg-white border-2 border-stone-200 text-stone-600 hover:bg-red-50 hover:border-red-200 hover:text-red-500'
+                  }`}
+                >
+                  Cancelled
+                </button>
               </div>
-              {order.payment_status === 'Deposit' && (
+              {!cancelled && order.payment_status === 'Deposit' && (
                 <div className="mt-3 flex items-center gap-2">
                   <span className="text-xs font-medium text-stone-500">Deposit received:</span>
                   <input type="number" id="order-deposit" name="deposit_amount" autoComplete="off" min={0} step="0.01" value={depositInput}
@@ -271,7 +264,7 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
                   />
                 </div>
               )}
-              {order.payment_status === 'Prepaid' && (
+              {!cancelled && order.payment_status === 'Prepaid' && (
                 <div className="mt-3 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-stone-500">Amount received:</span>

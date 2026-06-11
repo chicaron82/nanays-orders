@@ -1,6 +1,6 @@
 import { MessageSquare } from 'lucide-react';
 import type { Order, OrderStatus } from '../../types';
-import { orderSummary, fmt } from '../../lib/utils';
+import { orderSummary, fmt, isSettled } from '../../lib/utils';
 
 interface Props {
   order: Order;
@@ -16,15 +16,22 @@ const STATUS: Record<OrderStatus, { dot: string; border: string; bg: string; tex
 };
 
 export default function OrderChip({ order, variant = 'full', onClick }: Props) {
-  const s = (order.order_status && STATUS[order.order_status]) || STATUS.Pending;
+  // "Done" is payment-driven: a settled (fully paid) order is complete. Legacy
+  // rows hand-flipped to Fulfilled (pre-June-2026 status pills) keep their done
+  // treatment via the explicit Fulfilled checks.
+  const settled = isSettled(order);
+  const legacyFulfilled = order.order_status === 'Fulfilled';
+  const cancelled = order.order_status === 'Cancelled';
+  const s = (!cancelled && settled)
+    ? STATUS.Fulfilled
+    : (order.order_status && STATUS[order.order_status]) || STATUS.Pending;
   const items = `${order.lumpia?.enabled ? '🥟' : ''}${order.pancit?.enabled ? '🍜' : ''}` || '🍽️';
   const dp = order.delivery_type === 'pickup' ? 'P' : 'D';
-  const done = order.order_status === 'Fulfilled' && order.payment_status === 'Prepaid';
-  const cancelled = order.order_status === 'Cancelled';
-  const faded = order.order_status === 'Fulfilled';
+  const done = settled;
+  const faded = settled || legacyFulfilled;
   const balance = order.payment_status === 'Deposit' ? (order.total ?? 0) - (Number(order.deposit_amount) || 0) : 0;
-  const showBalance = order.payment_status === 'Deposit' && order.order_status !== 'Fulfilled' && balance > 0;
-  const unpaid = order.payment_status === 'Unpaid' && order.order_status !== 'Fulfilled' && !cancelled;
+  const showBalance = order.payment_status === 'Deposit' && !legacyFulfilled && !cancelled && balance > 0;
+  const unpaid = order.payment_status === 'Unpaid' && !legacyFulfilled && !cancelled;
   const note = [order.preferences, order.notes].filter(Boolean).join(' · ');
 
   if (variant === 'compact') {

@@ -1,5 +1,5 @@
 import type { Order, Expense } from '../types';
-import { getRevenue, fmt, amountOwing } from '../lib/utils';
+import { getRevenue, fmt, amountOwing, localYMD } from '../lib/utils';
 import { Repeat, DollarSign, Clock, TrendingUp, Wallet } from 'lucide-react';
 
 interface Props {
@@ -18,10 +18,11 @@ export default function Dashboard({ orders, repeatCount, expenses = [] }: Props)
     .reduce((sum, e) => sum + Number(e.amount), 0);
   const net = revenue.month - monthlySpend;
 
-  const counts = ['Pending', 'Ready'].reduce<Record<string, number>>((acc, s) => {
-    acc[s] = orders.filter(o => o.order_status === s).length;
-    return acc;
-  }, {});
+  // Workload counts by date, not status — the order lifecycle is payment-only.
+  const todayYMD = localYMD(now);
+  const active = orders.filter(o => o.order_status !== 'Cancelled');
+  const todayCount = active.filter(o => o.needed_date === todayYMD).length;
+  const upcomingCount = active.filter(o => (o.needed_date ?? '') > todayYMD).length;
 
   // Outstanding = what's still owed, which includes the balance on Deposit orders
   // (not just fully-Unpaid ones) and counts only the remaining amount per order.
@@ -57,12 +58,12 @@ export default function Dashboard({ orders, repeatCount, expenses = [] }: Props)
       <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-4 text-white shadow-lg relative overflow-hidden grid grid-cols-2 gap-2">
         <div>
           <div className="absolute top-0 right-0 p-4 opacity-10"><Clock size={48} /></div>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">Pending</div>
-          <div className="font-playfair text-2xl font-black leading-tight">{counts.Pending || 0}</div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">Today</div>
+          <div className="font-playfair text-2xl font-black leading-tight">{todayCount}</div>
         </div>
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">Ready</div>
-          <div className="font-playfair text-2xl font-black leading-tight text-emerald-300">{counts.Ready || 0}</div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">Upcoming</div>
+          <div className="font-playfair text-2xl font-black leading-tight text-emerald-300">{upcomingCount}</div>
         </div>
       </div>
 
