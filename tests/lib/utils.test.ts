@@ -108,13 +108,14 @@ describe('urgencyLabel', () => {
 // ─── STOCK ───────────────────────────────────────────────────────────────────────
 
 describe('getReserved', () => {
-  it('only Ready orders reserve stock; halves count as 0.5', () => {
+  it('upcoming non-cancelled orders reserve stock; halves count as 0.5', () => {
     const orders: Order[] = [
-      { order_status: 'Ready', lumpia: { enabled: true, sets: 2, halves: 2 }, pancit: { enabled: true, full: 1, half: 2, large: 1 } },
-      { order_status: 'Pending', lumpia: { enabled: true, sets: 5, halves: 0 } }, // ignored
+      { order_status: 'Pending', needed_date: ymd(2), lumpia: { enabled: true, sets: 2, halves: 2 }, pancit: { enabled: true, full: 1, half: 2, large: 1 } },
+      { order_status: 'Pending', needed_date: ymd(-3), lumpia: { enabled: true, sets: 5, halves: 0 } }, // past — already made, ignored
+      { order_status: 'Cancelled', needed_date: ymd(2), lumpia: { enabled: true, sets: 9, halves: 0 } }, // cancelled, ignored
     ];
     const r = getReserved(orders);
-    expect(r.lumpiaSets).toBe(3); // 2 + 2×0.5
+    expect(r.lumpiaSets).toBe(3); // 2 + 2×0.5 (only the upcoming order)
     expect(r.pancitFull).toBe(1);
     expect(r.pancitHalf).toBe(2);
     expect(r.pancitLarge).toBe(1);
@@ -122,9 +123,9 @@ describe('getReserved', () => {
 });
 
 describe('getAvailable', () => {
-  it('subtracts Ready reservations from stock', () => {
+  it('subtracts upcoming demand from stock on hand', () => {
     const stock = { lumpia_sets: 10, pancit_full: 5, pancit_half: 4, pancit_large: 2 };
-    const orders: Order[] = [{ order_status: 'Ready', lumpia: { enabled: true, sets: 3, halves: 0 }, pancit: { enabled: true, full: 1, half: 0, large: 0 } }];
+    const orders: Order[] = [{ order_status: 'Pending', needed_date: ymd(2), lumpia: { enabled: true, sets: 3, halves: 0 }, pancit: { enabled: true, full: 1, half: 0, large: 0 } }];
     const a = getAvailable(stock, orders);
     expect(a.lumpiaSets).toBe(7);
     expect(a.pancitFull).toBe(4);
@@ -143,9 +144,24 @@ describe('checkShortage', () => {
   it('no warning when within availability', () => {
     expect(checkShortage({ lumpia: { enabled: true, sets: 2, halves: 0 } }, stock, [])).toEqual([]);
   });
+  it('other upcoming orders eat into availability', () => {
+    // stock 3, another upcoming order reserves 2 → only 1 free → a new 2-set order warns.
+    const orders: Order[] = [{ id: 'a', order_status: 'Pending', needed_date: ymd(2), lumpia: { enabled: true, sets: 2, halves: 0 } }];
+    const warnings = checkShortage({ lumpia: { enabled: true, sets: 2, halves: 0 } }, stock, orders);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('Lumpia');
+  });
+  it('past and cancelled orders do not reduce availability', () => {
+    const orders: Order[] = [
+      { id: 'p', order_status: 'Pending', needed_date: ymd(-2), lumpia: { enabled: true, sets: 3, halves: 0 } }, // past — already cooked
+      { id: 'c', order_status: 'Cancelled', needed_date: ymd(2), lumpia: { enabled: true, sets: 3, halves: 0 } },
+    ];
+    // Neither reserves → full stock of 3 free → a 3-set order fits.
+    expect(checkShortage({ lumpia: { enabled: true, sets: 3, halves: 0 } }, stock, orders)).toEqual([]);
+  });
   it('excludeId frees the edited order’s own reservation', () => {
-    const orders: Order[] = [{ id: 'x', order_status: 'Ready', lumpia: { enabled: true, sets: 3, halves: 0 } }];
-    // Without exclude, all 3 are reserved → editing the same order to 3 would falsely warn
+    const orders: Order[] = [{ id: 'x', order_status: 'Pending', needed_date: ymd(2), lumpia: { enabled: true, sets: 3, halves: 0 } }];
+    // Without exclude, the upcoming order reserves all 3 → editing it back to 3 would falsely warn.
     expect(checkShortage({ lumpia: { enabled: true, sets: 3, halves: 0 } }, stock, orders, 'x')).toEqual([]);
   });
 });

@@ -44,7 +44,9 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
   const cancelled = order.order_status === 'Cancelled';
   const settled = isSettled(order);
 
-  const detailShortage = checkShortage(order, stock, allOrders.filter(x => x.id !== order.id && x.order_status === 'Ready'));
+  // Shortage = does this order still fit once every OTHER upcoming order is reserved?
+  // checkShortage excludes this order by id; getReserved windows the rest to upcoming.
+  const detailShortage = checkShortage(order, stock, allOrders, order.id);
   const days = getDaysUntil(order.needed_date);
   const urgency = urgencyLabel(days);
 

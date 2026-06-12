@@ -191,21 +191,29 @@ export function urgencyLabel(days: number | null): UrgencyLabel | null {
 // ─── STOCK ───────────────────────────────────────────────────────────────────
 export interface BatchCounts { lumpiaSets: number; pancitFull: number; pancitHalf: number; pancitLarge: number; }
 
-export function getReserved(orders: Order[]): BatchCounts {
+// Stock spoken for by orders still to be made: upcoming (or undated) non-cancelled
+// orders — the same demand basis as the make-more calculator. Status used to gate
+// this on the 'Ready' pill, which no order carries in the payment-only lifecycle,
+// so reservations were always zero and stock always read as fully available. Keying
+// on the needed date is reality: a past order was already cooked; a cancelled one
+// won't be.
+export function getReserved(orders: Order[], today: string = localYMD(new Date())): BatchCounts {
   const reserved: BatchCounts = { lumpiaSets: 0, pancitFull: 0, pancitHalf: 0, pancitLarge: 0 };
-  orders.filter(o => o.order_status === "Ready").forEach(o => {
-    if (o.lumpia?.enabled) reserved.lumpiaSets += (o.lumpia.sets || 0) + (o.lumpia.halves || 0) * 0.5;
-    if (o.pancit?.enabled) {
-      reserved.pancitFull += o.pancit.full || 0;
-      reserved.pancitHalf += o.pancit.half || 0;
-      reserved.pancitLarge += o.pancit.large || 0;
-    }
-  });
+  orders
+    .filter(o => o.order_status === "Pending" && (!o.needed_date || o.needed_date >= today))
+    .forEach(o => {
+      if (o.lumpia?.enabled) reserved.lumpiaSets += (o.lumpia.sets || 0) + (o.lumpia.halves || 0) * 0.5;
+      if (o.pancit?.enabled) {
+        reserved.pancitFull += o.pancit.full || 0;
+        reserved.pancitHalf += o.pancit.half || 0;
+        reserved.pancitLarge += o.pancit.large || 0;
+      }
+    });
   return reserved;
 }
 
-export function getAvailable(stock: Stock | null | undefined, orders: Order[]): BatchCounts {
-  const reserved = getReserved(orders);
+export function getAvailable(stock: Stock | null | undefined, orders: Order[], today: string = localYMD(new Date())): BatchCounts {
+  const reserved = getReserved(orders, today);
   return {
     lumpiaSets: (stock?.lumpia_sets || 0) - reserved.lumpiaSets,
     pancitFull: (stock?.pancit_full || 0) - reserved.pancitFull,
@@ -214,9 +222,9 @@ export function getAvailable(stock: Stock | null | undefined, orders: Order[]): 
   };
 }
 
-export function checkShortage(order: Order, stock: Stock | null | undefined, orders: Order[], excludeId: string | number | null = null): string[] {
+export function checkShortage(order: Order, stock: Stock | null | undefined, orders: Order[], excludeId: string | number | null = null, today: string = localYMD(new Date())): string[] {
   const filtered = excludeId ? orders.filter(o => o.id !== excludeId) : orders;
-  const avail = getAvailable(stock, filtered);
+  const avail = getAvailable(stock, filtered, today);
   const warnings: string[] = [];
   if (order.lumpia?.enabled) {
     const needed = (order.lumpia.sets || 0) + (order.lumpia.halves || 0) * 0.5;
@@ -236,30 +244,22 @@ export interface MakeMoreNeed { need: number; avail: number; total: number; }
 export interface MakeMoreNeeds { lumpia: MakeMoreNeed; pancitFull: MakeMoreNeed; pancitHalf: MakeMoreNeed; pancitLarge: MakeMoreNeed; }
 
 export function getMakeMoreNeeds(orders: Order[], stock: Stock | null | undefined, today: string = localYMD(new Date())): MakeMoreNeeds {
-  // Demand = upcoming, non-cancelled orders. Status used to gate this on
-  // "Pending", which meant orders that were never flipped (i.e. all of them)
-  // drove the make-more numbers forever, even years after pickup. Keying on
-  // the needed date matches reality: past orders don't need cooking. Orders
-  // without a date are assumed upcoming. (Legacy Ready/Fulfilled rows stay
-  // excluded — they were already made.)
-  const pending = orders.filter(o =>
-    o.order_status === "Pending" && (!o.needed_date || o.needed_date >= today)
-  );
-  const avail = getAvailable(stock, orders);
-  let needLumpia = 0, needFull = 0, needHalf = 0, needLarge = 0;
-  pending.forEach(o => {
-    if (o.lumpia?.enabled) needLumpia += (o.lumpia.sets || 0) + (o.lumpia.halves || 0) * 0.5;
-    if (o.pancit?.enabled) {
-      needFull += o.pancit.full || 0;
-      needHalf += o.pancit.half || 0;
-      needLarge += o.pancit.large || 0;
-    }
-  });
+  // Demand = upcoming, non-cancelled orders — exactly what getReserved counts now
+  // (past orders are already cooked, cancelled won't be, undated assumed upcoming).
+  // Compared against RAW stock on hand, NOT getAvailable: getAvailable subtracts
+  // this same demand (it's the reservation), so using it here would double-count.
+  const demand = getReserved(orders, today);
+  const onHand = {
+    lumpiaSets: stock?.lumpia_sets || 0,
+    pancitFull: stock?.pancit_full || 0,
+    pancitHalf: stock?.pancit_half || 0,
+    pancitLarge: stock?.pancit_large || 0,
+  };
   return {
-    lumpia: { need: Math.max(0, needLumpia - avail.lumpiaSets), avail: avail.lumpiaSets, total: needLumpia },
-    pancitFull: { need: Math.max(0, needFull - avail.pancitFull), avail: avail.pancitFull, total: needFull },
-    pancitHalf: { need: Math.max(0, needHalf - avail.pancitHalf), avail: avail.pancitHalf, total: needHalf },
-    pancitLarge: { need: Math.max(0, needLarge - avail.pancitLarge), avail: avail.pancitLarge, total: needLarge },
+    lumpia:      { need: Math.max(0, demand.lumpiaSets - onHand.lumpiaSets), avail: onHand.lumpiaSets, total: demand.lumpiaSets },
+    pancitFull:  { need: Math.max(0, demand.pancitFull - onHand.pancitFull), avail: onHand.pancitFull, total: demand.pancitFull },
+    pancitHalf:  { need: Math.max(0, demand.pancitHalf - onHand.pancitHalf), avail: onHand.pancitHalf, total: demand.pancitHalf },
+    pancitLarge: { need: Math.max(0, demand.pancitLarge - onHand.pancitLarge), avail: onHand.pancitLarge, total: demand.pancitLarge },
   };
 }
 
