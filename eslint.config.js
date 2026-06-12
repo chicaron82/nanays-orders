@@ -30,6 +30,12 @@ export default defineConfig([
     },
   },
   {
+    // Build-time config runs in node (the build stamp reads process.env / git),
+    // not the browser like the app globs above.
+    files: ['vite.config.js'],
+    languageOptions: { globals: globals.node },
+  },
+  {
     files: ['**/*.{ts,tsx}'],
     extends: [
       tseslint.configs.recommended,
