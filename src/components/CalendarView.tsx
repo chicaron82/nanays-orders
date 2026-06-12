@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import type { Order, BlockedDay } from '../types';
-import { getWeekDays, getMonthGrid, localYMD, formatDate } from '../lib/utils';
+import { getWeekDays, getMonthGrid, localYMD, formatDate, isSettled } from '../lib/utils';
 import DayRow from './calendar/DayRow';
 import DayCell from './calendar/DayCell';
 import DaySheet from './calendar/DaySheet';
@@ -47,9 +47,13 @@ export default function CalendarView({ orders, blockedDays, blockedSet, onOrderC
     return map;
   }, [blockedDays]);
 
+  // Overdue = past its date and still open. `order_status === 'Pending'` excludes
+  // Cancelled; `!isSettled` drops anything already paid — without it, a settled
+  // order lingers here (order_status is always 'Pending' in the payment-only
+  // lifecycle), disagreeing with the strikethrough that already marks it done.
   const overdue = useMemo(
     () => orders
-      .filter(o => o.order_status === 'Pending' && o.needed_date && o.needed_date < todayYMD)
+      .filter(o => o.order_status === 'Pending' && !isSettled(o) && o.needed_date && o.needed_date < todayYMD)
       .sort((a, b) => (a.needed_date ?? '').localeCompare(b.needed_date ?? '')),
     [orders, todayYMD]
   );
