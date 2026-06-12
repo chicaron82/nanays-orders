@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Order, Stock } from '../types';
-import { getAvailable, getReserved, getMakeMoreNeeds } from '../lib/utils';
+import { getAvailable, getReserved, getMakeMoreNeeds, localYMD } from '../lib/utils';
 import { AlertTriangle, Package, ChefHat, CheckCircle2 } from 'lucide-react';
 
 interface Props {
@@ -89,7 +89,10 @@ export default function StockManager({ stock, orders, updateStock }: Props) {
   const decNum = (key: NumericStockKey) => setStockEdit(s => ({ ...s, [key]: Math.max(0, (s[key] ?? 0) - 1) }));
   const incNum = (key: NumericStockKey) => setStockEdit(s => ({ ...s, [key]: (s[key] ?? 0) + 1 }));
 
-  const pendingCount = orders.filter(o => o.order_status === 'Pending').length;
+  // Upcoming non-cancelled orders — same basis as the demand/shortage math, so the
+  // "all covered" note reflects orders still to cook, not ancient/settled ones.
+  const today = localYMD(new Date());
+  const pendingCount = orders.filter(o => o.order_status === 'Pending' && (!o.needed_date || o.needed_date >= today)).length;
   const frozen = stockEdit.pork_frozen || 0;
   const thawed = stockEdit.pork_thawed || 0;
 

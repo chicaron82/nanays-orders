@@ -255,10 +255,11 @@ describe('getRevenue', () => {
       { order_status: 'Ready',     payment_status: 'Deposit', total: 50,  created_at: nowIso },
       { order_status: 'Pending',   payment_status: 'Prepaid', total: 999, created_at: nowIso }, // now counted — cash in hand
       { order_status: 'Ready',     payment_status: 'Unpaid',  total: 25,  created_at: nowIso }, // excluded — no cash yet
+      { order_status: 'Fulfilled', payment_status: 'Unpaid',  total: 500, created_at: nowIso }, // excluded — delivered ≠ paid
       { order_status: 'Fulfilled', payment_status: 'Prepaid', total: 25,  created_at: '2000-01-01T00:00:00Z' }, // old
     ];
     const rev = getRevenue(orders);
-    expect(rev.total).toBe(1174); // 100 + 50 + 999 + 25 (Unpaid Ready excluded)
+    expect(rev.total).toBe(1174); // 100 + 50 + 999 + 25 (both Unpaid orders excluded)
     expect(rev.month).toBe(1149); // same minus the 2000 order
   });
 });

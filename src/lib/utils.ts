@@ -267,10 +267,10 @@ export function getMakeMoreNeeds(orders: Order[], stock: Stock | null | undefine
 export function getRevenue(orders: Order[]): { total: number; month: number } {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  // Cash in hand = revenue. Prepaid and Deposit orders are counted regardless
-  // of fulfilment status — the money exists the moment it's received.
+  // Cash in hand = revenue: orders where money was actually received (Prepaid or a
+  // Deposit), regardless of fulfilment. A legacy 'Fulfilled' status no longer counts
+  // on its own — fulfilment isn't payment, and an unpaid delivered order is not cash.
   const counted = orders.filter(o =>
-    o.order_status === "Fulfilled" ||
     o.payment_status === "Prepaid" ||
     o.payment_status === "Deposit"
   );
