@@ -295,7 +295,7 @@ export default function PublicRequestPage() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="customer-name" className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Your Name *</label>
+                <label htmlFor="customer-name" className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Your Name <span className="text-red-500">*</span></label>
                 <input
                   id="customer-name"
                   required
@@ -308,7 +308,7 @@ export default function PublicRequestPage() {
                 {nameError && <p className="text-xs text-red-500 mt-1">Please enter your name.</p>}
               </div>
               <div>
-                <label htmlFor="customer-contact" className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Cell Phone Number *</label>
+                <label htmlFor="customer-contact" className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Cell Phone Number <span className="text-red-500">*</span></label>
                 <input
                   id="customer-contact"
                   required
@@ -351,6 +351,7 @@ export default function PublicRequestPage() {
 
               {lumpiaEnabled && (
                 <div className="px-4 py-3 bg-white border-t border-stone-100 space-y-3">
+                  <p className="text-xs text-stone-400">🔥 <span className="font-medium text-stone-500">Cooked</span> = ready to eat · ❄️ <span className="font-medium text-stone-500">Frozen</span> = uncooked, fry fresh at home · tap the badge on each row to switch</p>
                   {/* Full Set */}
                   <ItemRowPicker
                     label="Full Batch (100 pcs)"
@@ -472,7 +473,7 @@ export default function PublicRequestPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label htmlFor="req-date" className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Date Needed *</label>
+                <label htmlFor="req-date" className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Date Needed <span className="text-red-500">*</span></label>
                 <input
                   id="req-date"
                   required
@@ -487,7 +488,7 @@ export default function PublicRequestPage() {
               </div>
 
               <div>
-                <label htmlFor="req-time" className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Time *</label>
+                <label htmlFor="req-time" className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">Time <span className="text-red-500">*</span></label>
                 <input
                   id="req-time"
                   required
