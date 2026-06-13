@@ -53,9 +53,11 @@ describe('OrderDetailsModal — payment subtitle', () => {
     expect(screen.getByText('Balance Due: $42.50')).toBeInTheDocument();
   });
 
-  it('Deposit with a balance shows deposit + remaining', () => {
+  it('Deposit with a balance shows remaining as hero and total + received in subtitle', () => {
     renderModal(order({ payment_status: 'Deposit', total: 60, deposit_amount: 30 }));
-    expect(screen.getByText('Deposit: $30.00 · Bal: $30.00')).toBeInTheDocument();
+    expect(screen.getByText('Remaining')).toBeInTheDocument();
+    expect(screen.getByText('$30.00', { selector: '.font-playfair' })).toBeInTheDocument();
+    expect(screen.getByText('$60.00 total · $30.00 received')).toBeInTheDocument();
   });
 
   it('overpaid deposit reads as paid with a tip, not a negative balance', () => {

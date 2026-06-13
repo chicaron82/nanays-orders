@@ -190,25 +190,30 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-orange-600 to-amber-500 rounded-xl p-5 flex justify-between items-center text-white shadow-lg">
-              <div>
-                <div className="text-sm font-bold opacity-80 uppercase tracking-wider">Total</div>
-                {!cancelled && discountAmount(order) > 0 && (
-                  <div className="text-xs opacity-90 mt-1 font-semibold">
-                    🏷️ −{fmt(discountAmount(order))}{order.discount_label?.trim() ? ` · ${order.discount_label.trim()}` : ''}
+            {(() => {
+              const depositOwing = !cancelled && order.payment_status === 'Deposit' && owing > 0;
+              return (
+                <div className="bg-gradient-to-r from-orange-600 to-amber-500 rounded-xl p-5 flex justify-between items-center text-white shadow-lg">
+                  <div>
+                    <div className="text-sm font-bold opacity-80 uppercase tracking-wider">{depositOwing ? 'Remaining' : 'Total'}</div>
+                    {!cancelled && discountAmount(order) > 0 && (
+                      <div className="text-xs opacity-90 mt-1 font-semibold">
+                        🏷️ −{fmt(discountAmount(order))}{order.discount_label?.trim() ? ` · ${order.discount_label.trim()}` : ''}
+                      </div>
+                    )}
+                    <div className="text-xs opacity-70 mt-1">
+                      {cancelled && `✗ Cancelled`}
+                      {!cancelled && order.payment_status === 'Unpaid' && `Balance Due: ${fmt(total)}`}
+                      {depositOwing && `${fmt(total)} total · ${fmt(deposit)} received`}
+                      {!cancelled && order.payment_status === 'Deposit' && owing === 0 && tip > 0 && `Paid: ${fmt(deposit)} · +${fmt(tip)} tip ✓`}
+                      {!cancelled && order.payment_status === 'Deposit' && owing === 0 && tip === 0 && `✓ Fully Paid`}
+                      {!cancelled && order.payment_status === 'Prepaid' && (tip > 0 ? `Paid ${fmt(total + tip)} · +${fmt(tip)} tip ✓` : `✓ Fully Paid`)}
+                    </div>
                   </div>
-                )}
-                <div className="text-xs opacity-70 mt-1">
-                  {cancelled && `✗ Cancelled`}
-                  {!cancelled && order.payment_status === 'Unpaid' && `Balance Due: ${fmt(total)}`}
-                  {!cancelled && order.payment_status === 'Deposit' && owing > 0 && `Deposit: ${fmt(deposit)} · Bal: ${fmt(owing)}`}
-                  {!cancelled && order.payment_status === 'Deposit' && owing === 0 && tip > 0 && `Paid: ${fmt(deposit)} · +${fmt(tip)} tip ✓`}
-                  {!cancelled && order.payment_status === 'Deposit' && owing === 0 && tip === 0 && `✓ Fully Paid`}
-                  {!cancelled && order.payment_status === 'Prepaid' && (tip > 0 ? `Paid ${fmt(total + tip)} · +${fmt(tip)} tip ✓` : `✓ Fully Paid`)}
+                  <div className="font-playfair text-4xl font-black">{depositOwing ? fmt(owing) : fmt(total)}</div>
                 </div>
-              </div>
-              <div className="font-playfair text-4xl font-black">{fmt(total)}</div>
-            </div>
+              );
+            })()}
 
             {editingNotes ? (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
