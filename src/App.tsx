@@ -153,33 +153,35 @@ function MainApp({ onLogout }: MainAppProps) {
         </div>
       </header>
 
+      <nav className="sticky top-0 z-40 bg-black/40 backdrop-blur-xl border-b border-white/10 mb-6">
+        <div className="overflow-x-auto px-4 py-2">
+          <div className="flex gap-1.5">
+            <button onClick={() => setTab('orders')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${tab === 'orders' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
+              <ClipboardList size={18} /> Calendar
+            </button>
+            <button onClick={() => setTab('requests')} className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${tab === 'requests' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
+              <ChefHat size={18} /> Requests
+              {requests.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white font-bold text-[10px] w-4.5 h-4.5 rounded-full flex items-center justify-center animate-pulse">
+                  {requests.length}
+                </span>
+              )}
+            </button>
+            <button onClick={() => setTab('stock')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${tab === 'stock' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
+              <PackageOpen size={18} /> Stock &amp; Prep
+            </button>
+            <button onClick={() => setTab('expenses')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${tab === 'expenses' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
+              <Receipt size={18} /> Expenses
+            </button>
+            <button onClick={() => setTab('insights')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${tab === 'insights' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
+              <BarChart3 size={18} /> Insights
+            </button>
+          </div>
+        </div>
+      </nav>
+
       <div className="px-6">
         <Dashboard orders={orders} repeatCount={repeatCount} expenses={expenses} />
-      </div>
-
-      <div className="px-6 mb-6 sticky top-4 z-40">
-        <div className="bg-black/40 backdrop-blur-xl p-1.5 rounded-2xl flex max-w-xl border border-white/20 mx-auto sm:mx-0 shadow-lg">
-          <button onClick={() => setTab('orders')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'orders' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
-            <ClipboardList size={18} /> Calendar
-          </button>
-          <button onClick={() => setTab('requests')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors relative ${tab === 'requests' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
-            <ChefHat size={18} /> Requests
-            {requests.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white font-bold text-[10px] w-4.5 h-4.5 rounded-full flex items-center justify-center animate-pulse">
-                {requests.length}
-              </span>
-            )}
-          </button>
-          <button onClick={() => setTab('stock')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'stock' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
-            <PackageOpen size={18} /> Stock &amp; Prep
-          </button>
-          <button onClick={() => setTab('expenses')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'expenses' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
-            <Receipt size={18} /> Expenses
-          </button>
-          <button onClick={() => setTab('insights')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === 'insights' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/5'}`}>
-            <BarChart3 size={18} /> Insights
-          </button>
-        </div>
       </div>
 
       <main>
