@@ -52,8 +52,9 @@ Follow this shape for new data hooks.
 - **`docs/` is a done idea-inbox, not a backlog.** Aaron drops crew ideas/fixes there from the
   lot; everything in it is already implemented and may have evolved past its note. **The code is
   the source of truth.** See `docs/INDEX.md`. Never treat a `docs/` file as open work.
-- **New pure logic in `lib/utils.ts` gets a test** in `tests/lib/utils.test.ts`, same commit. The
-  money and stock math must not silently break.
+- **New or changed behavior in `lib/utils.ts` gets a test** in `tests/lib/utils.test.ts`, same
+  commit. This covers new functions AND new branches/paths in existing functions. The money and
+  stock math must not silently break.
 - **Line count is judgment, not law.** A long-but-cohesive component (e.g. a big form) is fine —
   split god objects, not cohesive files. Don't refactor to hit a number.
 - **eslint:** Drop unused params/vars — don't `_`-prefix them. For callbacks where a later param is needed (e.g. `Array.from((_, i) => ...)`) the bare `_` is fine because `args: 'after-used'` only flags params after the last used one.
