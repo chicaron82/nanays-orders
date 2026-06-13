@@ -228,7 +228,10 @@ export default function StockManager({ stock, orders, updateStock }: Props) {
           <div className="flex items-center justify-between">
             <div>
               <span className="text-sm font-medium text-stone-700">Apo Q Bihon packs</span>
-              <div className="text-xs text-stone-400 mt-0.5">1 pack = 1 full tray · 2 half orders</div>
+              <div className="text-xs text-stone-400 mt-0.5">regular/small = 1 pack each · large = 2 packs</div>
+              {reserved.noodlePacks > 0 && (
+                <div className="text-xs text-amber-700 mt-0.5">{reserved.noodlePacks} committed · {avail.noodlePacks} available</div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button className="w-8 h-8 rounded-lg border-2 border-orange-200 text-orange-600 font-bold hover:bg-orange-50 transition-colors" onClick={() => decNum('noodle_packs')}>−</button>

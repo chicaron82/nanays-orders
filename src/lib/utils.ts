@@ -195,7 +195,7 @@ export function urgencyLabel(days: number | null): UrgencyLabel | null {
 }
 
 // ─── STOCK ───────────────────────────────────────────────────────────────────
-export interface BatchCounts { lumpiaSets: number; pancitFull: number; pancitHalf: number; pancitLarge: number; }
+export interface BatchCounts { lumpiaSets: number; pancitFull: number; pancitHalf: number; pancitLarge: number; noodlePacks: number; }
 
 // Stock spoken for by orders still to be made: upcoming (or undated) non-cancelled
 // orders — the same demand basis as the make-more calculator. Status used to gate
@@ -204,7 +204,7 @@ export interface BatchCounts { lumpiaSets: number; pancitFull: number; pancitHal
 // on the needed date is reality: a past order was already cooked; a cancelled one
 // won't be.
 export function getReserved(orders: Order[], today: string = localYMD(new Date())): BatchCounts {
-  const reserved: BatchCounts = { lumpiaSets: 0, pancitFull: 0, pancitHalf: 0, pancitLarge: 0 };
+  const reserved: BatchCounts = { lumpiaSets: 0, pancitFull: 0, pancitHalf: 0, pancitLarge: 0, noodlePacks: 0 };
   orders
     .filter(o => o.order_status === "Pending" && (!o.needed_date || o.needed_date >= today))
     .forEach(o => {
@@ -213,6 +213,8 @@ export function getReserved(orders: Order[], today: string = localYMD(new Date()
         reserved.pancitFull += o.pancit.full || 0;
         reserved.pancitHalf += o.pancit.half || 0;
         reserved.pancitLarge += o.pancit.large || 0;
+        // Each tray (regular or small) uses 1 pack; large uses 2.
+        reserved.noodlePacks += (o.pancit.full || 0) + (o.pancit.half || 0) + (o.pancit.large || 0) * 2;
       }
     });
   return reserved;
@@ -225,6 +227,7 @@ export function getAvailable(stock: Stock | null | undefined, orders: Order[], t
     pancitFull: (stock?.pancit_full || 0) - reserved.pancitFull,
     pancitHalf: (stock?.pancit_half || 0) - reserved.pancitHalf,
     pancitLarge: (stock?.pancit_large || 0) - reserved.pancitLarge,
+    noodlePacks: (stock?.noodle_packs || 0) - reserved.noodlePacks,
   };
 }
 
@@ -466,7 +469,7 @@ export function getIngredientWarnings(form: Order, stock: Stock | null | undefin
 
   // ── Pancit warnings ────────────────────────────────────────────────────────
   if (hasPancit) {
-    const packsNeeded = (form.pancit?.full || 0) + Math.ceil((form.pancit?.half || 0) / 2) + (form.pancit?.large || 0) * 2;
+    const packsNeeded = (form.pancit?.full || 0) + (form.pancit?.half || 0) + (form.pancit?.large || 0) * 2;
     const packsOnHand = stock.noodle_packs || 0;
 
     if (packsNeeded > packsOnHand) {

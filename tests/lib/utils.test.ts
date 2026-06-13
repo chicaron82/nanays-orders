@@ -78,6 +78,10 @@ describe('orderSummary', () => {
     expect(s).toContain('1 Regular');
     expect(s).toContain('Rush order');
   });
+  it('shows ×N for duplicate sauces', () => {
+    const s = orderSummary({ lumpia: { enabled: true, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: ['sweet_and_sour', 'sweet_and_sour'] } });
+    expect(s).toContain('Sweet & Sour ×2');
+  });
 });
 
 // ─── URGENCY ────────────────────────────────────────────────────────────────────
@@ -119,17 +123,19 @@ describe('getReserved', () => {
     expect(r.pancitFull).toBe(1);
     expect(r.pancitHalf).toBe(2);
     expect(r.pancitLarge).toBe(1);
+    expect(r.noodlePacks).toBe(5); // 1 regular + 2 small + 1 large×2
   });
 });
 
 describe('getAvailable', () => {
   it('subtracts upcoming demand from stock on hand', () => {
-    const stock = { lumpia_sets: 10, pancit_full: 5, pancit_half: 4, pancit_large: 2 };
-    const orders: Order[] = [{ order_status: 'Pending', needed_date: ymd(2), lumpia: { enabled: true, sets: 3, halves: 0 }, pancit: { enabled: true, full: 1, half: 0, large: 0 } }];
+    const stock = { lumpia_sets: 10, pancit_full: 5, pancit_half: 4, pancit_large: 2, noodle_packs: 8 };
+    const orders: Order[] = [{ order_status: 'Pending', needed_date: ymd(2), lumpia: { enabled: true, sets: 3, halves: 0 }, pancit: { enabled: true, full: 1, half: 2, large: 0 } }];
     const a = getAvailable(stock, orders);
     expect(a.lumpiaSets).toBe(7);
     expect(a.pancitFull).toBe(4);
-    expect(a.pancitHalf).toBe(4);
+    expect(a.pancitHalf).toBe(2);
+    expect(a.noodlePacks).toBe(5); // 8 on hand - (1 regular + 2 small) = 5
   });
 });
 
@@ -401,6 +407,14 @@ describe('getIngredientWarnings', () => {
   it('flags a noodle-pack shortage for pancit', () => {
     const w = getIngredientWarnings(
       { pancit: { enabled: true, full: 5, half: 0, large: 0 } },
+      { noodle_packs: 1, carrots_status: 'plenty', celery_status: 'plenty' },
+    );
+    expect(w.some(x => x.includes('noodle packs'))).toBe(true);
+  });
+  it('each small/half tray uses one full noodle pack', () => {
+    // 2 half trays → 2 packs needed; 1 on hand → shortage
+    const w = getIngredientWarnings(
+      { pancit: { enabled: true, full: 0, half: 2, large: 0 } },
       { noodle_packs: 1, carrots_status: 'plenty', celery_status: 'plenty' },
     );
     expect(w.some(x => x.includes('noodle packs'))).toBe(true);
