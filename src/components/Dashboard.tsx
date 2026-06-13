@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import type { Order, Expense } from '../types';
-import { getRevenue, fmt, amountOwing, localYMD } from '../lib/utils';
+import { getRevenue, fmt, amountOwing, localYMD, getRepeatCustomers, orderSummary } from '../lib/utils';
 import { Repeat, DollarSign, Clock, TrendingUp, Wallet } from 'lucide-react';
 
 interface Props {
@@ -9,7 +10,22 @@ interface Props {
 }
 
 export default function Dashboard({ orders, repeatCount, expenses = [] }: Props) {
+  const [showRepeat, setShowRepeat] = useState(false);
   const revenue = getRevenue(orders);
+
+  const repeatCustomers = (() => {
+    const repeatMap = getRepeatCustomers(orders);
+    return Object.entries(repeatMap)
+      .filter(([, count]) => count >= 2)
+      .map(([key]) => {
+        const customerOrders = orders
+          .filter(o => (o.customer_name || '').toLowerCase().trim().slice(0, 6) === key)
+          .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+        const latest = customerOrders[0];
+        return { name: latest?.customer_name ?? key, count: repeatMap[key], lastOrder: latest };
+      })
+      .sort((a, b) => b.count - a.count);
+  })();
 
   const now = new Date();
   const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -48,12 +64,34 @@ export default function Dashboard({ orders, repeatCount, expenses = [] }: Props)
         <div className="text-xs text-white/70 mt-1">{fmt(revenue.month)} revenue · {fmt(monthlySpend)} expenses</div>
       </div>
 
-      <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
+      <button
+        onClick={() => setShowRepeat(v => !v)}
+        className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-4 text-white shadow-lg relative overflow-hidden text-left w-full hover:bg-white/30 transition-colors cursor-pointer"
+      >
         <div className="absolute top-0 right-0 p-4 opacity-20"><Repeat size={48} /></div>
         <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">Repeat Customers</div>
         <div className="font-playfair text-3xl font-black leading-tight">{repeatCount}</div>
-        <div className="text-xs text-white/70 mt-1">ordered &gt; 1 time</div>
-      </div>
+        <div className="text-xs text-white/70 mt-1">ordered &gt; 1 time · {showRepeat ? '▲' : '▼'}</div>
+      </button>
+
+      {showRepeat && (
+        <div className="col-span-2 md:col-span-4 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-4 text-white shadow-lg">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-3">Who keeps coming back</div>
+          <div className="space-y-3">
+            {repeatCustomers.map(c => (
+              <div key={c.name} className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-semibold text-sm">{c.name}</div>
+                  {c.lastOrder && (
+                    <div className="text-xs text-white/60 mt-0.5 truncate">{orderSummary(c.lastOrder)}</div>
+                  )}
+                </div>
+                <div className="text-xs font-bold text-white/70 shrink-0 mt-0.5">{c.count}×</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-4 text-white shadow-lg relative overflow-hidden grid grid-cols-2 gap-2">
         <div>
