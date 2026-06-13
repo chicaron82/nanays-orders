@@ -107,7 +107,13 @@ export function orderSummary(order: Order): string {
     }
     parts.push(`Lumpia ${ls.join(' + ') || '—'}`);
     const sauces = order.lumpia.sauces || [];
-    if (sauces.length) parts.push(`Sauce: ${sauces.map(s => s === 'sweet_and_sour' ? 'Sweet & Sour' : 'Sweet Chili').join(', ')}`);
+    if (sauces.length) {
+      const sauceLabel = (s: string) => s === 'sweet_and_sour' ? 'Sweet & Sour' : 'Sweet Chili';
+      const counts: Record<string, number> = {};
+      for (const s of sauces) counts[s] = (counts[s] ?? 0) + 1;
+      const unique = [...new Set(sauces)];
+      parts.push(`Sauce: ${unique.map(s => counts[s] > 1 ? `${sauceLabel(s)} ×${counts[s]}` : sauceLabel(s)).join(', ')}`);
+    }
   }
   if (order.pancit?.enabled) {
     const ps: string[] = [];

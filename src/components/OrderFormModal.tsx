@@ -157,24 +157,35 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                     {/* Sauces */}
                     <div className="pt-1 border-t border-stone-100">
                       <p className="text-xs text-stone-400 mb-2">Sauces (optional · {fmt(PANCIT_SAUCE_PRICE['sweet_and_sour'])} each)</p>
-                      <div className="flex gap-2">
+                      <div className="flex gap-4">
                         {[
-                          { key: 'sweet_and_sour', label: 'Sweet & Sour' },
-                          { key: 'sweet_chili',    label: 'Sweet Chili' },
+                          { key: 'sweet_and_sour' as const, label: 'Sweet & Sour' },
+                          { key: 'sweet_chili'    as const, label: 'Sweet Chili' },
                         ].map(sauce => {
                           const current = form.lumpia?.sauces || [];
-                          const selected = current.includes(sauce.key as 'sweet_and_sour' | 'sweet_chili');
+                          const qty = current.filter(s => s === sauce.key).length;
                           return (
-                            <button
-                              key={sauce.key}
-                              type="button"
-                              onClick={() => {
-                                setField('lumpia.sauces', selected ? current.filter(s => s !== sauce.key) : [...current, sauce.key]);
-                              }}
-                              className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${selected ? 'bg-orange-500 border-orange-500 text-white' : 'border-stone-200 text-stone-500 hover:border-orange-300'}`}
-                            >
-                              {sauce.label}
-                            </button>
+                            <div key={sauce.key} className="flex items-center gap-2">
+                              <span className={`text-xs font-semibold ${qty > 0 ? 'text-orange-600' : 'text-stone-400'}`}>{sauce.label}</span>
+                              <div className="flex items-center gap-1">
+                                {qty > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const idx = current.indexOf(sauce.key);
+                                      setField('lumpia.sauces', current.filter((_, i) => i !== idx));
+                                    }}
+                                    className="w-6 h-6 rounded-full border border-stone-200 text-stone-500 hover:border-orange-300 text-sm flex items-center justify-center transition-colors cursor-pointer"
+                                  >−</button>
+                                )}
+                                {qty > 0 && <span className="text-xs font-bold text-orange-600 w-4 text-center">{qty}</span>}
+                                <button
+                                  type="button"
+                                  onClick={() => setField('lumpia.sauces', [...current, sauce.key])}
+                                  className={`w-6 h-6 rounded-full border text-sm flex items-center justify-center transition-colors cursor-pointer ${qty > 0 ? 'border-orange-400 text-orange-500 hover:bg-orange-50' : 'border-stone-200 text-stone-500 hover:border-orange-300'}`}
+                                >+</button>
+                              </div>
+                            </div>
                           );
                         })}
                       </div>
