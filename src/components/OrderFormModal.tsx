@@ -156,7 +156,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
 
                     {/* Sauces */}
                     <div className="pt-1 border-t border-stone-100">
-                      <p className="text-xs text-stone-400 mb-2">Sauces (optional · {fmt(PANCIT_SAUCE_PRICE['sweet_and_sour'])} each)</p>
+                      <p className="text-xs text-stone-400 mb-2">Sauces (optional · {fmt(PANCIT_SAUCE_PRICE['sweet_and_sour'])} each · <span className="text-orange-400 font-semibold">homemade</span>)</p>
                       <div className="flex gap-4">
                         {[
                           { key: 'sweet_and_sour' as const, label: 'Sweet & Sour' },
