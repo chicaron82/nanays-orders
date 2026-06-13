@@ -64,7 +64,9 @@ Follow this shape for new data hooks.
 - A lumpia **"half" counts as 0.5 of a set** in stock math.
 - Only **`"Ready"`** orders reserve stock (`getReserved`); **`"Pending"`** orders drive the
   make-more calculator (`getMakeMoreNeeds`).
-- Pancit noodle packs needed = `full × 1 + ceil(half / 2) + large × 2`.
+- Pancit noodle packs needed = `full × 1 + half × 1 + large × 2`. Each small/half tray uses one
+  full bihon pack (the other half is consumed at home, not saved). **Not** `ceil(half / 2)` — that
+  was the old (wrong) formula still present in `getIngredientWarnings`.
 - Revenue counts `Fulfilled` orders plus `Ready` orders that are `Prepaid`/`Deposit`.
 - `needed_date` is stored as a local `YYYY-MM-DD` string — use `localYMD()`, not `toISOString()`
   (which would shift evening dates a day forward).
