@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Edit2, AlertTriangle, Calendar, MapPin, Phone, MessageSquare, Share2, BellRing } from 'lucide-react';
+import { X, Trash2, Edit2, Calendar, MapPin, Phone, MessageSquare, Share2, BellRing } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Order, Stock, PaymentStatus } from '../types';
-import { fmt, formatDate, checkShortage, urgencyLabel, getDaysUntil, buildOrderMessage, buildReadyMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, PAYMENT_STATUS } from '../lib/utils';
+import type { Order, PaymentStatus } from '../types';
+import { fmt, formatDate, urgencyLabel, getDaysUntil, buildOrderMessage, buildReadyMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, PAYMENT_STATUS } from '../lib/utils';
 
 interface Props {
   order: Order | null;
-  stock: Stock;
-  allOrders: Order[];
+  allOrders?: Order[];
   isOpen: boolean;
   onClose: () => void;
   onEdit: (order: Order) => void;
@@ -16,7 +15,7 @@ interface Props {
   onPaymentChange: (id: string | number, patch: Partial<Order>) => void;
 }
 
-export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onClose, onEdit, onDelete, onPaymentChange }: Props) {
+export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDelete, onPaymentChange }: Props) {
   const [depositInput, setDepositInput] = useState(
     () => (order?.deposit_amount != null ? String(order.deposit_amount) : '')
   );
@@ -44,9 +43,6 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
   const cancelled = order.order_status === 'Cancelled';
   const settled = isSettled(order);
 
-  // Shortage = does this order still fit once every OTHER upcoming order is reserved?
-  // checkShortage excludes this order by id; getReserved windows the rest to upcoming.
-  const detailShortage = checkShortage(order, stock, allOrders, order.id);
   const days = getDaysUntil(order.needed_date);
   const urgency = urgencyLabel(days);
 
@@ -115,18 +111,6 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
           </div>
 
           <div className="p-6 space-y-6">
-            {detailShortage.length > 0 && !cancelled && !settled && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 text-red-800">
-                <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <div className="font-bold text-sm mb-1">Stock Shortage — Cannot Fulfill Yet</div>
-                  <ul className="list-disc pl-4 text-xs space-y-1">
-                    {detailShortage.map((w, i) => <li key={i}>{w}</li>)}
-                  </ul>
-                </div>
-              </div>
-            )}
-
             <div className="grid sm:grid-cols-2 gap-4">
               {order.lumpia?.enabled && (
                 <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
@@ -192,8 +176,12 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
 
             {(() => {
               const depositOwing = !cancelled && order.payment_status === 'Deposit' && owing > 0;
+              const fullyPaid = !cancelled && ((order.payment_status === 'Prepaid') || (order.payment_status === 'Deposit' && owing === 0));
+              const cardGradient = fullyPaid
+                ? 'bg-gradient-to-r from-emerald-600 to-green-500'
+                : 'bg-gradient-to-r from-orange-600 to-amber-500';
               return (
-                <div className="bg-gradient-to-r from-orange-600 to-amber-500 rounded-xl p-5 flex justify-between items-center text-white shadow-lg">
+                <div className={`${cardGradient} rounded-xl p-5 flex justify-between items-center text-white shadow-lg`}>
                   <div>
                     <div className="text-sm font-bold opacity-80 uppercase tracking-wider">{depositOwing ? 'Remaining' : 'Total'}</div>
                     {!cancelled && discountAmount(order) > 0 && (
@@ -248,16 +236,21 @@ export default function OrderDetailsModal({ order, stock, allOrders, isOpen, onC
             <div className="border-t border-stone-200 pt-6">
               <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-3">Payment</label>
               <div className="flex flex-wrap gap-2">
-                {PAYMENT_STATUS.map(p => (
-                  <button key={p} onClick={() => handlePaymentStatus(p)}
-                    className={`px-4 py-2 rounded-full font-bold text-xs transition-colors ${
-                      !cancelled && order.payment_status === p ? 'bg-stone-800 text-white shadow-md' :
-                      'bg-white border-2 border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300'
-                    }`}
-                  >
-                    {p === 'Prepaid' ? 'Paid ✓' : p}
-                  </button>
-                ))}
+                {PAYMENT_STATUS.map(p => {
+                  const isActive = !cancelled && order.payment_status === p;
+                  const isPaid = p === 'Prepaid';
+                  return (
+                    <button key={p} onClick={() => handlePaymentStatus(p)}
+                      className={`rounded-full font-bold transition-colors ${
+                        isActive && isPaid ? 'px-6 py-2.5 text-sm bg-emerald-600 text-white shadow-lg' :
+                        isActive ? 'px-4 py-2 text-xs bg-stone-800 text-white shadow-md' :
+                        'px-4 py-2 text-xs bg-white border-2 border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300'
+                      }`}
+                    >
+                      {isPaid ? 'Paid ✓' : p}
+                    </button>
+                  );
+                })}
                 <button onClick={handleCancelOrder}
                   className={`px-4 py-2 rounded-full font-bold text-xs transition-colors ${
                     cancelled ? 'bg-red-600 text-white shadow-md' :

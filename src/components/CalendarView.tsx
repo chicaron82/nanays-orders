@@ -6,7 +6,6 @@ import DayRow from './calendar/DayRow';
 import DayCell from './calendar/DayCell';
 import DaySheet from './calendar/DaySheet';
 import OrderChip from './calendar/OrderChip';
-import PrepSheet from './PrepSheet';
 
 interface Props {
   orders: Order[];
@@ -28,7 +27,6 @@ export default function CalendarView({ orders, blockedDays, blockedSet, onOrderC
   const [view, setView] = useState<ViewType>('week');
   const [anchorDate, setAnchorDate] = useState<Date>(() => new Date());
   const [daySheetDate, setDaySheetDate] = useState<string | null>(null);
-  const [prepDate, setPrepDate] = useState<string | null>(null);
 
   const todayYMD = localYMD(new Date());
 
@@ -210,15 +208,6 @@ export default function CalendarView({ orders, blockedDays, blockedSet, onOrderC
           onClose={() => setDaySheetDate(null)}
           onOrderClick={(o) => { setDaySheetDate(null); onOrderClick(o); }}
           onNewOrderForDate={(ymd) => { setDaySheetDate(null); onNewOrderForDate(ymd); }}
-          onPrint={(ymd) => { setDaySheetDate(null); setPrepDate(ymd); }}
-        />
-      )}
-
-      {prepDate && (
-        <PrepSheet
-          ymd={prepDate}
-          orders={ordersByDate[prepDate] || []}
-          onClose={() => setPrepDate(null)}
         />
       )}
     </div>

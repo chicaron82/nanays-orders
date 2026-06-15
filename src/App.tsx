@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Toaster, toast } from 'sonner';
-import { ChefHat, ClipboardList, PackageOpen, Receipt, BarChart3, Plus, LogOut, Check, X } from 'lucide-react';
+import { ChefHat, ClipboardList, Receipt, BarChart3, Plus, LogOut, Check, X } from 'lucide-react';
 import type { Order, OrderRequest } from './types';
 import { useOrders } from './hooks/useOrders';
-import { useStock } from './hooks/useStock';
 import { useAuth } from './hooks/useAuth';
 import { useExpenses } from './hooks/useExpenses';
 import { useBackGuard } from './hooks/useBackGuard';
@@ -12,7 +11,6 @@ import { useOrderRequests } from './hooks/useOrderRequests';
 
 import Dashboard from './components/Dashboard';
 import CalendarView from './components/CalendarView';
-import StockManager from './components/StockManager';
 import ExpenseLog from './components/ExpenseLog';
 import InsightsView from './components/InsightsView';
 import OrderFormModal from './components/OrderFormModal';
@@ -29,12 +27,11 @@ interface MainAppProps {
 
 function MainApp({ onLogout }: MainAppProps) {
   const { orders, loading: ordersLoading, addOrder, updateOrder, deleteOrder } = useOrders();
-  const { stock, loading: stockLoading, updateStock } = useStock();
   const { expenses, addExpense, deleteExpense } = useExpenses();
   const { blockedDays, blockedSet, blockDay, unblockDay } = useBlockedDays();
   const { requests, approveRequest, declineRequest } = useOrderRequests();
 
-  const [tab, setTab] = useState<'orders' | 'requests' | 'stock' | 'expenses' | 'insights'>('orders');
+  const [tab, setTab] = useState<'orders' | 'requests' | 'expenses' | 'insights'>('orders');
   const [showForm, setShowForm] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [editOrder, setEditOrder] = useState<Order | null>(null);
@@ -106,7 +103,7 @@ function MainApp({ onLogout }: MainAppProps) {
     setShowForm(true);
   };
 
-  if (ordersLoading || stockLoading) {
+  if (ordersLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center flex-col gap-4">
         <ChefHat className="text-white animate-bounce w-16 h-16" />
@@ -167,9 +164,6 @@ function MainApp({ onLogout }: MainAppProps) {
                 </span>
               )}
             </button>
-            <button onClick={() => setTab('stock')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${tab === 'stock' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
-              <PackageOpen size={18} /> Stock &amp; Prep
-            </button>
             <button onClick={() => setTab('expenses')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${tab === 'expenses' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
               <Receipt size={18} /> Expenses
             </button>
@@ -204,9 +198,6 @@ function MainApp({ onLogout }: MainAppProps) {
             onDecline={handleDeclineRequest}
           />
         )}
-        {tab === 'stock' && (
-          <StockManager stock={stock} orders={orders} updateStock={updateStock} />
-        )}
         {tab === 'expenses' && (
           <ExpenseLog expenses={expenses} onAdd={addExpense} onDelete={deleteExpense} />
         )}
@@ -221,7 +212,6 @@ function MainApp({ onLogout }: MainAppProps) {
         onSave={handleSaveOrder}
         editOrder={editOrder}
         allOrders={orders}
-        stock={stock}
         initialDate={newOrderDate}
         blockedSet={blockedSet}
         blockedDays={blockedDays}
@@ -231,7 +221,6 @@ function MainApp({ onLogout }: MainAppProps) {
         key={selectedOrder?.id as string ?? 'none'}
         isOpen={!!selectedOrder}
         order={selectedOrder}
-        stock={stock}
         allOrders={orders}
         onClose={() => setSelectedOrder(null)}
         onEdit={openEdit}

@@ -1,12 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import OrderDetailsModal from './OrderDetailsModal';
-import type { Order, Stock } from '../types';
-
-const stock: Stock = {
-  lumpia_sets: 99, wrapper_packs: 99, pancit_full: 99, pancit_half: 99, pancit_large: 99,
-  pork_frozen: 99, pork_thawed: 99, noodle_packs: 99, carrots_status: 'plenty', celery_status: 'plenty',
-};
+import type { Order } from '../types';
 
 const order = (over: Partial<Order> = {}): Order => ({
   id: 1,
@@ -25,7 +20,7 @@ function renderModal(o: Order, props: Partial<Parameters<typeof OrderDetailsModa
   const onPaymentChange = vi.fn();
   render(
     <OrderDetailsModal
-      order={o} stock={stock} allOrders={[o]} isOpen
+      order={o} allOrders={[o]} isOpen
       onClose={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()}
       onPaymentChange={onPaymentChange}
       {...props}
@@ -38,7 +33,7 @@ describe('OrderDetailsModal — render gating', () => {
   it('renders nothing when closed', () => {
     const { container } = render(
       <OrderDetailsModal
-        order={order()} stock={stock} allOrders={[]} isOpen={false}
+        order={order()} allOrders={[]} isOpen={false}
         onClose={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()}
         onPaymentChange={vi.fn()}
       />,
