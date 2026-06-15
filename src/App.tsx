@@ -221,7 +221,6 @@ function MainApp({ onLogout }: MainAppProps) {
         key={selectedOrder?.id as string ?? 'none'}
         isOpen={!!selectedOrder}
         order={selectedOrder}
-        allOrders={orders}
         onClose={() => setSelectedOrder(null)}
         onEdit={openEdit}
         onDelete={deleteOrder}

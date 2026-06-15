@@ -20,7 +20,7 @@ function renderModal(o: Order, props: Partial<Parameters<typeof OrderDetailsModa
   const onPaymentChange = vi.fn();
   render(
     <OrderDetailsModal
-      order={o} allOrders={[o]} isOpen
+      order={o} isOpen
       onClose={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()}
       onPaymentChange={onPaymentChange}
       {...props}
@@ -33,7 +33,7 @@ describe('OrderDetailsModal — render gating', () => {
   it('renders nothing when closed', () => {
     const { container } = render(
       <OrderDetailsModal
-        order={order()} allOrders={[]} isOpen={false}
+        order={order()} isOpen={false}
         onClose={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()}
         onPaymentChange={vi.fn()}
       />,

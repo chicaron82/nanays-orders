@@ -309,7 +309,13 @@ export function fuzzyMatch(a?: string | null, b?: string | null): boolean {
   return false;
 }
 
-/** Stable identity key for a customer: name+phone composite, phone-only fallback. */
+/**
+ * Stable identity key for a customer: name+phone composite, phone-only fallback.
+ * The `|` delimiter is safe because neither field carries it in practice —
+ * names are Filipino given/family names, contacts are phone numbers. If a
+ * contact field ever holds a literal `|`, two distinct customers could collide
+ * on the same key; switch to a control-char delimiter (e.g. `\x1f`) if that bites.
+ */
 export function customerKey(o: { customer_name?: string; contact?: string }): string {
   const name = (o.customer_name || '').toLowerCase().trim();
   const phone = (o.contact || '').trim();

@@ -7,7 +7,6 @@ import { fmt, formatDate, urgencyLabel, getDaysUntil, buildOrderMessage, buildRe
 
 interface Props {
   order: Order | null;
-  allOrders?: Order[];
   isOpen: boolean;
   onClose: () => void;
   onEdit: (order: Order) => void;
