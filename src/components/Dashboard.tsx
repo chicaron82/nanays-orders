@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Order, Expense } from '../types';
-import { getRevenue, fmt, amountOwing, localYMD, getRepeatCustomers, orderSummary } from '../lib/utils';
+import { getRevenue, fmt, amountOwing, localYMD, getRepeatCustomers, customerKey, orderSummary } from '../lib/utils';
 import { Repeat, DollarSign, Clock, TrendingUp, Wallet } from 'lucide-react';
 
 interface Props {
@@ -19,7 +19,7 @@ export default function Dashboard({ orders, repeatCount, expenses = [] }: Props)
       .filter(([, count]) => count >= 2)
       .map(([key]) => {
         const customerOrders = orders
-          .filter(o => (o.customer_name || '').toLowerCase().trim().slice(0, 6) === key)
+          .filter(o => customerKey(o) === key)
           .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
         const latest = customerOrders[0];
         return { name: latest?.customer_name ?? key, count: repeatMap[key], lastOrder: latest };

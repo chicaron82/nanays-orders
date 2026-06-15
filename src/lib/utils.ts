@@ -309,10 +309,17 @@ export function fuzzyMatch(a?: string | null, b?: string | null): boolean {
   return false;
 }
 
+/** Stable identity key for a customer: name+phone composite, phone-only fallback. */
+export function customerKey(o: { customer_name?: string; contact?: string }): string {
+  const name = (o.customer_name || '').toLowerCase().trim();
+  const phone = (o.contact || '').trim();
+  return phone ? `${name}|${phone}` : name;
+}
+
 export function getRepeatCustomers(orders: Order[]): Record<string, number> {
   const counts: Record<string, number> = {};
   orders.forEach(o => {
-    const key = (o.customer_name || "").toLowerCase().trim().slice(0, 6);
+    const key = customerKey(o);
     if (key) counts[key] = (counts[key] || 0) + 1;
   });
   return counts;
