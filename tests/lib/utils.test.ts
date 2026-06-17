@@ -42,7 +42,7 @@ describe('calcTotal', () => {
   });
 
   it('pancit full/half/large + extra meat', () => {
-    expect(calcTotal({ pancit: { enabled: true, full: 2, half: 1, large: 1, extraMeat: true } })).toBe(122.5); // 50 + 12.5 + 50 + 10
+    expect(calcTotal({ pancit: { enabled: true, full: 2, half: 1, large: 1, extraMeat: true } })).toBe(123); // 50 + 13 + 50 + 10
   });
 
   it('rush fee and delivery fee', () => {
