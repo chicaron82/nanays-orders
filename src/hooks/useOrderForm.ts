@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fuzzyMatch, calcTotal, orderSubtotal, discountAmount, lastOrderFor } from '../lib/utils';
+import { fuzzyMatch, calcTotal, orderSubtotal, discountAmount, lastOrderFor, isAutoRush, requiresDeposit, depositFor } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import type { Order, OrderForm } from '../types';
 
@@ -37,7 +37,8 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
             : lumpia;
           setForm({ ...editOrder, lumpia: migratedLumpia, saveCustomer: false });
         } else {
-          setForm({ ...initialForm, needed_date: initialDate || new Date().toISOString().split('T')[0] });
+          const nd = initialDate || new Date().toISOString().split('T')[0];
+          setForm({ ...initialForm, needed_date: nd, rush_order: isAutoRush({ needed_date: nd }) });
         }
       }, 0);
     }
@@ -65,6 +66,10 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
       let cur = clone;
       for (let i = 0; i < keys.length - 1; i++) cur = cur[keys[i]];
       cur[keys[keys.length - 1]] = value;
+      // Auto-sync rush on new orders when the date changes.
+      if (path === 'needed_date' && !editOrder) {
+        clone.rush_order = isAutoRush({ needed_date: value as string });
+      }
       return clone;
     });
   };
@@ -124,6 +129,9 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
   const subtotal = orderSubtotal(form);
   const discount = discountAmount(form, subtotal);
   const total = calcTotal(form);
+  const depositRequired  = requiresDeposit(form);
+  const suggestedDeposit = depositFor(form);
+  const autoRushActive   = isAutoRush({ needed_date: form.needed_date });
 
   const handleSubmit = () => {
     if (!form.customer_name?.trim() || !form.needed_date || !hasItems || isDateBlocked) return;
@@ -151,5 +159,6 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
     repeatAvailable, applyRepeatLast, repeatOrderCount,
     addCustomItem, updateCustomItem, removeCustomItem,
     isDateBlocked,
+    depositRequired, suggestedDeposit, autoRushActive,
   };
 }

@@ -10,11 +10,15 @@ import {
   customItemsTotal,
   orderSummary,
   nextAvailableDate,
+  requiresDeposit,
+  depositFor,
+  isAutoRush,
+  lumpiaPieceCount,
   EARLY_ORDER_FEE,
   RUSH_ORDER_FEE,
   DELIVERY_FEE,
 } from './utils';
-import type { Order } from '../types';
+import type { Order, LumpiaOrder } from '../types';
 
 // A minimal order with one pancit so calcTotal has a non-fee base to add onto.
 const base = (over: Partial<Order> = {}): Order => ({
@@ -45,14 +49,15 @@ describe('isEarlyFulfillment', () => {
     });
   });
 
-  describe('delivery — cutoff noon (covers prep + travel lead time)', () => {
-    it('flags a delivery that is fine for a pickup (11:00–11:59)', () => {
-      expect(isEarlyFulfillment(base({ delivery_type: 'city', pickup_time: '11:00' }))).toBe(true);
-      expect(isEarlyFulfillment(base({ delivery_type: 'outside', pickup_time: '11:30' }))).toBe(true);
+  describe('delivery — same flat 11am cutoff as pickup', () => {
+    it('does not flag a delivery at 11:00 or later', () => {
+      expect(isEarlyFulfillment(base({ delivery_type: 'city',    pickup_time: '11:00' }))).toBe(false);
+      expect(isEarlyFulfillment(base({ delivery_type: 'outside', pickup_time: '11:30' }))).toBe(false);
+      expect(isEarlyFulfillment(base({ delivery_type: 'city',    pickup_time: '12:00' }))).toBe(false);
     });
-    it('does not flag at or after noon', () => {
-      expect(isEarlyFulfillment(base({ delivery_type: 'city', pickup_time: '12:00' }))).toBe(false);
-      expect(isEarlyFulfillment(base({ delivery_type: 'outside', pickup_time: '13:00' }))).toBe(false);
+    it('flags a delivery before 11am', () => {
+      expect(isEarlyFulfillment(base({ delivery_type: 'city',    pickup_time: '10:30' }))).toBe(true);
+      expect(isEarlyFulfillment(base({ delivery_type: 'outside', pickup_time: '09:00' }))).toBe(true);
     });
   });
 });
@@ -82,11 +87,9 @@ describe('calcTotal — early fee', () => {
       .toBe(PANCIT_FULL);
   });
 
-  it('adds the fee for an 11:30 delivery but not an 11:30 pickup', () => {
-    const delivery = calcTotal(base({ delivery_type: 'city', pickup_time: '11:30' }));
-    const pickup   = calcTotal(base({ delivery_type: 'pickup', pickup_time: '11:30' }));
-    expect(delivery).toBe(PANCIT_FULL + DELIVERY_FEE.city + EARLY_ORDER_FEE);
-    expect(pickup).toBe(PANCIT_FULL);
+  it('does not add the early fee at 11:30 for any delivery type', () => {
+    expect(calcTotal(base({ delivery_type: 'city',   pickup_time: '11:30' }))).toBe(PANCIT_FULL + DELIVERY_FEE.city);
+    expect(calcTotal(base({ delivery_type: 'pickup', pickup_time: '11:30' }))).toBe(PANCIT_FULL);
   });
 
   it('stacks with the rush fee', () => {
@@ -248,44 +251,95 @@ describe('custom items', () => {
   });
 });
 
-// 2026-06-06 is a Saturday; 2026-06-05 is a Friday
-const SAT = '2026-06-06';
-const FRI = '2026-06-05';
+// Fixed reference time for deposit / rush helpers that accept a `now` param.
+const NOW = new Date('2026-06-17T12:00:00');
 
-describe('isEarlyFulfillment — Saturday cutoffs (+1h)', () => {
-  describe('pickup on Saturday — cutoff 12pm', () => {
-    it('flags before noon', () => {
-      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'pickup', pickup_time: '11:00' }))).toBe(true);
-      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'pickup', pickup_time: '11:59' }))).toBe(true);
-    });
-    it('does not flag at or after noon', () => {
-      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'pickup', pickup_time: '12:00' }))).toBe(false);
-      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'pickup', pickup_time: '13:00' }))).toBe(false);
-    });
-    it('11am is early on Saturday but not on a weekday pickup', () => {
-      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'pickup', pickup_time: '11:00' }))).toBe(true);
-      expect(isEarlyFulfillment(base({ needed_date: FRI, delivery_type: 'pickup', pickup_time: '11:00' }))).toBe(false);
-    });
+describe('lumpiaPieceCount', () => {
+  const lump = (over: Partial<LumpiaOrder> = {}): LumpiaOrder => ({ sets: 0, halves: 0, ...over });
+  it('counts sets as 100 pieces each', () => {
+    expect(lumpiaPieceCount(lump({ sets: 2 }))).toBe(200);
+    expect(lumpiaPieceCount(lump({ sets: 3 }))).toBe(300);
   });
-
-  describe('delivery on Saturday — cutoff 1pm', () => {
-    it('flags before 1pm', () => {
-      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'city', pickup_time: '12:00' }))).toBe(true);
-      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'outside', pickup_time: '12:59' }))).toBe(true);
-    });
-    it('does not flag at or after 1pm', () => {
-      expect(isEarlyFulfillment(base({ needed_date: SAT, delivery_type: 'city', pickup_time: '13:00' }))).toBe(false);
-    });
+  it('counts halves as 50 pieces each', () => {
+    expect(lumpiaPieceCount(lump({ halves: 2 }))).toBe(100);
   });
-
-  it('non-Saturday dates still use the standard cutoffs', () => {
-    expect(isEarlyFulfillment(base({ needed_date: FRI, delivery_type: 'pickup', pickup_time: '10:59' }))).toBe(true);
-    expect(isEarlyFulfillment(base({ needed_date: FRI, delivery_type: 'pickup', pickup_time: '11:00' }))).toBe(false);
+  it('combines sets and halves', () => {
+    // 2 sets (200) + 1 half (50) = 250
+    expect(lumpiaPieceCount(lump({ sets: 2, halves: 1 }))).toBe(250);
   });
+  it('zero is zero', () => {
+    expect(lumpiaPieceCount(lump())).toBe(0);
+  });
+});
 
-  it('no needed_date falls back to weekday cutoffs', () => {
-    expect(isEarlyFulfillment(base({ needed_date: undefined, delivery_type: 'pickup', pickup_time: '11:00' }))).toBe(false);
-    expect(isEarlyFulfillment(base({ needed_date: undefined, delivery_type: 'pickup', pickup_time: '10:59' }))).toBe(true);
+describe('requiresDeposit', () => {
+  it('is false for a small lumpia order (≤200 pieces)', () => {
+    // 2 sets = 200 pieces, exactly at the threshold — no deposit
+    expect(requiresDeposit(base({ lumpia: { enabled: true, sets: 2, halves: 0 } }), NOW)).toBe(false);
+  });
+  it('is true when lumpia exceeds 200 pieces', () => {
+    // 2 sets + 1 half = 250 pieces
+    expect(requiresDeposit(base({ lumpia: { enabled: true, sets: 2, halves: 1 } }), NOW)).toBe(true);
+    // 3 sets = 300 pieces
+    expect(requiresDeposit(base({ lumpia: { enabled: true, sets: 3, halves: 0 } }), NOW)).toBe(true);
+  });
+  it('lumpia flag only applies when lumpia is enabled', () => {
+    expect(requiresDeposit(base({ lumpia: { enabled: false, sets: 5, halves: 5 } }), NOW)).toBe(false);
+  });
+  it('is true when needed_date is more than 21 days out', () => {
+    // NOW = 2026-06-17; 22 days later = 2026-07-09
+    expect(requiresDeposit(base({ needed_date: '2026-07-09' }), NOW)).toBe(true);
+  });
+  it('is false when needed_date is exactly 21 days out', () => {
+    // NOW = 2026-06-17; 21 days = 2026-07-08
+    expect(requiresDeposit(base({ needed_date: '2026-07-08' }), NOW)).toBe(false);
+  });
+  it('is false when needed_date is less than 21 days out', () => {
+    expect(requiresDeposit(base({ needed_date: '2026-06-25' }), NOW)).toBe(false);
+  });
+  it('uses created_at instead of now when provided', () => {
+    const order = base({ needed_date: '2026-07-15', created_at: '2026-06-17T12:00:00' });
+    expect(requiresDeposit(order, new Date('2099-01-01'))).toBe(true);
+  });
+  it('is false when no lumpia and no needed_date', () => {
+    expect(requiresDeposit(base(), NOW)).toBe(false);
+  });
+});
+
+describe('depositFor', () => {
+  it('is 50% of the order total', () => {
+    // pancit full = $25, deposit = $12.50
+    expect(depositFor(base())).toBeCloseTo(12.5);
+  });
+  it('rounds to the nearest cent', () => {
+    // pancit full ($25) + rush ($10) = $35, half = $17.50
+    expect(depositFor(base({ rush_order: true }))).toBeCloseTo(17.5);
+  });
+});
+
+describe('isAutoRush', () => {
+  it('is true when needed_date is less than 24h from now', () => {
+    const tomorrow = new Date(NOW);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const ymd = tomorrow.toISOString().slice(0, 10);
+    // NOW is noon; the needed_date's midnight is 12h away
+    expect(isAutoRush({ needed_date: ymd }, NOW)).toBe(true);
+  });
+  it('is false when needed_date is 2 days away', () => {
+    // 2 days out > 24h
+    expect(isAutoRush({ needed_date: '2026-06-19' }, NOW)).toBe(false);
+  });
+  it('is false when no needed_date', () => {
+    expect(isAutoRush({}, NOW)).toBe(false);
+  });
+  it('uses created_at when provided', () => {
+    const order = { needed_date: '2026-06-18', created_at: '2026-06-17T01:00:00' };
+    // midnight of 06-18 is 23h from 01:00 on 06-17 → < 24h → rush
+    expect(isAutoRush(order, new Date('2099-01-01'))).toBe(true);
+  });
+  it('is false when created_at leaves >24h to needed_date', () => {
+    const order = { needed_date: '2026-06-19', created_at: '2026-06-17T01:00:00' };
+    expect(isAutoRush(order, new Date('2099-01-01'))).toBe(false);
   });
 });
 

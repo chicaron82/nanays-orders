@@ -7,40 +7,66 @@ export const PANCIT_PRICE = { full: 25, half: 13, large: 50 };
 export const PANCIT_SAUCE_PRICE: Record<string, number> = { sweet_and_sour: 2, sweet_chili: 2 };
 export const PANCIT_EXTRA_MEAT_PRICE = 10;
 export const RUSH_ORDER_FEE = 10;
-export const EARLY_ORDER_FEE = 10;
+export const EARLY_ORDER_FEE = 20;
 export const DELIVERY_FEE: Record<DeliveryType, number> = { pickup: 0, city: 5, outside: 10 };
 
-// Early-fulfillment cutoffs (local 24h hour). Pickup before 11am, or a delivery
-// before noon — a delivery booked for 11am means cooking and leaving well before
-// 11, so the cutoff is pushed to 12 to cover the prep + travel lead time.
-// Saturdays get +1h on both cutoffs so the family can rest in.
+// Flat early-fulfillment cutoff — any order needed before 11am regardless of
+// delivery type. One rule, no exceptions for delivery or day-of-week.
 export const EARLY_PICKUP_CUTOFF_HOUR = 11;
-export const EARLY_DELIVERY_CUTOFF_HOUR = 12;
-export const EARLY_PICKUP_CUTOFF_HOUR_SAT = 12;
-export const EARLY_DELIVERY_CUTOFF_HOUR_SAT = 13;
 
 /**
- * True when the order's fulfillment time falls in the early window — derived
- * live from pickup_time (the field that serves both pickup and delivery), so it
- * always tracks the current time and never drifts. No time set → not early.
- * Saturday cutoffs are 1h later than weekday cutoffs.
+ * True when the order's fulfillment time falls before 11am — derived live from
+ * pickup_time so it always tracks the current state of the form.
+ * No time set → not early.
  */
 export function isEarlyFulfillment(order: Order): boolean {
   if (!order.pickup_time) return false;
   const hour = parseInt(order.pickup_time.split(':')[0], 10);
   if (Number.isNaN(hour)) return false;
-  const isSaturday = order.needed_date
-    ? new Date(order.needed_date + 'T00:00:00').getDay() === 6
-    : false;
-  const pickupCutoff  = isSaturday ? EARLY_PICKUP_CUTOFF_HOUR_SAT  : EARLY_PICKUP_CUTOFF_HOUR;
-  const deliveryCutoff = isSaturday ? EARLY_DELIVERY_CUTOFF_HOUR_SAT : EARLY_DELIVERY_CUTOFF_HOUR;
-  const cutoff = order.delivery_type === 'pickup' ? pickupCutoff : deliveryCutoff;
-  return hour < cutoff;
+  return hour < EARLY_PICKUP_CUTOFF_HOUR;
 }
 
 /** The early fee actually applies only when it's early AND Christine hasn't waived it. */
 export function earlyFeeApplies(order: Order): boolean {
   return isEarlyFulfillment(order) && !order.early_fee_waived;
+}
+
+/** Total lumpia pieces: sets are 100 pcs each, halves are 50 pcs each. */
+export function lumpiaPieceCount(lumpia: LumpiaOrder): number {
+  return (lumpia.sets || 0) * 100 + (lumpia.halves || 0) * 50;
+}
+
+/**
+ * True when a 50% deposit is required — either a large lumpia order (>200 pieces)
+ * or placed more than 21 days before the needed date.
+ * Falls back to the current time when created_at is not set (new order in form).
+ */
+export function requiresDeposit(order: Order, now: Date = new Date()): boolean {
+  if (order.lumpia?.enabled && lumpiaPieceCount(order.lumpia) > 200) return true;
+  if (order.needed_date) {
+    const created = order.created_at ? new Date(order.created_at) : now;
+    const needed  = new Date(order.needed_date + 'T00:00:00');
+    const days = (needed.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+    if (days > 21) return true;
+  }
+  return false;
+}
+
+/** Suggested 50% deposit amount, rounded to the nearest cent. */
+export function depositFor(order: Order): number {
+  return Math.round(calcTotal(order) * 0.5 * 100) / 100;
+}
+
+/**
+ * True when the needed_date is less than 24 hours from the order creation time.
+ * Falls back to the current time when created_at is not set (new order in form).
+ */
+export function isAutoRush(order: Order, now: Date = new Date()): boolean {
+  if (!order.needed_date) return false;
+  const created   = order.created_at ? new Date(order.created_at) : now;
+  const needed    = new Date(order.needed_date + 'T00:00:00');
+  const hoursUntil = (needed.getTime() - created.getTime()) / (1000 * 60 * 60);
+  return hoursUntil < 24;
 }
 
 // Resolve cooked/uncooked for a lumpia batch — handles both old (style) and new (setsCooked/halvesCooked) formats

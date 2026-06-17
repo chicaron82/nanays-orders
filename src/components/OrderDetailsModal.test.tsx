@@ -71,12 +71,12 @@ describe('OrderDetailsModal — early-order badge', () => {
   it('flags a pickup before 11am', () => {
     renderModal(order({ delivery_type: 'pickup', pickup_time: '09:00' }));
     expect(screen.getByText('⏰ Early Order')).toBeInTheDocument();
-    expect(screen.getByText(/Pickup before 11am/)).toBeInTheDocument();
+    expect(screen.getByText(/Before 11am/)).toBeInTheDocument();
   });
 
-  it('flags a delivery before noon', () => {
-    renderModal(order({ delivery_type: 'city', pickup_time: '11:30', address: '1 Main' }));
-    expect(screen.getByText(/Delivery before noon/)).toBeInTheDocument();
+  it('flags a delivery before 11am', () => {
+    renderModal(order({ delivery_type: 'city', pickup_time: '09:00', address: '1 Main' }));
+    expect(screen.getByText(/Before 11am/)).toBeInTheDocument();
   });
 
   it('no early badge for an afternoon pickup', () => {

@@ -156,7 +156,7 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
                 <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
                   <div className="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-1">⏰ Early Order</div>
                   <div className="font-medium text-amber-800">
-                    {order.delivery_type === 'pickup' ? 'Pickup before 11am' : 'Delivery before noon'}
+                    Before 11am
                     {order.early_fee_waived ? ' · fee waived' : ` · +${fmt(EARLY_ORDER_FEE)}`}
                   </div>
                 </div>

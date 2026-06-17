@@ -9,10 +9,16 @@ interface Props {
   onDelete: (id: string | number) => void;
 }
 
+type PricingType = 'flat' | 'unit' | 'weight';
+
 interface ExpenseForm {
   date: string;
   category: string;
-  amount: string;
+  pricing_type: PricingType;
+  amount: string;       // used when pricing_type === 'flat'
+  unit_price: string;  // used for unit and weight modes
+  quantity: string;    // used for unit mode (price × qty)
+  weight: string;      // used for weight mode (price × weight)
   note: string;
 }
 
@@ -25,7 +31,11 @@ const CATEGORIES = [
   { value: 'other',      label: 'Other',       emoji: '🛒' },
 ];
 
-const EMPTY_FORM: ExpenseForm = { date: localYMD(new Date()), category: 'wrappers', amount: '', note: '' };
+const EMPTY_FORM: ExpenseForm = {
+  date: localYMD(new Date()), category: 'wrappers',
+  pricing_type: 'flat', amount: '', unit_price: '', quantity: '', weight: '',
+  note: '',
+};
 
 export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
   const [form, setForm] = useState<ExpenseForm>(EMPTY_FORM);
@@ -41,14 +51,32 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
     return Object.entries(map).sort(([a], [b]) => b.localeCompare(a));
   }, [expenses]);
 
+  const computedAmount = (() => {
+    if (form.pricing_type === 'unit') {
+      const p = parseFloat(form.unit_price), q = parseFloat(form.quantity);
+      return isNaN(p) || isNaN(q) ? NaN : p * q;
+    }
+    if (form.pricing_type === 'weight') {
+      const p = parseFloat(form.unit_price), w = parseFloat(form.weight);
+      return isNaN(p) || isNaN(w) ? NaN : p * w;
+    }
+    return parseFloat(form.amount);
+  })();
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const amount = parseFloat(form.amount);
-    if (!form.date || isNaN(amount) || amount <= 0) return;
+    if (!form.date || isNaN(computedAmount) || computedAmount <= 0) return;
+    const noteBase = form.note.trim();
+    const breakdown = form.pricing_type === 'unit'
+      ? `$${form.unit_price}/pc × ${form.quantity}`
+      : form.pricing_type === 'weight'
+      ? `$${form.unit_price}/lb × ${form.weight} lb`
+      : '';
+    const note = [breakdown, noteBase].filter(Boolean).join(' — ') || undefined;
     setSaving(true);
     try {
-      await onAdd({ date: form.date, category: form.category, amount, note: form.note.trim() || undefined });
-      setForm(prev => ({ ...EMPTY_FORM, date: prev.date, category: prev.category }));
+      await onAdd({ date: form.date, category: form.category, amount: computedAmount, note });
+      setForm(prev => ({ ...EMPTY_FORM, date: prev.date, category: prev.category, pricing_type: prev.pricing_type }));
     } finally {
       setSaving(false);
     }
@@ -73,6 +101,28 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
               />
             </div>
             <div>
+              <label className="text-xs text-white/70 font-semibold block mb-1">Pricing</label>
+              <div className="flex gap-1">
+                {(['flat', 'unit', 'weight'] as PricingType[]).map(pt => (
+                  <button
+                    key={pt}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, pricing_type: pt }))}
+                    className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                      form.pricing_type === pt
+                        ? 'bg-white text-orange-600 border-white'
+                        : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                    }`}
+                  >
+                    {pt === 'flat' ? '$' : pt === 'unit' ? '×qty' : '×lb'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {form.pricing_type === 'flat' && (
+            <div>
               <label htmlFor="expense-amount" className="text-xs text-white/70 font-semibold block mb-1">Amount</label>
               <input
                 id="expense-amount"
@@ -88,7 +138,54 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
                 required
               />
             </div>
-          </div>
+          )}
+
+          {(form.pricing_type === 'unit' || form.pricing_type === 'weight') && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="expense-unit-price" className="text-xs text-white/70 font-semibold block mb-1">
+                  {form.pricing_type === 'unit' ? 'Price / piece' : 'Price / lb'}
+                </label>
+                <input
+                  id="expense-unit-price"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  autoComplete="off"
+                  value={form.unit_price}
+                  onChange={e => setForm(f => ({ ...f, unit_price: e.target.value }))}
+                  className="w-full bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="expense-qty" className="text-xs text-white/70 font-semibold block mb-1">
+                  {form.pricing_type === 'unit' ? 'Quantity' : 'Weight (lb)'}
+                </label>
+                <input
+                  id="expense-qty"
+                  type="number"
+                  min="0.01"
+                  step={form.pricing_type === 'unit' ? '1' : '0.01'}
+                  placeholder={form.pricing_type === 'unit' ? '1' : '0.0'}
+                  autoComplete="off"
+                  value={form.pricing_type === 'unit' ? form.quantity : form.weight}
+                  onChange={e => setForm(f =>
+                    form.pricing_type === 'unit'
+                      ? { ...f, quantity: e.target.value }
+                      : { ...f, weight: e.target.value }
+                  )}
+                  className="w-full bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
+          {!isNaN(computedAmount) && computedAmount > 0 && form.pricing_type !== 'flat' && (
+            <p className="text-xs text-white/60 -mt-1">= {fmt(computedAmount)}</p>
+          )}
 
           <div>
             <label className="text-xs text-white/70 font-semibold block mb-2">Category</label>
@@ -126,7 +223,7 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
 
           <button
             type="submit"
-            disabled={saving || !form.amount}
+            disabled={saving || isNaN(computedAmount) || computedAmount <= 0}
             className="w-full bg-white text-orange-600 font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-orange-50 transition-colors disabled:opacity-50"
           >
             <Plus size={16} /> {saving ? 'Saving…' : 'Add Expense'}

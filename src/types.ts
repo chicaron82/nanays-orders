@@ -89,6 +89,8 @@ export interface BlockedDay {
   created_at?: string;
 }
 
+export type ExpensePricingType = 'flat' | 'unit' | 'weight';
+
 export interface Expense {
   id?: string | number;
   date: string;
@@ -96,6 +98,11 @@ export interface Expense {
   category?: string;
   note?: string;
   created_at?: string;
+  // UI-only pricing breakdown — resolved to `amount` before saving to DB.
+  pricing_type?: ExpensePricingType;
+  unit_price?: number;
+  quantity?: number;
+  weight?: number;
 }
 
 export interface OrderRequest {
