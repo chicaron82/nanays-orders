@@ -22,6 +22,13 @@ interface ExpenseForm {
   note: string;
 }
 
+const STORES = [
+  { value: 'Superstore', label: 'Superstore', emoji: '🏪' },
+  { value: 'Dollarama',  label: 'Dollarama',  emoji: '💰' },
+  { value: 'Lucky',      label: 'Lucky',       emoji: '🍀' },
+  { value: 'other',      label: 'Other',       emoji: '🛒' },
+];
+
 const CATEGORIES = [
   { value: 'wrappers',   label: 'Wrappers',   emoji: '🧻' },
   { value: 'pork',       label: 'Pork',        emoji: '🥩' },
@@ -41,6 +48,9 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
   const [form, setForm] = useState<ExpenseForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | number | null>(null);
+  // Trip-level: stays selected across items until manually changed.
+  const [tripStore, setTripStore] = useState('');
+  const [otherStoreName, setOtherStoreName] = useState('');
 
   const grouped = useMemo<[string, Expense[]][]>(() => {
     const map: Record<string, Expense[]> = {};
@@ -73,9 +83,12 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
       ? `$${form.unit_price}/lb × ${form.weight} lb`
       : '';
     const note = [breakdown, noteBase].filter(Boolean).join(' — ') || undefined;
+    const store = tripStore === 'other'
+      ? (otherStoreName.trim() || 'Other')
+      : tripStore || undefined;
     setSaving(true);
     try {
-      await onAdd({ date: form.date, category: form.category, amount: computedAmount, note });
+      await onAdd({ date: form.date, category: form.category, amount: computedAmount, note, store });
       setForm(prev => ({ ...EMPTY_FORM, date: prev.date, category: prev.category, pricing_type: prev.pricing_type }));
     } finally {
       setSaving(false);
@@ -188,6 +201,37 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
           )}
 
           <div>
+            <label className="text-xs text-white/70 font-semibold block mb-2">
+              Store <span className="font-normal opacity-60">(optional — sticks for the whole trip)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {STORES.map(s => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => setTripStore(tripStore === s.value ? '' : s.value)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                    tripStore === s.value
+                      ? 'bg-white text-orange-600 border-white shadow-sm'
+                      : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/20'
+                  }`}
+                >
+                  {s.emoji} {s.label}
+                </button>
+              ))}
+            </div>
+            {tripStore === 'other' && (
+              <input
+                type="text"
+                placeholder="e.g. Walmart, Costco…"
+                value={otherStoreName}
+                onChange={e => setOtherStoreName(e.target.value)}
+                className="mt-2 w-full bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40"
+              />
+            )}
+          </div>
+
+          <div>
             <label className="text-xs text-white/70 font-semibold block mb-2">Category</label>
             <div className="flex flex-wrap gap-2">
               {CATEGORIES.map(cat => (
@@ -251,6 +295,7 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
                         <span className="text-base">{cat(entry.category ?? '')?.emoji ?? '🛒'}</span>
                         <div>
                           <div className="text-white text-sm font-medium">{cat(entry.category ?? '')?.label ?? entry.category}</div>
+                          {entry.store && <div className="text-white/40 text-[10px]">📍 {entry.store}</div>}
                           {entry.note && <div className="text-white/50 text-xs">{entry.note}</div>}
                         </div>
                       </div>

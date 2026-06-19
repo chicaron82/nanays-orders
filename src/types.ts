@@ -96,6 +96,7 @@ export interface Expense {
   date: string;
   amount: number | string;
   category?: string;
+  store?: string;
   note?: string;
   created_at?: string;
   // UI-only pricing breakdown — resolved to `amount` before saving to DB.

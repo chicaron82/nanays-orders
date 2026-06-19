@@ -1,4 +1,4 @@
-import type { Order } from '../types';
+import type { Order, Expense } from '../types';
 import { LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, customItemsTotal } from './utils';
 
 // ─── PER-ITEM REVENUE ────────────────────────────────────────────────────────
@@ -188,4 +188,48 @@ export function halfBatchInsight(orders: Order[]): HalfBatchInsight {
     avgHalvesPerOrder,
     recommend: totalLumpiaOrders >= MIN_LUMPIA_ORDERS && halvesRatio >= MIN_HALVES_RATIO,
   };
+}
+
+// ─── EXPENSE BREAKDOWNS ──────────────────────────────────────────────────────
+
+export interface ExpenseStoreRow {
+  store: string;
+  total: number;
+  count: number;
+}
+
+/** Expense totals grouped by store, sorted highest-spend first. */
+export function expensesByStore(expenses: Expense[]): ExpenseStoreRow[] {
+  const map = new Map<string, { total: number; count: number }>();
+  for (const e of expenses) {
+    const key = e.store?.trim() || 'Unknown';
+    const row = map.get(key) ?? { total: 0, count: 0 };
+    row.total += Number(e.amount);
+    row.count += 1;
+    map.set(key, row);
+  }
+  return Array.from(map.entries())
+    .map(([store, { total, count }]) => ({ store, total, count }))
+    .sort((a, b) => b.total - a.total);
+}
+
+export interface ExpenseCategoryRow {
+  category: string;
+  total: number;
+  count: number;
+}
+
+/** Expense totals grouped by category, sorted highest-spend first. */
+export function expensesByCategory(expenses: Expense[]): ExpenseCategoryRow[] {
+  const map = new Map<string, { total: number; count: number }>();
+  for (const e of expenses) {
+    const key = e.category || 'other';
+    const row = map.get(key) ?? { total: 0, count: 0 };
+    row.total += Number(e.amount);
+    row.count += 1;
+    map.set(key, row);
+  }
+  return Array.from(map.entries())
+    .map(([category, { total, count }]) => ({ category, total, count }))
+    .sort((a, b) => b.total - a.total);
 }

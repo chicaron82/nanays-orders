@@ -202,7 +202,7 @@ function MainApp({ onLogout }: MainAppProps) {
           <ExpenseLog expenses={expenses} onAdd={addExpense} onDelete={deleteExpense} />
         )}
         {tab === 'insights' && (
-          <InsightsView orders={orders} />
+          <InsightsView orders={orders} expenses={expenses} />
         )}
       </main>
 
