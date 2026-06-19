@@ -166,7 +166,7 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
                 <input
                   id="expense-qty"
                   type="number"
-                  min="0.01"
+                  min={form.pricing_type === 'unit' ? '1' : '0.01'}
                   step={form.pricing_type === 'unit' ? '1' : '0.01'}
                   placeholder={form.pricing_type === 'unit' ? '1' : '0.0'}
                   autoComplete="off"
