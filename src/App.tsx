@@ -23,9 +23,10 @@ import { getRepeatCustomers, nextAvailableDate, formatDate, buildRequestConfirmM
 
 interface MainAppProps {
   onLogout: () => void;
+  displayName: string;
 }
 
-function MainApp({ onLogout }: MainAppProps) {
+function MainApp({ onLogout, displayName }: MainAppProps) {
   const { orders, loading: ordersLoading, addOrder, updateOrder, deleteOrder } = useOrders();
   const { expenses, addExpense, deleteExpense } = useExpenses();
   const { blockedDays, blockedSet, blockDay, unblockDay } = useBlockedDays();
@@ -121,7 +122,8 @@ function MainApp({ onLogout }: MainAppProps) {
           <h1 className="font-playfair text-white text-4xl sm:text-5xl font-black drop-shadow-md flex items-center justify-center sm:justify-start gap-3">
             <span aria-hidden="true">🍜</span> Nanay's Orders
           </h1>
-          <p className="text-white/80 font-lato text-sm mt-2 font-medium tracking-wide">Pancit · Lumpia · Made with love 🥟</p>
+          <p className="text-white/90 font-lato text-sm mt-1.5 font-semibold">Welcome back, {displayName} 👋</p>
+          <p className="text-white/60 font-lato text-xs mt-0.5 font-medium tracking-wide">Pancit · Lumpia · Made with love 🥟</p>
         </div>
         <div className="flex items-center gap-3">
           {tab === 'orders' && (
@@ -321,5 +323,9 @@ export default function App() {
     return <LoginScreen onLogin={signIn} />;
   }
 
-  return <MainApp onLogout={signOut} />;
+  const displayName = (session.user.user_metadata?.display_name as string | undefined)
+    ?? session.user.email?.split('@')[0]
+    ?? 'Chef';
+
+  return <MainApp onLogout={signOut} displayName={displayName} />;
 }
