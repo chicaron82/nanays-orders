@@ -31,7 +31,7 @@ const STORES = [
 
 const CATEGORIES = [
   { value: 'wrappers',   label: 'Wrappers',   emoji: '🧻' },
-  { value: 'pork',       label: 'Pork',        emoji: '🥩' },
+  { value: 'pork',       label: 'Meats',       emoji: '🥩' },
   { value: 'vegetables', label: 'Vegetables',  emoji: '🥦' },
   { value: 'containers', label: 'Containers',  emoji: '📦' },
   { value: 'bihon',      label: 'Bihon',       emoji: '🍜' },

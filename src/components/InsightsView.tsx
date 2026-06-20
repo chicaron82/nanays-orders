@@ -12,7 +12,7 @@ function monthLabel(m: string, opts: Intl.DateTimeFormatOptions = { month: 'long
 
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string }> = {
   wrappers:   { label: 'Wrappers',   emoji: '🧻' },
-  pork:       { label: 'Pork',       emoji: '🥩' },
+  pork:       { label: 'Meats',      emoji: '🥩' },
   vegetables: { label: 'Vegetables', emoji: '🥦' },
   containers: { label: 'Containers', emoji: '📦' },
   bihon:      { label: 'Bihon',      emoji: '🍜' },
