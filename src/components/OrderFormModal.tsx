@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock, RotateCcw, Plus } from 'lucide-react';
 import type { Order, Stock, BlockedDay } from '../types';
@@ -27,6 +28,17 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
     addCustomItem, updateCustomItem, removeCustomItem,
     isDateBlocked,
   } = useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave, blockedSet });
+
+  const [dateTbd, setDateTbd] = useState(!editOrder?.needed_date);
+  useEffect(() => {
+    if (isOpen) setDateTbd(!editOrder?.needed_date);
+  }, [isOpen, editOrder]);
+
+  const toggleTbd = () => {
+    const next = !dateTbd;
+    setDateTbd(next);
+    if (next) setField('needed_date', '');
+  };
 
   if (!isOpen) return null;
 
@@ -421,8 +433,19 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
             {/* Logistics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label htmlFor="order-date" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><CalendarDays size={14}/> Date Needed *</label>
-                <input id="order-date" name="needed_date" type="date" value={form.needed_date ?? ''} onChange={e => setField('needed_date', e.target.value)} className={`w-full border-2 rounded-xl px-4 py-2.5 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors ${isDateBlocked ? 'border-red-400 focus-visible:border-red-500' : 'border-stone-200 focus-visible:border-orange-500'}`} />
+                <div className="flex items-center justify-between mb-2">
+                  <label htmlFor="order-date" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider"><CalendarDays size={14}/> Date Needed</label>
+                  <button type="button" onClick={toggleTbd} className={`text-[10px] font-bold px-2 py-0.5 rounded-md border transition-colors ${dateTbd ? 'bg-amber-100 border-amber-300 text-amber-700' : 'border-stone-200 text-stone-400 hover:text-stone-600'}`}>
+                    TBD
+                  </button>
+                </div>
+                {dateTbd ? (
+                  <div className="w-full border-2 border-dashed border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-400 italic">
+                    Date pending — will confirm when available
+                  </div>
+                ) : (
+                  <input id="order-date" name="needed_date" type="date" value={form.needed_date ?? ''} onChange={e => setField('needed_date', e.target.value)} className={`w-full border-2 rounded-xl px-4 py-2.5 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors ${isDateBlocked ? 'border-red-400 focus-visible:border-red-500' : 'border-stone-200 focus-visible:border-orange-500'}`} />
+                )}
                 {isDateBlocked && (
                   <p className="text-xs text-red-500 mt-1 font-semibold">
                     🔒 Blocked: {blockedDays.find(d => d.date === form.needed_date)?.reason || 'Family Day / Off'}
@@ -486,7 +509,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
             </div>
 
             {/* Submit */}
-            <button onClick={handleSubmit} disabled={!form.customer_name?.trim() || !form.needed_date || !hasItems || isDateBlocked}
+            <button onClick={handleSubmit} disabled={!form.customer_name?.trim() || !hasItems || isDateBlocked}
               className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2">
               <Save size={20} /> {editOrder ? 'Save Changes' : 'Add Order'}
             </button>

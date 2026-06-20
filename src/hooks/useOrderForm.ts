@@ -134,7 +134,7 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
   const autoRushActive   = isAutoRush({ needed_date: form.needed_date });
 
   const handleSubmit = () => {
-    if (!form.customer_name?.trim() || !form.needed_date || !hasItems || isDateBlocked) return;
+    if (!form.customer_name?.trim() || !hasItems || isDateBlocked) return;
     const hasDiscount = (Number(form.discount_value) || 0) > 0;
     const finalOrder: OrderForm = {
       ...form,

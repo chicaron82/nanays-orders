@@ -164,7 +164,9 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
 
               <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
                 <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Calendar size={12}/> Needed By</div>
-                <div className="font-medium text-stone-800">{formatDate(order.needed_date)}{order.pickup_time ? ` @ ${order.pickup_time}` : ''}</div>
+                <div className="font-medium text-stone-800">
+                  {order.needed_date ? `${formatDate(order.needed_date)}${order.pickup_time ? ` @ ${order.pickup_time}` : ''}` : <span className="text-amber-600 italic">Date TBD</span>}
+                </div>
               </div>
 
               <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
