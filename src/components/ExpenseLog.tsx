@@ -100,105 +100,18 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
       <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl p-5 shadow-lg">
         <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-4">Log an Expense</div>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="expense-date" className="text-xs text-white/70 font-semibold block mb-1">Batch Date</label>
-              <input
-                id="expense-date"
-                name="expense_date"
-                type="date"
-                value={form.date}
-                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                className="w-full bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-xs text-white/70 font-semibold block mb-1">Pricing</label>
-              <div className="flex gap-1">
-                {(['flat', 'unit', 'weight'] as PricingType[]).map(pt => (
-                  <button
-                    key={pt}
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, pricing_type: pt }))}
-                    className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-colors ${
-                      form.pricing_type === pt
-                        ? 'bg-white text-orange-600 border-white'
-                        : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
-                    }`}
-                  >
-                    {pt === 'flat' ? '$' : pt === 'unit' ? '×qty' : '×lb'}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div>
+            <label htmlFor="expense-date" className="text-xs text-white/70 font-semibold block mb-1">Batch Date</label>
+            <input
+              id="expense-date"
+              name="expense_date"
+              type="date"
+              value={form.date}
+              onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+              className="w-full bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40"
+              required
+            />
           </div>
-
-          {form.pricing_type === 'flat' && (
-            <div>
-              <label htmlFor="expense-amount" className="text-xs text-white/70 font-semibold block mb-1">Amount</label>
-              <input
-                id="expense-amount"
-                name="expense_amount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                placeholder="0.00"
-                autoComplete="off"
-                value={form.amount}
-                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                className="w-full bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40"
-                required
-              />
-            </div>
-          )}
-
-          {(form.pricing_type === 'unit' || form.pricing_type === 'weight') && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="expense-unit-price" className="text-xs text-white/70 font-semibold block mb-1">
-                  {form.pricing_type === 'unit' ? 'Price / piece' : 'Price / lb'}
-                </label>
-                <input
-                  id="expense-unit-price"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  placeholder="0.00"
-                  autoComplete="off"
-                  value={form.unit_price}
-                  onChange={e => setForm(f => ({ ...f, unit_price: e.target.value }))}
-                  className="w-full bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="expense-qty" className="text-xs text-white/70 font-semibold block mb-1">
-                  {form.pricing_type === 'unit' ? 'Quantity' : 'Weight (lb)'}
-                </label>
-                <input
-                  id="expense-qty"
-                  type="number"
-                  min={form.pricing_type === 'unit' ? '1' : '0.01'}
-                  step={form.pricing_type === 'unit' ? '1' : '0.01'}
-                  placeholder={form.pricing_type === 'unit' ? '1' : '0.0'}
-                  autoComplete="off"
-                  value={form.pricing_type === 'unit' ? form.quantity : form.weight}
-                  onChange={e => setForm(f =>
-                    form.pricing_type === 'unit'
-                      ? { ...f, quantity: e.target.value }
-                      : { ...f, weight: e.target.value }
-                  )}
-                  className="w-full bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40"
-                  required
-                />
-              </div>
-            </div>
-          )}
-
-          {!isNaN(computedAmount) && computedAmount > 0 && form.pricing_type !== 'flat' && (
-            <p className="text-xs text-white/60 -mt-1">= {fmt(computedAmount)}</p>
-          )}
 
           <div>
             <label className="text-xs text-white/70 font-semibold block mb-2">
@@ -249,6 +162,78 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label htmlFor="expense-amount" className="text-xs text-white/70 font-semibold block mb-1">Amount</label>
+            <div className="flex gap-2 items-stretch">
+              <div className="flex gap-1 shrink-0">
+                {(['flat', 'unit', 'weight'] as PricingType[]).map(pt => (
+                  <button
+                    key={pt}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, pricing_type: pt }))}
+                    className={`px-2.5 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                      form.pricing_type === pt
+                        ? 'bg-white text-orange-600 border-white'
+                        : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20'
+                    }`}
+                  >
+                    {pt === 'flat' ? '$' : pt === 'unit' ? '×qty' : '×lb'}
+                  </button>
+                ))}
+              </div>
+              {form.pricing_type === 'flat' ? (
+                <input
+                  id="expense-amount"
+                  name="expense_amount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  autoComplete="off"
+                  value={form.amount}
+                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                  className="flex-1 min-w-0 bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40"
+                  required
+                />
+              ) : (
+                <div className="flex gap-2 flex-1 items-center min-w-0">
+                  <input
+                    id="expense-unit-price"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    placeholder={form.pricing_type === 'unit' ? '$/pc' : '$/lb'}
+                    autoComplete="off"
+                    value={form.unit_price}
+                    onChange={e => setForm(f => ({ ...f, unit_price: e.target.value }))}
+                    className="flex-1 min-w-0 bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40"
+                    required
+                  />
+                  <span className="text-white/60 text-sm shrink-0">×</span>
+                  <input
+                    id="expense-qty"
+                    type="number"
+                    min={form.pricing_type === 'unit' ? '1' : '0.01'}
+                    step={form.pricing_type === 'unit' ? '1' : '0.01'}
+                    placeholder={form.pricing_type === 'unit' ? 'qty' : 'lb'}
+                    autoComplete="off"
+                    value={form.pricing_type === 'unit' ? form.quantity : form.weight}
+                    onChange={e => setForm(f =>
+                      form.pricing_type === 'unit'
+                        ? { ...f, quantity: e.target.value }
+                        : { ...f, weight: e.target.value }
+                    )}
+                    className="flex-1 min-w-0 bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-white text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40"
+                    required
+                  />
+                </div>
+              )}
+            </div>
+            {!isNaN(computedAmount) && computedAmount > 0 && form.pricing_type !== 'flat' && (
+              <p className="text-xs text-white/60 mt-1">= {fmt(computedAmount)}</p>
+            )}
           </div>
 
           <div>
