@@ -18,6 +18,8 @@ import {
   DELIVERY_FEE,
   isEarlyFulfillment,
   formatDate,
+  NANAY_CONTACT_NUMBER,
+  buildRequestSubmittedMessage,
 } from '../lib/utils';
 
 export default function PublicRequestPage() {
@@ -244,6 +246,17 @@ export default function PublicRequestPage() {
           <div className="text-xs text-stone-500 bg-stone-50 rounded-lg p-3 border border-stone-200/60 leading-relaxed">
             📢 **Next Steps**: Christine will review the kitchen schedule and text you at **{submittedRequest.contact}** within 24 hours to confirm your order and arrange the deposit.
           </div>
+
+          {NANAY_CONTACT_NUMBER && (
+            <a
+              href={`https://wa.me/1${NANAY_CONTACT_NUMBER}?text=${encodeURIComponent(buildRequestSubmittedMessage(submittedRequest))}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white font-bold py-3.5 rounded-xl hover:bg-green-500 transition-colors shadow-md"
+            >
+              💬 Message Christine on WhatsApp
+            </a>
+          )}
 
           <button
             onClick={() => {

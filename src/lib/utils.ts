@@ -1,5 +1,10 @@
 import type { Order, OrderRequest, LumpiaOrder, Stock, DeliveryType, LumpiaSauce, PaymentStatus } from '../types';
 
+// ─── CONTACT ─────────────────────────────────────────────────────────────────
+// 10-digit Canadian number, no formatting (e.g. '2045550100').
+// Set this to enable the "Message Christine on WhatsApp" button on the public request page.
+export const NANAY_CONTACT_NUMBER = '';
+
 // ─── PRICING ─────────────────────────────────────────────────────────────────
 export const LUMPIA_PRICE = { uncooked: 30, cooked: 35 };
 export const LUMPIA_HALF_PRICE = { uncooked: 18, cooked: 20 };
@@ -443,6 +448,18 @@ export function buildRequestConfirmMessage(req: OrderRequest): string {
 /** Short polite decline text to paste to the customer when their request can't be taken. */
 export function buildRequestDeclineMessage(req: OrderRequest): string {
   return `Hi ${req.customer_name}, thank you so much for reaching out! Unfortunately we're not able to take your request at this time. We hope to serve you soon! 🙏🧡`;
+}
+
+/** Short message the customer can send to Christine to confirm their request was received. */
+export function buildRequestSubmittedMessage(req: OrderRequest): string {
+  return [
+    `Hi Christine! I just placed an order request through the website 🍜`,
+    ``,
+    `Name: ${req.customer_name}`,
+    `Date: ${formatDate(req.needed_date)}${req.pickup_time ? ` at ${req.pickup_time}` : ''}`,
+    ``,
+    `Just making sure you got it! Thanks 😊`,
+  ].join('\n');
 }
 
 export const PAYMENT_STATUS: PaymentStatus[] = ["Unpaid", "Deposit", "Prepaid"];

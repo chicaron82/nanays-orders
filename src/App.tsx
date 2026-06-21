@@ -39,12 +39,18 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
   const [newOrderDate, setNewOrderDate] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [blockedWarning, setBlockedWarning] = useState<{ date: string; next: string; reason?: string | null } | null>(null);
-  const [requestMsg, setRequestMsg] = useState<{ msg: string; title: string; emoji: string } | null>(null);
+  const [requestMsg, setRequestMsg] = useState<{ msg: string; title: string; emoji: string; waLink?: string } | null>(null);
+
+  const buildWaLink = (contact: string, msg: string) => {
+    const digits = contact.replace(/\D/g, '');
+    return digits ? `https://wa.me/1${digits}?text=${encodeURIComponent(msg)}` : undefined;
+  };
 
   const handleApproveRequest = async (req: OrderRequest) => {
     try {
       await approveRequest(req);
-      setRequestMsg({ emoji: '🎉', title: 'Order Confirmed!', msg: buildRequestConfirmMessage(req) });
+      const msg = buildRequestConfirmMessage(req);
+      setRequestMsg({ emoji: '🎉', title: 'Order Confirmed!', msg, waLink: buildWaLink(req.contact, msg) });
     } catch (e) {
       console.error(e);
     }
@@ -53,7 +59,8 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
   const handleDeclineRequest = async (req: OrderRequest) => {
     try {
       await declineRequest(req.id!);
-      setRequestMsg({ emoji: '🙏', title: 'Request Declined', msg: buildRequestDeclineMessage(req) });
+      const msg = buildRequestDeclineMessage(req);
+      setRequestMsg({ emoji: '🙏', title: 'Request Declined', msg, waLink: buildWaLink(req.contact, msg) });
     } catch (e) {
       console.error(e);
     }
@@ -278,6 +285,17 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
               >
                 Copy &amp; Close
               </button>
+              {requestMsg.waLink && (
+                <a
+                  href={requestMsg.waLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setRequestMsg(null)}
+                  className="flex-1 bg-[#25D366] text-white font-bold py-3 rounded-xl hover:bg-green-500 transition-colors text-sm flex items-center justify-center gap-2"
+                >
+                  💬 WhatsApp
+                </a>
+              )}
               <button
                 onClick={() => setRequestMsg(null)}
                 className="px-4 py-3 rounded-xl bg-stone-100 text-stone-600 font-bold text-sm hover:bg-stone-200 transition-colors"
