@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock, RotateCcw, Plus } from 'lucide-react';
 import type { Order, Stock, BlockedDay } from '../types';
@@ -30,9 +30,15 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
   } = useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave, blockedSet });
 
   const [dateTbd, setDateTbd] = useState(editOrder ? !editOrder.needed_date : false);
-  useEffect(() => {
+  // Re-sync the TBD toggle whenever the modal (re)opens or swaps to a different
+  // order. Done during render — React's sanctioned alternative to a
+  // setState-in-effect (which triggers cascading renders) — by tracking the
+  // prior open/order identity and resetting only on a real transition.
+  const [synced, setSynced] = useState<{ open: boolean; order: Order | null }>({ open: isOpen, order: editOrder });
+  if (synced.open !== isOpen || synced.order !== editOrder) {
+    setSynced({ open: isOpen, order: editOrder });
     if (isOpen) setDateTbd(editOrder ? !editOrder.needed_date : false);
-  }, [isOpen, editOrder]);
+  }
 
   const toggleTbd = () => {
     const next = !dateTbd;
