@@ -3,7 +3,7 @@ import type { Order, OrderRequest, LumpiaOrder, Stock, DeliveryType, LumpiaSauce
 // ─── CONTACT ─────────────────────────────────────────────────────────────────
 // 10-digit Canadian number, no formatting (e.g. '2045550100').
 // Set this to enable the "Message Christine on WhatsApp" button on the public request page.
-export const NANAY_CONTACT_NUMBER = '';
+export const NANAY_CONTACT_NUMBER = '4313736620';
 
 // ─── PRICING ─────────────────────────────────────────────────────────────────
 export const LUMPIA_PRICE = { uncooked: 30, cooked: 35 };
