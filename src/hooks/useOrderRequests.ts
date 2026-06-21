@@ -3,6 +3,29 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import type { OrderRequest, Order } from '../types';
 
+function playRequestChime() {
+  try {
+    const ctx = new AudioContext();
+    const frequencies = [523, 659, 784]; // C5, E5, G5
+    frequencies.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.15;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.3, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.4);
+      osc.start(start);
+      osc.stop(start + 0.4);
+    });
+  } catch {
+    // AudioContext blocked (e.g. no user gesture yet) — silent fail
+  }
+}
+
 export function useOrderRequests() {
   const [requests, setRequests] = useState<OrderRequest[]>([]);
   const [loading, setLoading] = useState(false);
@@ -26,7 +49,12 @@ export function useOrderRequests() {
         .channel(`order_requests_channel_${Date.now()}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'order_requests' }, (payload: any) => {
           if (payload.eventType === 'INSERT') {
-            setRequests(prev => prev.some(r => r.id === payload.new.id) ? prev : [payload.new, ...prev]);
+            const req = payload.new as OrderRequest;
+            setRequests(prev => prev.some(r => r.id === req.id) ? prev : [req, ...prev]);
+            toast.info(`New request from ${req.customer_name} — $${req.total.toFixed(2)}`, {
+              duration: 8000,
+            });
+            playRequestChime();
           } else if (payload.eventType === 'UPDATE') {
             setRequests(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
           } else if (payload.eventType === 'DELETE') {
