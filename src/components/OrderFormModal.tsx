@@ -29,9 +29,9 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
     isDateBlocked,
   } = useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave, blockedSet });
 
-  const [dateTbd, setDateTbd] = useState(!editOrder?.needed_date);
+  const [dateTbd, setDateTbd] = useState(editOrder ? !editOrder.needed_date : false);
   useEffect(() => {
-    if (isOpen) setDateTbd(!editOrder?.needed_date);
+    if (isOpen) setDateTbd(editOrder ? !editOrder.needed_date : false);
   }, [isOpen, editOrder]);
 
   const toggleTbd = () => {
