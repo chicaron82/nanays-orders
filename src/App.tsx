@@ -17,6 +17,7 @@ import OrderFormModal from './components/OrderFormModal';
 import OrderDetailsModal from './components/OrderDetailsModal';
 import LoginScreen from './components/LoginScreen';
 import PublicRequestPage from './components/PublicRequestPage';
+import AcceptingOrdersToggle from './components/AcceptingOrdersToggle';
 import RequestsView from './components/RequestsView';
 import BuildStamp from './components/BuildStamp';
 import { getRepeatCustomers, nextAvailableDate, formatDate, buildRequestConfirmMessage, buildRequestDeclineMessage } from './lib/utils';
@@ -133,6 +134,7 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
           <p className="text-white/60 font-lato text-xs mt-0.5 font-medium tracking-wide">Pancit · Lumpia · Made with love 🥟</p>
         </div>
         <div className="flex items-center gap-3">
+          <AcceptingOrdersToggle />
           {tab === 'orders' && (
             <button
               onClick={() => { setEditOrder(null); setNewOrderDate(null); setShowForm(true); }}

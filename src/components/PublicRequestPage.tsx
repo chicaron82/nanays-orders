@@ -3,6 +3,7 @@ import { ChefHat, CalendarDays, User, Check, AlertCircle } from 'lucide-react';
 import { m, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useOrderRequests } from '../hooks/useOrderRequests';
+import { useStoreSettings } from '../hooks/useStoreSettings';
 import ItemRowPicker from './ItemRowPicker';
 import BuildStamp from './BuildStamp';
 import type { OrderRequest, BlockedDay, Order } from '../types';
@@ -19,11 +20,13 @@ import {
   isEarlyFulfillment,
   formatDate,
   NANAY_CONTACT_NUMBER,
+  FB_ORDER_URL,
   buildRequestSubmittedMessage,
 } from '../lib/utils';
 
 export default function PublicRequestPage() {
   const { submitRequest } = useOrderRequests();
+  const { acceptingRequests, loading: settingsLoading, refresh: refreshAccepting } = useStoreSettings();
   const totalRef = useRef<HTMLDivElement>(null);
   const [showFloatingTotal, setShowFloatingTotal] = useState(false);
 
@@ -180,6 +183,11 @@ export default function PublicRequestPage() {
     if (!isValid) { setAttempted(true); return; }
     if (submitting) return;
 
+    // Authoritative re-check: if orders were paused while this form sat open,
+    // don't slip one through — refresh() flips acceptingRequests, so the next
+    // render swaps to the "order on Facebook" screen.
+    if (!(await refreshAccepting())) return;
+
     try {
       setSubmitting(true);
       const req: Omit<OrderRequest, 'status' | 'id' | 'created_at'> = {
@@ -281,6 +289,39 @@ export default function PublicRequestPage() {
           >
             Submit Another Request
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Orders paused → point customers to Facebook Messenger instead of the form.
+  if (!settingsLoading && !acceptingRequests) {
+    return (
+      <div className="min-h-screen bg-stone-50 font-lato flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-8 border border-stone-100 text-center space-y-6">
+          <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto text-3xl">
+            🍜
+          </div>
+          <div>
+            <h1 className="font-playfair text-3xl font-black text-stone-800">Online orders are paused</h1>
+            <p className="text-stone-500 mt-2 text-sm leading-relaxed">
+              Nanay's isn't taking orders through this form right now — but we'd still love to cook for you!
+              Message Christine on Facebook to place your order. 🧡
+            </p>
+          </div>
+
+          {FB_ORDER_URL && (
+            <a
+              href={FB_ORDER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-[#0084FF] text-white font-bold py-3.5 rounded-xl hover:bg-[#0072e0] transition-colors shadow-md"
+            >
+              💬 Order on Facebook
+            </a>
+          )}
+
+          <p className="text-xs text-stone-400">Crispy Lumpia Shanghai &amp; Chicken Pancit · Filipino Home Kitchen</p>
         </div>
       </div>
     );

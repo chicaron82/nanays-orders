@@ -5,6 +5,11 @@ import type { Order, OrderRequest, LumpiaOrder, Stock, DeliveryType, LumpiaSauce
 // Set this to enable the "Message Christine on WhatsApp" button on the public request page.
 export const NANAY_CONTACT_NUMBER = '4313736620';
 
+// Where the public page sends customers when online requests are paused — a
+// Messenger link to whoever takes FB orders (most orders arrive via a marketplace
+// post anyway). Blank disables the "Order on Facebook" button.
+export const FB_ORDER_URL = 'https://m.me/christine.sauddin';
+
 // ─── PRICING ─────────────────────────────────────────────────────────────────
 export const LUMPIA_PRICE = { uncooked: 30, cooked: 35 };
 export const LUMPIA_HALF_PRICE = { uncooked: 18, cooked: 20 };
