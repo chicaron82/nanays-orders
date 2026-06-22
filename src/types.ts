@@ -34,6 +34,10 @@ export interface CustomItem {
   price: number;
 }
 
+/** Where an order originated: 'request' = approved from the public form/link,
+ *  'manual' = entered by the kitchen. Drives the Insights link-attribution metric. */
+export type OrderSource = 'manual' | 'request';
+
 export interface Order {
   id?: string | number;
   customer_name?: string;
@@ -60,6 +64,7 @@ export interface Order {
   discount_label?: string;
   order_status?: OrderStatus;
   total?: number;
+  source?: OrderSource;  // 'request' = came via the public link; defaults to 'manual'
   created_at?: string;
 }
 

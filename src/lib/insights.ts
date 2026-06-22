@@ -117,6 +117,33 @@ export function monthlyItemSeries(orders: Order[], count: number, from: Date = n
   return recentMonths(count, from).map(m => itemBreakdownForMonth(orders, m));
 }
 
+// ─── ORDER SOURCE (the public-link funnel) ───────────────────────────────────
+
+export interface LinkOrderStats {
+  fromLink: number;        // non-cancelled orders that came via the public link this month
+  total: number;           // all non-cancelled orders this month
+  pct: number;             // fromLink share of total (0 when none)
+  allTimeFromLink: number; // link orders since source attribution started
+}
+
+/**
+ * How many of a month's orders came in through the public request link (source
+ * 'request') vs were entered by the kitchen — a read on the marketplace funnel.
+ * Cancelled orders are excluded (matching the other monthly metrics). Forward-only:
+ * orders predating source attribution simply count as not-from-link.
+ */
+export function linkOrderStats(orders: Order[], month: string): LinkOrderStats {
+  const monthOrders = orders.filter(o => o.order_status !== 'Cancelled' && orderMonth(o) === month);
+  const fromLink = monthOrders.filter(o => o.source === 'request').length;
+  const total = monthOrders.length;
+  return {
+    fromLink,
+    total,
+    pct: total > 0 ? Math.round((fromLink / total) * 100) : 0,
+    allTimeFromLink: orders.filter(o => o.order_status !== 'Cancelled' && o.source === 'request').length,
+  };
+}
+
 // ─── WEEKDAY DEMAND ──────────────────────────────────────────────────────────
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

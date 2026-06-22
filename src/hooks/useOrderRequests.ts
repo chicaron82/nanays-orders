@@ -135,6 +135,7 @@ export function useOrderRequests() {
         deposit_amount: 0,
         tip_amount: 0,
         early_fee_waived: false,
+        source: 'request',  // came in through the public request link
       };
 
       // 2. Insert into main orders table. If this fails, nothing was created —

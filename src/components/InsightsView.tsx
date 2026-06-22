@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Order, Expense } from '../types';
 import { fmt } from '../lib/utils';
-import { itemBreakdownForMonth, monthlyItemSeries, recentMonths, weekdayDemand, halfBatchInsight, ordersWithinDays, expensesByStore, expensesByCategory } from '../lib/insights';
+import { itemBreakdownForMonth, monthlyItemSeries, recentMonths, weekdayDemand, halfBatchInsight, ordersWithinDays, expensesByStore, expensesByCategory, linkOrderStats } from '../lib/insights';
 
 const WINDOW_DAYS = 90;
 
@@ -36,6 +36,7 @@ export default function InsightsView({ orders, expenses }: { orders: Order[]; ex
 
   const [thisMonth, lastMonth] = recentMonths(2);
   const cur = itemBreakdownForMonth(orders, thisMonth);
+  const linkStats = linkOrderStats(orders, thisMonth);
   const prev = itemBreakdownForMonth(orders, lastMonth);
 
   const momPct = prev.itemRevenue > 0
@@ -75,6 +76,23 @@ export default function InsightsView({ orders, expenses }: { orders: Order[]; ex
           <div className="text-sm text-stone-500 mt-1">
             {cur.pancit.full} reg · {cur.pancit.half} sm · {cur.pancit.large} lg
           </div>
+        </div>
+      </div>
+
+      {/* From the public order link — the marketplace funnel */}
+      <div className="bg-white rounded-2xl border-2 border-stone-100 p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-2xl">🔗</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-stone-400">From the order link</span>
+        </div>
+        <div className="flex items-baseline gap-2 mt-1">
+          <span className="text-3xl font-black text-stone-800">{linkStats.fromLink}</span>
+          <span className="text-sm text-stone-500">
+            of {linkStats.total} order{linkStats.total !== 1 ? 's' : ''} this month{linkStats.total > 0 ? ` · ${linkStats.pct}%` : ''}
+          </span>
+        </div>
+        <div className="text-xs text-stone-400 mt-1.5">
+          {linkStats.allTimeFromLink} total via the public request form since tracking began
         </div>
       </div>
 

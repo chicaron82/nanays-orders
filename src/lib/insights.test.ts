@@ -10,6 +10,7 @@ import {
   weekdayDemand,
   halfBatchInsight,
   ordersWithinDays,
+  linkOrderStats,
 } from './insights';
 import type { Order } from '../types';
 
@@ -245,5 +246,38 @@ describe('halfBatchInsight', () => {
       order({ lumpia: { enabled: true, halves: i === 0 ? 1 : undefined } })
     ); // 1/10 = 10%
     expect(halfBatchInsight(orders).recommend).toBe(false);
+  });
+});
+
+describe('linkOrderStats', () => {
+  it('counts a month\'s link orders vs total, with the share %', () => {
+    const orders = [
+      order({ needed_date: '2026-05-03', source: 'request' }),
+      order({ needed_date: '2026-05-09', source: 'request' }),
+      order({ needed_date: '2026-05-20', source: 'manual' }),
+      order({ needed_date: '2026-05-28' }),                      // no source → not from link
+      order({ needed_date: '2026-04-30', source: 'request' }),   // other month
+    ];
+    const s = linkOrderStats(orders, '2026-05');
+    expect(s.fromLink).toBe(2);
+    expect(s.total).toBe(4);
+    expect(s.pct).toBe(50);
+    expect(s.allTimeFromLink).toBe(3); // includes the April link order
+  });
+
+  it('excludes cancelled orders from both counts', () => {
+    const orders = [
+      order({ needed_date: '2026-05-03', source: 'request' }),
+      order({ needed_date: '2026-05-04', source: 'request', order_status: 'Cancelled' }),
+      order({ needed_date: '2026-05-05', source: 'manual' }),
+    ];
+    const s = linkOrderStats(orders, '2026-05');
+    expect(s.fromLink).toBe(1);
+    expect(s.total).toBe(2);
+    expect(s.allTimeFromLink).toBe(1);
+  });
+
+  it('is 0% when the month has no orders', () => {
+    expect(linkOrderStats([], '2026-05')).toEqual({ fromLink: 0, total: 0, pct: 0, allTimeFromLink: 0 });
   });
 });
