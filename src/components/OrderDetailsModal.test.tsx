@@ -150,7 +150,7 @@ describe('OrderDetailsModal — cancelled in the payment row', () => {
   it('tapping Cancelled cancels the order without touching payment', () => {
     const { onPaymentChange } = renderModal(order());
     fireEvent.click(screen.getByText('Cancelled'));
-    expect(onPaymentChange).toHaveBeenCalledWith(1, { order_status: 'Cancelled' });
+    expect(onPaymentChange).toHaveBeenCalledWith(1, { order_status: 'Cancelled', no_show: false, no_show_reason: undefined });
   });
 
   it('a cancelled order shows ✗ Cancelled, not a balance due', () => {

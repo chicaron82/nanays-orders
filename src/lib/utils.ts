@@ -380,6 +380,61 @@ export function lastOrderFor(name: string, orders: Order[], excludeId: string | 
     .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))[0];
 }
 
+// ─── NO-SHOW WATCHLIST ───────────────────────────────────────────────────────
+
+/** Digits-only phone, so formatting/spacing differences don't miss a match. */
+function phoneDigits(s?: string | null): string {
+  return (s || '').replace(/\D/g, '');
+}
+
+export interface NoShowMatch {
+  matched: boolean;
+  byPhone: boolean;   // strong signal — same number ghosted
+  byName: boolean;    // soft signal — similar name (names collide)
+  count: number;      // how many past no-shows this person has
+  lastDate: string;   // most recent no-show's date, for "didn't show on …"
+  name: string;       // the matched no-show's name, for display
+}
+
+const NO_MATCH: NoShowMatch = { matched: false, byPhone: false, byName: false, count: 0, lastDate: '', name: '' };
+
+/**
+ * Does an incoming name/phone match a past no-show? Phone match is the strong
+ * signal; a fuzzy name match is the soft one. Aggregates how many times and when
+ * last, so the kitchen can weigh "is this the same person who ghosted?".
+ */
+export function noShowWatch(name?: string | null, contact?: string | null, orders: Order[] = []): NoShowMatch {
+  const inPhone = phoneDigits(contact);
+  const matchesPhone = (o: Order) => inPhone.length > 0 && phoneDigits(o.contact) === inPhone;
+  const matchesName  = (o: Order) => fuzzyMatch(o.customer_name, name);
+  const matches = orders.filter(o => o.no_show && (matchesPhone(o) || matchesName(o)));
+  if (matches.length === 0) return NO_MATCH;
+  const lastDate = matches
+    .map(o => o.needed_date || (o.created_at || '').slice(0, 10))
+    .filter(Boolean)
+    .sort()
+    .at(-1) || '';
+  return {
+    matched: true,
+    byPhone: matches.some(matchesPhone),
+    byName: matches.some(matchesName),
+    count: matches.length,
+    lastDate,
+    name: matches[0].customer_name || name || '',
+  };
+}
+
+/**
+ * An order that needs a gentle follow-up: its date has passed, it still isn't
+ * settled, and it's not cancelled or already flagged a no-show. The soft nudge
+ * that catches a forgotten "paid" tick — distinct from the deliberate no-show flag.
+ */
+export function needsFollowUp(order: Order, today: string = localYMD(new Date())): boolean {
+  if (order.order_status === 'Cancelled' || order.no_show) return false;
+  if (isSettled(order)) return false;
+  return !!order.needed_date && order.needed_date < today;
+}
+
 export function formatDate(s?: string | null): string {
   if (!s) return "—";
   const d = new Date(s + "T00:00:00");

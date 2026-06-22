@@ -8,7 +8,7 @@ const order = (over: Partial<Order> = {}): Order => ({
   customer_name: 'Rosa',
   pancit: { enabled: true, full: 1, half: 0, large: 0, extraMeat: false },
   delivery_type: 'pickup',
-  needed_date: '2026-05-31',
+  needed_date: '2099-12-31',  // far future so the default order is never "overdue"
   order_status: 'Pending',
   payment_status: 'Unpaid',
   total: 25,
@@ -28,9 +28,21 @@ describe('OrderChip', () => {
     expect(screen.queryByText('Unpaid')).not.toBeInTheDocument();
   });
 
-  it('shows an UNPAID badge for an unpaid, unfulfilled order', () => {
+  it('shows an UNPAID badge for an unpaid, unfulfilled order (not yet overdue)', () => {
     render(<OrderChip order={order({ payment_status: 'Unpaid' })} />);
     expect(screen.getByText('Unpaid')).toBeInTheDocument();
+  });
+
+  it('swaps UNPAID for a follow-up nudge once the date has passed', () => {
+    render(<OrderChip order={order({ payment_status: 'Unpaid', needed_date: '2020-01-01' })} />);
+    expect(screen.getByText(/follow up/)).toBeInTheDocument();
+    expect(screen.queryByText('Unpaid')).not.toBeInTheDocument();
+  });
+
+  it('renders a No-Show pill for a flagged no-show', () => {
+    render(<OrderChip order={order({ order_status: 'Cancelled', no_show: true })} />);
+    expect(screen.getByText('No-Show')).toBeInTheDocument();
+    expect(screen.queryByText('Cancelled')).not.toBeInTheDocument();
   });
 
   it('shows no owed/unpaid badge when paid', () => {

@@ -65,6 +65,8 @@ export interface Order {
   order_status?: OrderStatus;
   total?: number;
   source?: OrderSource;  // 'request' = came via the public link; defaults to 'manual'
+  no_show?: boolean;     // customer ghosted — stored as a Cancelled order + this flag (drives the repeat-no-show watchlist)
+  no_show_reason?: string; // Christine's note on why it was flagged
   created_at?: string;
 }
 

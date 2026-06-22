@@ -1,6 +1,6 @@
 import { MessageSquare } from 'lucide-react';
 import type { Order, OrderStatus } from '../../types';
-import { orderSummary, fmt, isSettled } from '../../lib/utils';
+import { orderSummary, fmt, isSettled, needsFollowUp } from '../../lib/utils';
 
 interface Props {
   order: Order;
@@ -22,6 +22,8 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
   const settled = isSettled(order);
   const legacyFulfilled = order.order_status === 'Fulfilled';
   const cancelled = order.order_status === 'Cancelled';
+  const noShow = order.no_show === true;
+  const followUp = needsFollowUp(order);
   const s = (!cancelled && settled)
     ? STATUS.Fulfilled
     : (order.order_status && STATUS[order.order_status]) || STATUS.Pending;
@@ -65,7 +67,10 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
           {showBalance && (
             <span className="shrink-0 ml-auto text-xs font-bold text-amber-600">owes {fmt(balance)}</span>
           )}
-          {unpaid && (
+          {unpaid && followUp && (
+            <span className="shrink-0 ml-auto px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-bold" title="Past its date and still unpaid — follow up?">⏰ follow up?</span>
+          )}
+          {unpaid && !followUp && (
             <span className="shrink-0 ml-auto px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">Unpaid</span>
           )}
         </div>
@@ -74,7 +79,7 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
         </div>
       </div>
       {cancelled ? (
-        <span className="shrink-0 px-2 py-0.5 rounded-full bg-stone-200 text-stone-500 text-[10px] font-bold uppercase tracking-wider">Cancelled</span>
+        <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${noShow ? 'bg-amber-100 text-amber-700' : 'bg-stone-200 text-stone-500'}`}>{noShow ? 'No-Show' : 'Cancelled'}</span>
       ) : (
         <span className={`shrink-0 w-6 h-6 rounded-full ${s.bg} ${s.text} text-[11px] font-black flex items-center justify-center`}>{dp}</span>
       )}

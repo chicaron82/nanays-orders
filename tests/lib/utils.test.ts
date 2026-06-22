@@ -6,6 +6,7 @@ import {
   getReserved, getAvailable, checkShortage, getMakeMoreNeeds,
   getRevenue, isSettled,
   fuzzyMatch, getRepeatCustomers, isRepeat, lastOrderFor,
+  noShowWatch, needsFollowUp,
   formatDate, fmt, buildOrderMessage, buildReadyMessage,
   getIngredientWarnings,
   localYMD, getWeekDays, getMonthGrid,
@@ -876,5 +877,60 @@ describe('orderSummary — early fee line', () => {
   });
   it('omits the line when waived', () => {
     expect(orderSummary(base({ pickup_time: '09:00', early_fee_waived: true }))).not.toContain('Early order fee');
+  });
+});
+
+describe('noShowWatch', () => {
+  const ghost = (over: Partial<Order> = {}): Order =>
+    base({ no_show: true, customer_name: 'Maria Santos', contact: '204-555-0100', needed_date: '2026-05-10', ...over });
+
+  it('no match against an empty / clean history', () => {
+    expect(noShowWatch('Maria', '2045550100', []).matched).toBe(false);
+    expect(noShowWatch('Maria', '2045550100', [base({ customer_name: 'Maria Santos' })]).matched).toBe(false); // not flagged
+  });
+
+  it('matches on phone — the strong signal — through formatting differences', () => {
+    const m = noShowWatch('Totally Different Name', '(204) 555-0100', [ghost()]);
+    expect(m.matched).toBe(true);
+    expect(m.byPhone).toBe(true);
+    expect(m.byName).toBe(false);
+  });
+
+  it('matches on a fuzzy name — the soft signal — when phone differs', () => {
+    const m = noShowWatch('Maria', '9999999999', [ghost()]);
+    expect(m.matched).toBe(true);
+    expect(m.byName).toBe(true);
+    expect(m.byPhone).toBe(false);
+  });
+
+  it('only considers flagged no-shows, not ordinary orders', () => {
+    expect(noShowWatch('Maria Santos', '2045550100', [ghost({ no_show: false })]).matched).toBe(false);
+  });
+
+  it('aggregates a repeat ghoster — count + most-recent date', () => {
+    const m = noShowWatch('Maria Santos', '2045550100', [
+      ghost({ needed_date: '2026-03-01' }),
+      ghost({ needed_date: '2026-05-10' }),
+    ]);
+    expect(m.count).toBe(2);
+    expect(m.lastDate).toBe('2026-05-10');
+  });
+});
+
+describe('needsFollowUp', () => {
+  const TODAY = '2026-06-21';
+  it('flags an unpaid order whose date has passed', () => {
+    expect(needsFollowUp(base({ payment_status: 'Unpaid', needed_date: '2026-06-15' }), TODAY)).toBe(true);
+  });
+  it('does not flag a future or today order', () => {
+    expect(needsFollowUp(base({ payment_status: 'Unpaid', needed_date: '2026-06-25' }), TODAY)).toBe(false);
+    expect(needsFollowUp(base({ payment_status: 'Unpaid', needed_date: TODAY }), TODAY)).toBe(false);
+  });
+  it('does not flag a settled order', () => {
+    expect(needsFollowUp(base({ payment_status: 'Prepaid', total: 50, needed_date: '2026-06-15' }), TODAY)).toBe(false);
+  });
+  it('does not flag cancelled or already-no-show orders', () => {
+    expect(needsFollowUp(base({ payment_status: 'Unpaid', needed_date: '2026-06-15', order_status: 'Cancelled' }), TODAY)).toBe(false);
+    expect(needsFollowUp(base({ payment_status: 'Unpaid', needed_date: '2026-06-15', no_show: true }), TODAY)).toBe(false);
   });
 });

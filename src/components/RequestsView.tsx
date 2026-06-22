@@ -1,15 +1,19 @@
+import { useState } from 'react';
 import { CalendarDays, Clock, MapPin, Check, Trash2, Phone, ChefHat } from 'lucide-react';
-import type { OrderRequest } from '../types';
-import { fmt, orderSummary } from '../lib/utils';
+import type { OrderRequest, Order } from '../types';
+import { fmt, orderSummary, formatDate, noShowWatch } from '../lib/utils';
 
 interface RequestsViewProps {
   requests: OrderRequest[];
+  orders: Order[];
   blockedSet: ReadonlySet<string>;
   onApprove: (request: OrderRequest) => void;
   onDecline: (request: OrderRequest) => void;
 }
 
-export default function RequestsView({ requests, blockedSet, onApprove, onDecline }: RequestsViewProps) {
+export default function RequestsView({ requests, orders, blockedSet, onApprove, onDecline }: RequestsViewProps) {
+  const [dismissed, setDismissed] = useState<Set<string | number>>(new Set());
+
   if (requests.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4 text-stone-400">
@@ -39,12 +43,28 @@ export default function RequestsView({ requests, blockedSet, onApprove, onDeclin
       <div className="grid grid-cols-1 gap-6">
         {requests.map(req => {
           const isBlocked = blockedSet.has(req.needed_date);
+          const ghost = noShowWatch(req.customer_name, req.contact, orders);
+          const showGhost = ghost.matched && !dismissed.has(req.id!);
 
           return (
-            <div key={req.id} className={`bg-white border rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col md:flex-row ${isBlocked ? 'border-red-300' : 'border-stone-200'}`}>
-              
+            <div key={req.id} className={`bg-white border rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col md:flex-row ${showGhost ? 'border-amber-300' : isBlocked ? 'border-red-300' : 'border-stone-200'}`}>
+
               {/* Request Core Info */}
               <div className="p-5 flex-1 space-y-4">
+                {showGhost && (
+                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2.5">
+                    <span className="text-base leading-none">⚠️</span>
+                    <div className="flex-1 text-xs">
+                      <p className="font-bold text-amber-800">
+                        Possible repeat no-show{ghost.count > 1 ? ` · ${ghost.count}×` : ''}
+                      </p>
+                      <p className="text-amber-700 mt-0.5">
+                        {ghost.byPhone ? 'Same phone number' : 'Similar name'} to a no-show{ghost.lastDate ? ` on ${formatDate(ghost.lastDate)}` : ''} ({ghost.name}). Same person? If so, hold off — otherwise dismiss.
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => setDismissed(s => new Set(s).add(req.id!))} aria-label="Dismiss" className="text-amber-400 hover:text-amber-600 text-base leading-none cursor-pointer">×</button>
+                  </div>
+                )}
                 <div className="flex justify-between items-start gap-4">
                   <div>
                     <h3 className="font-playfair text-lg font-black text-stone-800">{req.customer_name}</h3>

@@ -24,6 +24,8 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
   const [pendingDelete, setPendingDelete] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesInput, setNotesInput] = useState('');
+  const [markingNoShow, setMarkingNoShow] = useState(false);
+  const [noShowReason, setNoShowReason] = useState('');
 
   if (!isOpen || !order) return null;
 
@@ -40,6 +42,7 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
   const tip = tipAmount(order);
   const paidSurplus = Math.max(0, (Number(paidInput) || 0) - total);
   const cancelled = order.order_status === 'Cancelled';
+  const noShow = order.no_show === true;
   const settled = isSettled(order);
 
   const days = getDaysUntil(order.needed_date);
@@ -48,15 +51,24 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
   const handlePaymentStatus = (p: PaymentStatus) => {
     onPaymentChange(order.id!, {
       payment_status: p,
-      // Picking a payment state un-cancels — the pill row is one selector.
+      // Picking a payment state un-cancels (and clears any no-show flag) — the
+      // pill row is one selector.
       order_status: 'Pending',
+      no_show: false,
+      no_show_reason: undefined,
       deposit_amount: p === 'Deposit' ? (order.deposit_amount ?? null) : null,
       // Tip only applies while Paid; switching to Unpaid/Deposit clears it.
       tip_amount: p === 'Prepaid' ? (Number(order.tip_amount) || 0) : 0,
     });
   };
 
-  const handleCancelOrder = () => onPaymentChange(order.id!, { order_status: 'Cancelled' });
+  const handleCancelOrder = () => onPaymentChange(order.id!, { order_status: 'Cancelled', no_show: false, no_show_reason: undefined });
+
+  // A no-show is a cancellation that also goes on the repeat-ghoster watchlist.
+  const handleMarkNoShow = () => {
+    onPaymentChange(order.id!, { order_status: 'Cancelled', no_show: true, no_show_reason: noShowReason.trim() || undefined });
+    setMarkingNoShow(false);
+  };
 
   // Mark Paid in full, recording any overage as a tip (vs. change given back).
   const commitPaid = (tipAmt: number) =>
@@ -191,7 +203,7 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
                       </div>
                     )}
                     <div className="text-xs opacity-70 mt-1">
-                      {cancelled && `✗ Cancelled`}
+                      {cancelled && (noShow ? `🚫 No-Show` : `✗ Cancelled`)}
                       {!cancelled && order.payment_status === 'Unpaid' && `Balance Due: ${fmt(total)}`}
                       {depositOwing && `${fmt(total)} total · ${fmt(deposit)} received`}
                       {!cancelled && order.payment_status === 'Deposit' && owing === 0 && tip > 0 && `Paid: ${fmt(deposit)} · +${fmt(tip)} tip ✓`}
@@ -254,13 +266,40 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
                 })}
                 <button onClick={handleCancelOrder}
                   className={`px-4 py-2 rounded-full font-bold text-xs transition-colors ${
-                    cancelled ? 'bg-red-600 text-white shadow-md' :
+                    cancelled && !noShow ? 'bg-red-600 text-white shadow-md' :
                     'bg-white border-2 border-stone-200 text-stone-600 hover:bg-red-50 hover:border-red-200 hover:text-red-500'
                   }`}
                 >
                   Cancelled
                 </button>
+                <button onClick={() => { if (noShow) { handleCancelOrder(); } else { setNoShowReason(order.no_show_reason ?? ''); setMarkingNoShow(v => !v); } }}
+                  className={`px-4 py-2 rounded-full font-bold text-xs transition-colors ${
+                    noShow ? 'bg-amber-500 text-white shadow-md' :
+                    'bg-white border-2 border-stone-200 text-stone-600 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-600'
+                  }`}
+                >
+                  🚫 No-show
+                </button>
               </div>
+              {markingNoShow && !noShow && (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
+                  <p className="text-xs font-semibold text-amber-800">Flag this customer as a no-show? They'll show a warning if they order again.</p>
+                  <textarea
+                    value={noShowReason}
+                    onChange={e => setNoShowReason(e.target.value)}
+                    rows={2}
+                    placeholder="Why? (optional) — e.g. never replied, didn't pick up"
+                    className="w-full border-2 border-amber-200 rounded-lg px-3 py-2 text-sm bg-white focus-visible:border-amber-500 focus-visible:ring-2 focus-visible:ring-amber-400/20 outline-none transition-colors resize-none"
+                  />
+                  <div className="flex items-center justify-end gap-3">
+                    <button type="button" onClick={() => setMarkingNoShow(false)} className="text-xs font-semibold text-stone-500 hover:text-stone-700 cursor-pointer">Cancel</button>
+                    <button type="button" onClick={handleMarkNoShow} className="px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors cursor-pointer">Flag no-show</button>
+                  </div>
+                </div>
+              )}
+              {noShow && order.no_show_reason && (
+                <p className="mt-2 text-xs text-amber-700"><span className="font-semibold">No-show:</span> {order.no_show_reason}</p>
+              )}
               {!cancelled && order.payment_status === 'Deposit' && (
                 <div className="mt-3 flex items-center gap-2">
                   <span className="text-xs font-medium text-stone-500">Deposit received:</span>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock, RotateCcw, Plus } from 'lucide-react';
 import type { Order, Stock, BlockedDay } from '../types';
-import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE, EARLY_ORDER_FEE, isEarlyFulfillment } from '../lib/utils';
+import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE, EARLY_ORDER_FEE, isEarlyFulfillment, noShowWatch, formatDate } from '../lib/utils';
 import { useOrderForm } from '../hooks/useOrderForm';
 
 interface Props {
@@ -34,11 +34,16 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
   // order. Done during render — React's sanctioned alternative to a
   // setState-in-effect (which triggers cascading renders) — by tracking the
   // prior open/order identity and resetting only on a real transition.
+  const [noShowDismissed, setNoShowDismissed] = useState(false);
   const [synced, setSynced] = useState<{ open: boolean; order: Order | null }>({ open: isOpen, order: editOrder });
   if (synced.open !== isOpen || synced.order !== editOrder) {
     setSynced({ open: isOpen, order: editOrder });
-    if (isOpen) setDateTbd(editOrder ? !editOrder.needed_date : false);
+    if (isOpen) { setDateTbd(editOrder ? !editOrder.needed_date : false); setNoShowDismissed(false); }
   }
+
+  // Heads-up if the name/phone being entered matches a past no-show.
+  const ghost = noShowWatch(form.customer_name, form.contact, allOrders);
+  const showGhost = ghost.matched && !noShowDismissed && (!editOrder || !editOrder.no_show);
 
   const toggleTbd = () => {
     const next = !dateTbd;
@@ -82,6 +87,21 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                 <input id="order-contact" name="contact" type="tel" autoComplete="tel" spellCheck={false} value={form.contact ?? ''} onChange={e => setField('contact', formatPhone(e.target.value))} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors" placeholder="204-555-0100" />
               </div>
             </div>
+
+            {showGhost && (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3.5 py-3">
+                <span className="text-base leading-none">⚠️</span>
+                <div className="flex-1 text-xs">
+                  <p className="font-bold text-amber-800">
+                    Possible repeat no-show{ghost.count > 1 ? ` · ${ghost.count}×` : ''}
+                  </p>
+                  <p className="text-amber-700 mt-0.5">
+                    {ghost.byPhone ? 'Same phone number' : 'Similar name'} to a no-show{ghost.lastDate ? ` on ${formatDate(ghost.lastDate)}` : ''} ({ghost.name}). Same person? If so, stop and check — otherwise dismiss.
+                  </p>
+                </div>
+                <button type="button" onClick={() => setNoShowDismissed(true)} aria-label="Dismiss" className="text-amber-400 hover:text-amber-600 text-base leading-none cursor-pointer">×</button>
+              </div>
+            )}
 
             {/* Order Items */}
             <div className="space-y-4">

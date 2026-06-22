@@ -204,6 +204,7 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
         {tab === 'requests' && (
           <RequestsView
             requests={requests}
+            orders={orders}
             blockedSet={blockedSet}
             onApprove={handleApproveRequest}
             onDecline={handleDeclineRequest}
