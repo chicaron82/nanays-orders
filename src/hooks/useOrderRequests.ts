@@ -93,14 +93,18 @@ export function useOrderRequests() {
 
   async function submitRequest(requestData: Omit<OrderRequest, 'status' | 'id' | 'created_at'>) {
     try {
-      const { data, error } = await supabase
+      const submitted = { ...requestData, status: 'Pending' };
+      // No .select(): anon may INSERT an order request but must NOT read the table
+      // back (orders hold other customers' names, contacts, addresses). A RETURNING
+      // — which .select() adds — needs a SELECT policy anon doesn't have, so it 401s
+      // with an RLS violation. The confirmation screen only needs what we submitted.
+      const { error } = await supabase
         .from('order_requests')
-        .insert([{ ...requestData, status: 'Pending' }])
-        .select();
+        .insert([submitted]);
 
       if (error) throw error;
       toast.success('Order request submitted successfully! 🌟');
-      return data[0] as OrderRequest;
+      return submitted as OrderRequest;
     } catch (err) {
       console.error('Error submitting request:', err.message);
       toast.error('Failed to submit order request. Please try again.');
