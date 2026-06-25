@@ -76,3 +76,24 @@ Follow this shape for new data hooks.
 - Base schema / RLS: `supabase-setup.sql`, `supabase-rls-setup.sql`. Incremental changes live in
   `migrations/` (e.g. `001_stock_ingredients.sql`, `002_add_rush_order.sql`).
 - Env: `.env.local` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+
+### Anon / public writes — RLS rules (learned in the wild, 2026-06-25)
+
+The public order form runs as the **anon** role. It may INSERT an `order_requests` row but must
+NOT read the table back — orders hold other customers' names, contacts, and addresses, so there is
+deliberately **no anon SELECT policy**.
+
+- **Never `.select()` on a public/anon write.** `.insert().select()` adds a `RETURNING`, which
+  under RLS needs a SELECT policy anon doesn't have → every submission 401s with `42501 new row
+  violates row-level security policy`. The insert itself is fine; asking for the row *back* is what's
+  denied. If you need the row's shape, echo what you submitted (the form already has it); the DB
+  `id` / `created_at` aren't needed by the confirmation. Pinned by `useOrderRequests.test.ts`.
+- **Test public flows as the anon role, not as admin.** Every privileged context hides this bug:
+  `tsc`/build don't know about RLS, mocked unit tests bypass the DB, and the `authenticated`
+  dashboard role has a full-access policy — so testing the form *while logged in* passes while real
+  customers fail. Before shipping a public-facing change, **submit it from a logged-out / incognito
+  window.** That 30-second check is the cheapest catch.
+- **When a migration removes/narrows an RLS policy, grep the code for what relied on it.** This was a
+  correct privacy change (drop anon SELECT) silently breaking a code assumption (`.insert().select()`
+  reading the row back). Schema policies and code are two sources of truth that drift — sweep the
+  consumers when you change a policy.
