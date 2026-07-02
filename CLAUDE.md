@@ -29,12 +29,14 @@ npm run test:watch  # vitest watch mode
 src/
   App.tsx          top-level shell + view switching
   components/      one file per screen/modal — Dashboard, OrderFormModal,
-                   OrderDetailsModal, StockManager, ExpenseLog, CalendarView, LoginScreen
+                   OrderDetailsModal, StockManager, ExpenseLog, CalendarView,
+                   InsightsView, PublicRequestPage (the public order-link form), LoginScreen
   hooks/           data + state, each owns its Supabase I/O — useOrders, useStock,
-                   useExpenses, useAuth, useOrderForm, useBackGuard
+                   useExpenses, useAuth, useOrderForm, useOrderRequests, useBackGuard
   lib/
     supabase.ts    the Supabase client
-    utils.ts       ALL pure business logic (pricing, stock math, calendar, urgency)
+    utils.ts       the pure core — pricing, stock math, calendar, urgency
+    insights.ts    per-item revenue + public-link order analytics (pure; tested)
 ```
 
 **Where logic lives:** `lib/utils.ts` is the pure core — pricing (`calcTotal`), stock
@@ -49,9 +51,12 @@ Follow this shape for new data hooks.
 
 ## Conventions
 
-- **`docs/` is a done idea-inbox, not a backlog.** Aaron drops crew ideas/fixes there from the
-  lot; everything in it is already implemented and may have evolved past its note. **The code is
-  the source of truth.** See `docs/INDEX.md`. Never treat a `docs/` file as open work.
+- **`docs/` is a local idea-inbox (gitignored), not a backlog.** Aaron drops ideas/fixes there;
+  the **top level shows only open work + reference**, and a shipped drop is stamped and archived
+  to its month folder (`May/`, `June/`, …). The month archives are already-implemented history —
+  **the code is the source of truth** and a drop may have evolved past its note. Don't treat an
+  *archived* drop as open work; do treat a top-level `status: open` drop as open. See
+  `docs/README.md` (the entry point) and `docs/CONVENTIONS.md`.
 - **New or changed behavior in `lib/utils.ts` gets a test** in `tests/lib/utils.test.ts`, same
   commit. This covers new functions AND new branches/paths in existing functions. The money and
   stock math must not silently break.
@@ -66,7 +71,8 @@ Follow this shape for new data hooks.
   make-more calculator (`getMakeMoreNeeds`).
 - Pancit noodle packs needed = `full × 1 + half × 1 + large × 2`. Each small/half tray uses one
   full bihon pack (the other half is consumed at home, not saved). **Not** `ceil(half / 2)` — that
-  was the old (wrong) formula still present in `getIngredientWarnings`.
+  was the old (wrong) formula; don't reintroduce it. The live code (`getIngredientWarnings`,
+  `utils.ts`) already uses the correct `full + half + large × 2`.
 - Revenue counts `Fulfilled` orders plus `Ready` orders that are `Prepaid`/`Deposit`.
 - `needed_date` is stored as a local `YYYY-MM-DD` string — use `localYMD()`, not `toISOString()`
   (which would shift evening dates a day forward).
