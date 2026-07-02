@@ -3,7 +3,7 @@ import { m, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Edit2, Calendar, MapPin, Phone, MessageSquare, Share2, BellRing } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Order, PaymentStatus } from '../types';
-import { fmt, formatDate, urgencyLabel, getDaysUntil, buildOrderMessage, buildReadyMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, legacyAmount, PAYMENT_STATUS } from '../lib/utils';
+import { fmt, formatDate, urgencyLabel, getDaysUntil, buildOrderMessage, buildReadyMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, PAYMENT_STATUS } from '../lib/utils';
 
 interface Props {
   order: Order | null;
@@ -200,11 +200,6 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
                     {!cancelled && discountAmount(order) > 0 && (
                       <div className="text-xs opacity-90 mt-1 font-semibold">
                         🏷️ −{fmt(discountAmount(order))}{order.discount_label?.trim() ? ` · ${order.discount_label.trim()}` : ''}
-                      </div>
-                    )}
-                    {!cancelled && legacyAmount(order) > 0 && (
-                      <div className="text-xs opacity-90 mt-1 font-semibold">
-                        🧡 −{fmt(legacyAmount(order))} · legacy pricing (one-time)
                       </div>
                     )}
                     <div className="text-xs opacity-70 mt-1">

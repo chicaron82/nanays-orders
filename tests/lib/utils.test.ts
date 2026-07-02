@@ -17,7 +17,6 @@ import {
   isEarlyFulfillment, earlyFeeApplies, amountOwing, amountReceived, tipAmount,
   customItemsTotal, nextAvailableDate, requiresDeposit, depositFor, isAutoRush,
   lumpiaPieceCount, EARLY_ORDER_FEE, RUSH_ORDER_FEE, DELIVERY_FEE,
-  legacyAmount, LEGACY_PRICES_2026_07,
 } from '../../src/lib/utils';
 
 // Build a local YYYY-MM-DD offset from today (deterministic regardless of run date)
@@ -48,20 +47,20 @@ describe('calcTotal', () => {
   });
 
   it('lumpia sets price by cooked/uncooked', () => {
-    expect(calcTotal({ lumpia: { enabled: true, sets: 2, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] } })).toBe(80); // 2 × 40
-    expect(calcTotal({ lumpia: { enabled: true, sets: 2, setsCooked: false, halves: 0, halvesCooked: false, sauces: [] } })).toBe(70); // 2 × 35
+    expect(calcTotal({ lumpia: { enabled: true, sets: 2, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] } })).toBe(70); // 2 × 35
+    expect(calcTotal({ lumpia: { enabled: true, sets: 2, setsCooked: false, halves: 0, halvesCooked: false, sauces: [] } })).toBe(60); // 2 × 30
   });
 
   it('lumpia halves price independently of sets', () => {
-    expect(calcTotal({ lumpia: { enabled: true, sets: 1, setsCooked: false, halves: 3, halvesCooked: false, sauces: [] } })).toBe(89); // 35 + 3×18
+    expect(calcTotal({ lumpia: { enabled: true, sets: 1, setsCooked: false, halves: 3, halvesCooked: false, sauces: [] } })).toBe(84); // 30 + 3×18
   });
 
   it('adds sauce prices', () => {
-    expect(calcTotal({ lumpia: { enabled: true, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: ['sweet_and_sour', 'sweet_chili'] } })).toBe(44); // 40 + 2 + 2
+    expect(calcTotal({ lumpia: { enabled: true, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: ['sweet_and_sour', 'sweet_chili'] } })).toBe(39); // 35 + 2 + 2
   });
 
   it('pancit full/half/large + extra meat', () => {
-    expect(calcTotal({ pancit: { enabled: true, full: 2, half: 1, large: 1, extraMeat: true } })).toBe(138); // 60 + 13 + 55 + 10
+    expect(calcTotal({ pancit: { enabled: true, full: 2, half: 1, large: 1, extraMeat: true } })).toBe(123); // 50 + 13 + 50 + 10
   });
 
   it('rush fee and delivery fee', () => {
@@ -71,8 +70,8 @@ describe('calcTotal', () => {
   });
 
   it('falls back to legacy lumpia.style when setsCooked is absent', () => {
-    expect(calcTotal({ lumpia: { enabled: true, sets: 1, halves: 0, style: 'cooked', sauces: [] } })).toBe(40);
-    expect(calcTotal({ lumpia: { enabled: true, sets: 1, halves: 0, sauces: [] } })).toBe(35); // no style → uncooked
+    expect(calcTotal({ lumpia: { enabled: true, sets: 1, halves: 0, style: 'cooked', sauces: [] } })).toBe(35);
+    expect(calcTotal({ lumpia: { enabled: true, sets: 1, halves: 0, sauces: [] } })).toBe(30); // no style → uncooked
   });
 
   it('combines lumpia + pancit + rush', () => {
@@ -80,62 +79,7 @@ describe('calcTotal', () => {
       lumpia: { enabled: true, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] },
       pancit: { enabled: true, full: 1, half: 0, large: 0 },
       rush_order: true,
-    })).toBe(80); // 40 + 30 + 10
-  });
-});
-
-// ─── LEGACY PRICING (2026-07 raise, one-time grace) ──────────────────────────
-
-describe('legacyAmount', () => {
-  const twoCookedSets: Order = { lumpia: { enabled: true, sets: 2, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] } };
-
-  it('0 when the flag is off — even for a priced order', () => {
-    expect(legacyAmount(twoCookedSets)).toBe(0);
-  });
-
-  it('flag on → new minus old across the raised items', () => {
-    // cooked 100pc went 35→40: 2 sets save $10
-    expect(legacyAmount({ ...twoCookedSets, legacy_pricing: true })).toBe(10);
-    // pancit: full +5, half +0, large +5 → 1 full + 2 half + 1 large saves $10
-    expect(legacyAmount({ legacy_pricing: true, pancit: { enabled: true, full: 1, half: 2, large: 1 } })).toBe(10);
-  });
-
-  it('held items contribute nothing (50pc lumpia, small pancit)', () => {
-    expect(legacyAmount({ legacy_pricing: true, lumpia: { enabled: true, sets: 0, setsCooked: false, halves: 4, halvesCooked: false, sauces: [] } })).toBe(0);
-  });
-
-  it('re-derives when items are edited — never a stale stored figure', () => {
-    const on = { ...twoCookedSets, legacy_pricing: true };
-    expect(legacyAmount(on)).toBe(10);
-    expect(legacyAmount({ ...on, lumpia: { ...on.lumpia!, sets: 3 } })).toBe(15);
-  });
-
-  it('fees, sauces, and custom items cancel out of the delta', () => {
-    const bare = { ...twoCookedSets, legacy_pricing: true };
-    const loaded: Order = {
-      ...bare,
-      rush_order: true,
-      delivery_type: 'city',
-      custom_items: [{ name: 'Extra sauce tub', price: 6 }],
-      lumpia: { ...bare.lumpia!, sauces: ['sweet_chili'] },
-    };
-    expect(legacyAmount(loaded)).toBe(legacyAmount(bare));
-  });
-
-  it('calcTotal charges the OLD subtotal when the grace is on', () => {
-    const on = { ...twoCookedSets, legacy_pricing: true };
-    expect(calcTotal(on)).toBe(orderSubtotal(on, LEGACY_PRICES_2026_07)); // 2 × 35 = 70
-  });
-
-  it('stacks with a goodwill discount, floored at zero', () => {
-    const on: Order = { ...twoCookedSets, legacy_pricing: true, discount_type: 'flat', discount_value: 100 };
-    expect(calcTotal(on)).toBe(0);
-  });
-
-  it('buildOrderMessage carries the heads-up line', () => {
-    const msg = buildOrderMessage({ ...twoCookedSets, legacy_pricing: true, customer_name: 'Tita Cora' });
-    expect(msg).toContain('old pricing honored −$10.00');
-    expect(msg).toContain('new prices apply next order');
+    })).toBe(70); // 35 + 25 + 10
   });
 });
 
@@ -646,7 +590,7 @@ describe('earlyFeeApplies', () => {
 });
 
 describe('calcTotal — early fee', () => {
-  const PANCIT_FULL = 30;
+  const PANCIT_FULL = 25;
 
   it('adds the early fee for an early pickup', () => {
     expect(calcTotal(base({ delivery_type: 'pickup', pickup_time: '09:00' })))
@@ -686,8 +630,8 @@ describe('amountOwing', () => {
     expect(amountOwing(base({ payment_status: 'Deposit', total: 60, deposit_amount: 80 }))).toBe(0);
   });
   it('falls back to calcTotal when total is not stored', () => {
-    // pancit full = 30, pickup, no fees
-    expect(amountOwing(base({ payment_status: 'Unpaid', total: undefined }))).toBe(30);
+    // pancit full = 25, pickup, no fees
+    expect(amountOwing(base({ payment_status: 'Unpaid', total: undefined }))).toBe(25);
   });
 });
 
@@ -813,8 +757,8 @@ describe('custom items', () => {
     expect(customItemsTotal(base({}))).toBe(0);
   });
   it('calcTotal adds custom items on top of the menu items', () => {
-    // base = pancit full ($30)
-    expect(calcTotal(base({ custom_items: [{ name: 'Embutido', price: 40 }] }))).toBe(70);
+    // base = pancit full ($25)
+    expect(calcTotal(base({ custom_items: [{ name: 'Embutido', price: 40 }] }))).toBe(65);
   });
   it('orderSummary lists the custom dish names', () => {
     const s = orderSummary(base({ custom_items: [{ name: 'Embutido', price: 40 }] }));
@@ -876,12 +820,12 @@ describe('requiresDeposit', () => {
 
 describe('depositFor', () => {
   it('is 50% of the order total', () => {
-    // pancit full = $30, deposit = $15
-    expect(depositFor(base())).toBeCloseTo(15);
+    // pancit full = $25, deposit = $12.50
+    expect(depositFor(base())).toBeCloseTo(12.5);
   });
   it('rounds to the nearest cent', () => {
-    // pancit full ($30) + rush ($10) = $40, half = $20
-    expect(depositFor(base({ rush_order: true }))).toBeCloseTo(20);
+    // pancit full ($25) + rush ($10) = $35, half = $17.50
+    expect(depositFor(base({ rush_order: true }))).toBeCloseTo(17.5);
   });
 });
 

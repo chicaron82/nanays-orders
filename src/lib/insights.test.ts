@@ -21,12 +21,12 @@ describe('lumpiaRevenue', () => {
     const o = order({
       lumpia: { enabled: true, sets: 2, setsCooked: true, halves: 1, halvesCooked: false, sauces: ['sweet_chili'] },
     });
-    // 2 × 40 (cooked full) + 1 × 18 (uncooked half) + 1 × 2 (sauce) = 100
-    expect(lumpiaRevenue(o)).toBe(100);
+    // 2 × 35 (cooked full) + 1 × 18 (uncooked half) + 1 × 2 (sauce) = 90
+    expect(lumpiaRevenue(o)).toBe(90);
   });
   it('falls back to the legacy style field', () => {
     const o = order({ lumpia: { enabled: true, sets: 1, style: 'cooked' } });
-    expect(lumpiaRevenue(o)).toBe(40);
+    expect(lumpiaRevenue(o)).toBe(35);
   });
   it('is 0 when lumpia is not enabled', () => {
     expect(lumpiaRevenue(order({ lumpia: { enabled: false, sets: 5 } }))).toBe(0);
@@ -36,8 +36,8 @@ describe('lumpiaRevenue', () => {
 describe('pancitRevenue', () => {
   it('prices full / half / large + extra meat', () => {
     const o = order({ pancit: { enabled: true, full: 1, half: 2, large: 1, extraMeat: true } });
-    // 30 + 2×13 + 55 + 10 = 121
-    expect(pancitRevenue(o)).toBe(121);
+    // 25 + 2×13 + 50 + 10 = 111
+    expect(pancitRevenue(o)).toBe(111);
   });
   it('is 0 when pancit is not enabled', () => {
     expect(pancitRevenue(order({ pancit: { enabled: false, full: 3 } }))).toBe(0);
@@ -100,10 +100,10 @@ describe('ordersWithinDays', () => {
 
 describe('itemBreakdownForMonth', () => {
   const orders: Order[] = [
-    order({ needed_date: '2026-05-03', lumpia: { enabled: true, sets: 2, setsCooked: true } }),       // 80
-    order({ needed_date: '2026-05-20', pancit: { enabled: true, full: 1, half: 1 } }),                 // 43
+    order({ needed_date: '2026-05-03', lumpia: { enabled: true, sets: 2, setsCooked: true } }),       // 70
+    order({ needed_date: '2026-05-20', pancit: { enabled: true, full: 1, half: 1 } }),                 // 38
     order({ needed_date: '2026-05-25', lumpia: { enabled: true, halves: 2, halvesCooked: true },
-            pancit: { enabled: true, large: 1 } }),                                                    // 40 + 55
+            pancit: { enabled: true, large: 1 } }),                                                    // 35 + 50
     order({ needed_date: '2026-04-15', lumpia: { enabled: true, sets: 5, setsCooked: true } }),        // other month
     order({ needed_date: '2026-05-09', order_status: 'Cancelled', pancit: { enabled: true, full: 9 } }), // excluded
   ];
@@ -116,9 +116,9 @@ describe('itemBreakdownForMonth', () => {
     expect(b.pancit.full).toBe(1);
     expect(b.pancit.half).toBe(1);
     expect(b.pancit.large).toBe(1);
-    expect(b.lumpia.revenue).toBeCloseTo(80 + 2 * 20);      // 120
-    expect(b.pancit.revenue).toBeCloseTo(30 + 13 + 55);  // 98
-    expect(b.itemRevenue).toBeCloseTo(218);
+    expect(b.lumpia.revenue).toBeCloseTo(70 + 2 * 20);      // 110
+    expect(b.pancit.revenue).toBeCloseTo(25 + 13 + 50);  // 88
+    expect(b.itemRevenue).toBeCloseTo(198);
   });
 
   it('returns an empty breakdown for a month with no orders', () => {
@@ -135,7 +135,7 @@ describe('itemBreakdownForMonth', () => {
     const b = itemBreakdownForMonth(withCustom, '2026-05');
     expect(b.custom.count).toBe(3);
     expect(b.custom.revenue).toBe(105);
-    expect(b.itemRevenue).toBeCloseTo(30 + 105); // one pancit reg + custom
+    expect(b.itemRevenue).toBeCloseTo(25 + 105); // one pancit reg + custom
   });
 });
 
@@ -150,7 +150,7 @@ describe('monthlyItemSeries', () => {
     const orders = [order({ needed_date: '2026-05-10', pancit: { enabled: true, full: 1 } })];
     const series = monthlyItemSeries(orders, 2, new Date(2026, 4, 15));
     expect(series.map(s => s.month)).toEqual(['2026-05', '2026-04']);
-    expect(series[0].itemRevenue).toBe(30);
+    expect(series[0].itemRevenue).toBe(25);
     expect(series[1].itemRevenue).toBe(0);
   });
 });
