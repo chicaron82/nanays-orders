@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChefHat, Lock } from 'lucide-react';
+import { ChefHat, Lock, UtensilsCrossed, ArrowRight } from 'lucide-react';
 
 interface Props {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -23,7 +23,22 @@ export default function LoginScreen({ onLogin }: Props) {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+      <div className="w-full max-w-md flex flex-col gap-4">
+        <a
+          href="/request"
+          className="group flex items-center gap-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 shadow-2xl shadow-emerald-900/30 hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.99] transition-all"
+        >
+          <div className="bg-white/20 w-12 h-12 rounded-xl flex items-center justify-center shrink-0">
+            <UtensilsCrossed className="text-white" size={24} />
+          </div>
+          <div className="flex-1">
+            <p className="text-white font-black font-playfair text-lg leading-tight">Want to place an order?</p>
+            <p className="text-white/80 font-lato text-xs">This page is for the kitchen team — order here instead</p>
+          </div>
+          <ArrowRight className="text-white shrink-0 group-hover:translate-x-1 transition-transform" size={22} />
+        </a>
+
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-5">
           <ChefHat size={120} />
         </div>
@@ -76,6 +91,7 @@ export default function LoginScreen({ onLogin }: Props) {
               )}
             </button>
           </form>
+        </div>
         </div>
       </div>
     </div>
