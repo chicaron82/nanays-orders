@@ -13,7 +13,11 @@ npm test            # vitest run (one-shot)
 npm run test:watch  # vitest watch mode
 ```
 
-**Before committing:** `npm run lint` and `npm test` green, and `npm run build` succeeds.
+**Before committing:** `npm run lint`, `npm test`, `npx tsc --noEmit`, and `npm run build` all green.
+(The explicit `tsc --noEmit` matters here: `vite build` transpiles without type-checking and vitest
+does the same, so nothing else in the gate list catches type errors. This repo's flat tsconfig makes
+bare `--noEmit` reliable — unlike the solution-file repos (RP, FG, piggybank, SSWP) where the type
+gate must be `tsc -b` / the build.)
 
 ## Stack
 
