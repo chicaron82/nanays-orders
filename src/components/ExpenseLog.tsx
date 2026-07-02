@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Plus } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import { Plus, Pencil } from 'lucide-react';
 import type { Expense } from '../types';
 import { fmt, formatDate, localYMD } from '../lib/utils';
 import { ExpenseRow } from './ExpenseRow';
@@ -49,9 +49,18 @@ const EMPTY_FORM: ExpenseForm = {
 export default function ExpenseLog({ expenses, onAdd, onUpdate, onDelete }: Props) {
   const [form, setForm] = useState<ExpenseForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  // Trip-level: stays selected across items until manually changed.
+  // Trip-level: stays selected across items until manually changed. Also doubles
+  // as the store field when editing (see startEdit) — editing an old item's store
+  // is deliberately allowed to carry over to the next NEW item logged, since in
+  // practice a correction usually means "actually we were still at this store".
   const [tripStore, setTripStore] = useState('');
   const [otherStoreName, setOtherStoreName] = useState('');
+  // Set while editing an existing expense — the same form doubles as the editor
+  // instead of a separate per-row form, so there's only one place to fix a
+  // mislabeled store/category/amount/note (the reason: deleting + re-entering was
+  // the only fix before, and store especially gets forgotten mid-trip).
+  const [editingId, setEditingId] = useState<string | number | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const grouped = useMemo<[string, Expense[]][]>(() => {
     const map: Record<string, Expense[]> = {};
@@ -74,6 +83,31 @@ export default function ExpenseLog({ expenses, onAdd, onUpdate, onDelete }: Prop
     return parseFloat(form.amount);
   })();
 
+  // Reopen this form pre-filled with an existing expense instead of a separate
+  // per-row editor — one form to learn, and the note field starts with whatever's
+  // already there (including any auto-generated pricing breakdown) so a fix is
+  // just appending context, not retyping the whole entry.
+  const startEdit = (entry: Expense) => {
+    const known = STORES.some(s => s.value === entry.store);
+    setTripStore(entry.store ? (known ? entry.store : 'other') : '');
+    setOtherStoreName(entry.store && !known ? entry.store : '');
+    setForm({
+      date: entry.date,
+      category: entry.category ?? 'wrappers',
+      pricing_type: 'flat',
+      amount: String(entry.amount),
+      unit_price: '', quantity: '', weight: '',
+      note: entry.note ?? '',
+    });
+    setEditingId(entry.id ?? null);
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm(prev => ({ ...EMPTY_FORM, date: prev.date }));
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!form.date || isNaN(computedAmount) || computedAmount <= 0) return;
@@ -83,14 +117,24 @@ export default function ExpenseLog({ expenses, onAdd, onUpdate, onDelete }: Prop
       : form.pricing_type === 'weight'
       ? `$${form.unit_price}/lb × ${form.weight} lb`
       : '';
-    const note = [breakdown, noteBase].filter(Boolean).join(' — ') || undefined;
+    // Editing: the note field is already the full text (breakdown included, if
+    // any) — don't re-glue a flat-mode "no breakdown" onto it a second time.
+    const note = editingId
+      ? (form.note.trim() || undefined)
+      : [breakdown, noteBase].filter(Boolean).join(' — ') || undefined;
     const store = tripStore === 'other'
       ? (otherStoreName.trim() || 'Other')
       : tripStore || undefined;
     setSaving(true);
     try {
-      await onAdd({ date: form.date, category: form.category, amount: computedAmount, note, store });
-      setForm(prev => ({ ...EMPTY_FORM, date: prev.date, category: prev.category, pricing_type: prev.pricing_type }));
+      if (editingId) {
+        await onUpdate(editingId, { date: form.date, category: form.category, amount: computedAmount, note, store });
+        setEditingId(null);
+        setForm(prev => ({ ...EMPTY_FORM, date: prev.date }));
+      } else {
+        await onAdd({ date: form.date, category: form.category, amount: computedAmount, note, store });
+        setForm(prev => ({ ...EMPTY_FORM, date: prev.date, category: prev.category, pricing_type: prev.pricing_type }));
+      }
     } finally {
       setSaving(false);
     }
@@ -98,8 +142,17 @@ export default function ExpenseLog({ expenses, onAdd, onUpdate, onDelete }: Prop
 
   return (
     <div className="px-6 space-y-6">
-      <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl p-5 shadow-lg">
-        <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-4">Log an Expense</div>
+      <div ref={formRef} className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl p-5 shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider">
+            {editingId ? 'Edit Expense' : 'Log an Expense'}
+          </div>
+          {editingId && (
+            <button type="button" onClick={cancelEdit} className="text-[10px] font-bold text-white/60 hover:text-white uppercase tracking-wider transition-colors cursor-pointer">
+              Cancel
+            </button>
+          )}
+        </div>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label htmlFor="expense-date" className="text-xs text-white/70 font-semibold block mb-1">Batch Date</label>
@@ -256,7 +309,9 @@ export default function ExpenseLog({ expenses, onAdd, onUpdate, onDelete }: Prop
             disabled={saving || isNaN(computedAmount) || computedAmount <= 0}
             className="w-full bg-white text-orange-600 font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-orange-50 transition-colors disabled:opacity-50"
           >
-            <Plus size={16} /> {saving ? 'Saving…' : 'Add Expense'}
+            {editingId
+              ? <><Pencil size={16} /> {saving ? 'Saving…' : 'Save Changes'}</>
+              : <><Plus size={16} /> {saving ? 'Saving…' : 'Add Expense'}</>}
           </button>
         </form>
       </div>
@@ -279,8 +334,7 @@ export default function ExpenseLog({ expenses, onAdd, onUpdate, onDelete }: Prop
                       key={entry.id as string}
                       entry={entry}
                       categories={CATEGORIES}
-                      stores={STORES}
-                      onUpdate={onUpdate}
+                      onEdit={startEdit}
                       onDelete={onDelete}
                     />
                   ))}
