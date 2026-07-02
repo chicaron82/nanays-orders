@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { Expense } from '../types';
 import { fmt, formatDate, localYMD } from '../lib/utils';
+import { ExpenseRow } from './ExpenseRow';
 
 interface Props {
   expenses: Expense[];
   onAdd: (expense: Expense) => Promise<void>;
+  onUpdate: (id: string | number, patch: Partial<Expense>) => Promise<void>;
   onDelete: (id: string | number) => void;
 }
 
@@ -44,10 +46,9 @@ const EMPTY_FORM: ExpenseForm = {
   note: '',
 };
 
-export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
+export default function ExpenseLog({ expenses, onAdd, onUpdate, onDelete }: Props) {
   const [form, setForm] = useState<ExpenseForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | number | null>(null);
   // Trip-level: stays selected across items until manually changed.
   const [tripStore, setTripStore] = useState('');
   const [otherStoreName, setOtherStoreName] = useState('');
@@ -266,7 +267,6 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
         <div className="space-y-4">
           {grouped.map(([date, entries]) => {
             const batchTotal = entries.reduce((s, e) => s + Number(e.amount), 0);
-            const cat = (v: string) => CATEGORIES.find(c => c.value === v);
             return (
               <div key={date} className="bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl overflow-hidden shadow">
                 <div className="flex items-center justify-between px-4 py-3 bg-white/10 border-b border-white/10">
@@ -275,34 +275,14 @@ export default function ExpenseLog({ expenses, onAdd, onDelete }: Props) {
                 </div>
                 <div className="divide-y divide-white/10">
                   {entries.map(entry => (
-                    <div key={entry.id as string} className="flex items-center justify-between px-4 py-2.5 group">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base">{cat(entry.category ?? '')?.emoji ?? '🛒'}</span>
-                        <div>
-                          <div className="text-white text-sm font-medium">{cat(entry.category ?? '')?.label ?? entry.category}</div>
-                          {entry.store && <div className="text-white/40 text-[10px]">📍 {entry.store}</div>}
-                          {entry.note && <div className="text-white/50 text-xs">{entry.note}</div>}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-white font-semibold text-sm">{fmt(Number(entry.amount))}</span>
-                        {pendingDeleteId === entry.id ? (
-                          <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => setPendingDeleteId(null)} className="text-xs text-white/60 hover:text-white font-semibold transition-colors cursor-pointer">Cancel</button>
-                            <button type="button" onClick={() => { onDelete(entry.id!); setPendingDeleteId(null); }} className="text-xs text-red-300 hover:text-red-200 font-bold transition-colors cursor-pointer">Delete</button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            aria-label="Delete expense"
-                            onClick={() => setPendingDeleteId(entry.id ?? null)}
-                            className="opacity-0 group-hover:opacity-100 text-white/40 hover:text-red-300 transition-all cursor-pointer"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    <ExpenseRow
+                      key={entry.id as string}
+                      entry={entry}
+                      categories={CATEGORIES}
+                      stores={STORES}
+                      onUpdate={onUpdate}
+                      onDelete={onDelete}
+                    />
                   ))}
                 </div>
               </div>

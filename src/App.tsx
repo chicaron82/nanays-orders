@@ -29,7 +29,7 @@ interface MainAppProps {
 
 function MainApp({ onLogout, displayName }: MainAppProps) {
   const { orders, loading: ordersLoading, addOrder, updateOrder, deleteOrder } = useOrders();
-  const { expenses, addExpense, deleteExpense } = useExpenses();
+  const { expenses, addExpense, updateExpense, deleteExpense } = useExpenses();
   const { blockedDays, blockedSet, blockDay, unblockDay } = useBlockedDays();
   const { requests, approveRequest, declineRequest } = useOrderRequests();
 
@@ -211,7 +211,7 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
           />
         )}
         {tab === 'expenses' && (
-          <ExpenseLog expenses={expenses} onAdd={addExpense} onDelete={deleteExpense} />
+          <ExpenseLog expenses={expenses} onAdd={addExpense} onUpdate={updateExpense} onDelete={deleteExpense} />
         )}
         {tab === 'insights' && (
           <InsightsView orders={orders} expenses={expenses} />

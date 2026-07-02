@@ -60,6 +60,19 @@ export function useExpenses() {
     }
   }
 
+  async function updateExpense(id: string | number, patch: Partial<Expense>) {
+    try {
+      const { data, error } = await supabase.from('expenses').update(patch).eq('id', id).select();
+      if (error) throw error;
+      setExpenses(prev => prev.map(e => e.id === id ? (data[0] as Expense) : e));
+      toast.success('Expense updated ✓');
+    } catch (err) {
+      console.error('Error updating expense:', err.message);
+      toast.error('Failed to update expense');
+      throw err;
+    }
+  }
+
   async function deleteExpense(id: string | number) {
     try {
       const { error } = await supabase.from('expenses').delete().eq('id', id);
@@ -73,5 +86,5 @@ export function useExpenses() {
     }
   }
 
-  return { expenses, loading, addExpense, deleteExpense };
+  return { expenses, loading, addExpense, updateExpense, deleteExpense };
 }
