@@ -11,9 +11,13 @@ export const NANAY_CONTACT_NUMBER = '4313736620';
 export const FB_ORDER_URL = 'https://m.me/christine.sauddin';
 
 // ─── PRICING ─────────────────────────────────────────────────────────────────
-export const LUMPIA_PRICE = { uncooked: 30, cooked: 35 };
+// Raised to fair market 2026-07 (mom-approved; Winnipeg FB Marketplace recon):
+// 100pc lumpia +$5 both styles, pancit full 25→30, large 50→55. The 50pc lumpia
+// and small pancit were already at market — held. Old values live in
+// LEGACY_PRICES_2026_07 for the one-time returning-customer grace (legacyAmount).
+export const LUMPIA_PRICE = { uncooked: 35, cooked: 40 };
 export const LUMPIA_HALF_PRICE = { uncooked: 18, cooked: 20 };
-export const PANCIT_PRICE = { full: 25, half: 13, large: 50 };
+export const PANCIT_PRICE = { full: 30, half: 13, large: 55 };
 export const PANCIT_SAUCE_PRICE: Record<string, number> = { sweet_and_sour: 2, sweet_chili: 2 };
 export const PANCIT_EXTRA_MEAT_PRICE = 10;
 export const RUSH_ORDER_FEE = 10;
@@ -91,18 +95,40 @@ export function customItemsTotal(order: Order): number {
   return (order.custom_items || []).reduce((s, c) => s + (Number(c.price) || 0), 0);
 }
 
+/** The per-item price sheet orderSubtotal walks. Fees/sauces/custom items are
+ *  priced outside the table — they didn't change in the 2026-07 raise, so they
+ *  cancel out of the legacy delta automatically. */
+export interface PriceTable {
+  lumpia: { uncooked: number; cooked: number };
+  lumpiaHalf: { uncooked: number; cooked: number };
+  pancit: { full: number; half: number; large: number };
+}
+
+export const CURRENT_PRICES: PriceTable = {
+  lumpia: LUMPIA_PRICE,
+  lumpiaHalf: LUMPIA_HALF_PRICE,
+  pancit: PANCIT_PRICE,
+};
+
+/** The pre-raise sheet, frozen for the returning-customer grace. */
+export const LEGACY_PRICES_2026_07: PriceTable = {
+  lumpia: { uncooked: 30, cooked: 35 },
+  lumpiaHalf: { uncooked: 18, cooked: 20 },
+  pancit: { full: 25, half: 13, large: 50 },
+};
+
 /** Pre-discount total — items + fees. The number a discount applies to. */
-export function orderSubtotal(order: Order): number {
+export function orderSubtotal(order: Order, prices: PriceTable = CURRENT_PRICES): number {
   let t = 0;
   if (order.lumpia?.enabled) {
-    t += LUMPIA_PRICE[lumpiaStyleFor(order.lumpia, 'sets')] * (order.lumpia.sets || 0);
-    t += LUMPIA_HALF_PRICE[lumpiaStyleFor(order.lumpia, 'halves')] * (order.lumpia.halves || 0);
+    t += prices.lumpia[lumpiaStyleFor(order.lumpia, 'sets')] * (order.lumpia.sets || 0);
+    t += prices.lumpiaHalf[lumpiaStyleFor(order.lumpia, 'halves')] * (order.lumpia.halves || 0);
     t += (order.lumpia.sauces || []).reduce((s, sauce) => s + (PANCIT_SAUCE_PRICE[sauce] || 0), 0);
   }
   if (order.pancit?.enabled) {
-    t += PANCIT_PRICE.full * (order.pancit.full || 0);
-    t += PANCIT_PRICE.half * (order.pancit.half || 0);
-    t += PANCIT_PRICE.large * (order.pancit.large || 0);
+    t += prices.pancit.full * (order.pancit.full || 0);
+    t += prices.pancit.half * (order.pancit.half || 0);
+    t += prices.pancit.large * (order.pancit.large || 0);
     if (order.pancit.extraMeat) t += PANCIT_EXTRA_MEAT_PRICE;
   }
   t += customItemsTotal(order);
@@ -110,6 +136,18 @@ export function orderSubtotal(order: Order): number {
   t += earlyFeeApplies(order) ? EARLY_ORDER_FEE : 0;
   t += order.delivery_type ? (DELIVERY_FEE[order.delivery_type] || 0) : 0;
   return t;
+}
+
+/**
+ * The one-time legacy-pricing grace: what this order saves by charging the OLD
+ * (pre-2026-07) prices. Computed as subtotal(new) − subtotal(old) so it re-derives
+ * on every item edit — never a stored dollar figure that can go stale. Fees and
+ * custom items appear in both subtotals and cancel out. 0 unless the order's
+ * legacy_pricing flag is on.
+ */
+export function legacyAmount(order: Order, subtotal: number = orderSubtotal(order)): number {
+  if (!order.legacy_pricing) return 0;
+  return Math.max(0, subtotal - orderSubtotal(order, LEGACY_PRICES_2026_07));
 }
 
 /**
@@ -126,7 +164,7 @@ export function discountAmount(order: Order, subtotal: number = orderSubtotal(or
 
 export function calcTotal(order: Order): number {
   const subtotal = orderSubtotal(order);
-  return subtotal - discountAmount(order, subtotal);
+  return Math.max(0, subtotal - discountAmount(order, subtotal) - legacyAmount(order, subtotal));
 }
 
 export function orderSummary(order: Order): string {
@@ -454,6 +492,10 @@ export function buildOrderMessage(order: Order): string {
   // storm apology / loyalty thank-you, not just a quietly smaller total.
   const disc = discountAmount(order);
   if (disc > 0) lines.push(`🏷️ ${order.discount_label?.trim() || 'Discount'} −${fmt(disc)}`);
+  // The legacy line doubles as the heads-up: this order honors the old price,
+  // and the customer sees the new one that applies next time.
+  const legacy = legacyAmount(order);
+  if (legacy > 0) lines.push(`🧡 Loyalty: old pricing honored −${fmt(legacy)} (new prices apply next order)`);
   const owing = amountOwing(order);
   const tip = tipAmount(order);
   if (order.payment_status === 'Prepaid') {

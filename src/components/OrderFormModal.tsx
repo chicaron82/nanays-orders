@@ -23,7 +23,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
   const {
     form, showSuggestions, setShowSuggestions,
     nameSuggestions, setField, formatPhone,
-    handleSelectSuggestion, handleSubmit, hasItems, total, subtotal, discount,
+    handleSelectSuggestion, handleSubmit, hasItems, total, subtotal, discount, legacy,
     repeatAvailable, applyRepeatLast, repeatOrderCount,
     addCustomItem, updateCustomItem, removeCustomItem,
     isDateBlocked,
@@ -368,6 +368,19 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                   ⭐ {form.customer_name?.trim()} has ordered {repeatOrderCount} times — maybe a thank-you?
                 </div>
               )}
+              {/* One-time legacy-pricing grace (2026-07 raise): a returning customer
+                  gets the old prices on THIS order; the amount re-derives from the
+                  items (never stored), and the confirmation shows the new price. */}
+              <button type="button" onClick={() => setField('legacy_pricing', !form.legacy_pricing)}
+                className={`mb-2 w-full flex items-center justify-between px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-colors ${
+                  form.legacy_pricing
+                    ? 'border-orange-400 bg-orange-50 text-orange-700'
+                    : 'border-stone-200 text-stone-500 hover:border-orange-300 hover:text-orange-600'
+                }`}
+              >
+                <span>🧡 Legacy pricing — old prices, one-time grace</span>
+                <span>{form.legacy_pricing ? (legacy > 0 ? `−${fmt(legacy)}` : 'on') : 'off'}</span>
+              </button>
               <div className="flex items-center gap-2">
                 <div className="flex rounded-lg border-2 border-stone-200 overflow-hidden shrink-0">
                   {(['flat', 'percent'] as const).map(t => (
@@ -410,17 +423,23 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
             {/* Running subtotal */}
             {(form.lumpia?.enabled || form.pancit?.enabled || (form.custom_items?.some(c => c.name?.trim() && c.price > 0))) && (
               <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 space-y-1">
+                {(discount > 0 || legacy > 0) && (
+                  <div className="flex items-center justify-between text-sm text-stone-500">
+                    <span>Subtotal</span>
+                    <span className="font-semibold">{fmt(subtotal)}</span>
+                  </div>
+                )}
                 {discount > 0 && (
-                  <>
-                    <div className="flex items-center justify-between text-sm text-stone-500">
-                      <span>Subtotal</span>
-                      <span className="font-semibold">{fmt(subtotal)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-amber-700">
-                      <span>🏷️ {form.discount_label?.trim() || 'Discount'}</span>
-                      <span className="font-semibold">−{fmt(discount)}</span>
-                    </div>
-                  </>
+                  <div className="flex items-center justify-between text-sm text-amber-700">
+                    <span>🏷️ {form.discount_label?.trim() || 'Discount'}</span>
+                    <span className="font-semibold">−{fmt(discount)}</span>
+                  </div>
+                )}
+                {legacy > 0 && (
+                  <div className="flex items-center justify-between text-sm text-orange-700">
+                    <span>🧡 Legacy pricing (one-time)</span>
+                    <span className="font-semibold">−{fmt(legacy)}</span>
+                  </div>
                 )}
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-stone-600">

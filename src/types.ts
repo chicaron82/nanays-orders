@@ -62,6 +62,11 @@ export interface Order {
   discount_type?: DiscountType;
   discount_value?: number | null;
   discount_label?: string;
+  // One-time grace for a returning customer after the 2026-07 price raise: this
+  // order charges the OLD prices. A computed flag (like a percent discount), not a
+  // stored amount — legacyAmount() re-derives new−old on every edit, so editing
+  // items can't leave a stale dollar figure. Shows as a discount-style line.
+  legacy_pricing?: boolean;
   order_status?: OrderStatus;
   total?: number;
   source?: OrderSource;  // 'request' = came via the public link; defaults to 'manual'

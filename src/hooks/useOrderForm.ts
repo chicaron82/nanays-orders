@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fuzzyMatch, calcTotal, orderSubtotal, discountAmount, lastOrderFor, isAutoRush, requiresDeposit, depositFor } from '../lib/utils';
+import { fuzzyMatch, calcTotal, orderSubtotal, discountAmount, legacyAmount, lastOrderFor, isAutoRush, requiresDeposit, depositFor } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import type { Order, OrderForm } from '../types';
 
@@ -12,6 +12,7 @@ const initialForm: OrderForm = {
   payment_status: "Unpaid", deposit_amount: null, notes: "", preferences: "",
   rush_order: false, early_fee_waived: false, order_status: "Pending", saveCustomer: false,
   discount_type: "flat", discount_value: null, discount_label: "",
+  legacy_pricing: false,
 };
 
 interface UseOrderFormProps {
@@ -128,6 +129,7 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
 
   const subtotal = orderSubtotal(form);
   const discount = discountAmount(form, subtotal);
+  const legacy = legacyAmount(form, subtotal);
   const total = calcTotal(form);
   const depositRequired  = requiresDeposit(form);
   const suggestedDeposit = depositFor(form);
@@ -155,7 +157,7 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
   return {
     form, showSuggestions, setShowSuggestions,
     nameSuggestions, setField, formatPhone,
-    handleSelectSuggestion, handleSubmit, hasItems, total, subtotal, discount,
+    handleSelectSuggestion, handleSubmit, hasItems, total, subtotal, discount, legacy,
     repeatAvailable, applyRepeatLast, repeatOrderCount,
     addCustomItem, updateCustomItem, removeCustomItem,
     isDateBlocked,

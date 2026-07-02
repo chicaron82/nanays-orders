@@ -340,6 +340,17 @@ export default function PublicRequestPage() {
       </header>
 
       <div className="max-w-2xl mx-auto px-4 -mt-6">
+        {/* Price-change announcement (2026-07 raise to fair market) — the public
+            heads-up half of the change; regulars get the one-time legacy grace
+            in person. Static by design: everyone should see it for a while. */}
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl px-5 py-4 mb-4 shadow-md">
+          <p className="font-playfair font-black text-stone-800">📢 A small update to our prices</p>
+          <p className="text-sm text-stone-600 mt-1">
+            Starting July 2026, some items are a few dollars more (our first adjustment in a long
+            while) so we can keep making everything fresh, by hand, the way you love it. The prices
+            below are current. Thank you for supporting our little kitchen! 🧡
+          </p>
+        </div>
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl p-6 border border-stone-200/50 space-y-6">
           
           {/* Customer Details */}
