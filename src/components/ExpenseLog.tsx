@@ -3,6 +3,7 @@ import { Plus, Pencil } from 'lucide-react';
 import type { Expense } from '../types';
 import { fmt, formatDate, localYMD } from '../lib/utils';
 import { ExpenseRow } from './ExpenseRow';
+import { defaultCategoryForStore } from '../lib/storeDefaults';
 
 interface Props {
   expenses: Expense[];
@@ -82,6 +83,16 @@ export default function ExpenseLog({ expenses, onAdd, onUpdate, onDelete }: Prop
     }
     return parseFloat(form.amount);
   })();
+
+  // Selecting a store pre-picks its first-stop category (mom's usual first buy
+  // there) — a switchable default, one fewer tap; unmapped/deselect leaves it as-is.
+  // Fires only on an explicit store tap, never per-item, so the sticky category holds.
+  const selectStore = (value: string) => {
+    const next = tripStore === value ? '' : value;
+    setTripStore(next);
+    const def = defaultCategoryForStore(next);
+    if (def) setForm(f => ({ ...f, category: def }));
+  };
 
   // Reopen this form pre-filled with an existing expense instead of a separate
   // per-row editor — one form to learn, and the note field starts with whatever's
@@ -176,7 +187,7 @@ export default function ExpenseLog({ expenses, onAdd, onUpdate, onDelete }: Prop
                 <button
                   key={s.value}
                   type="button"
-                  onClick={() => setTripStore(tripStore === s.value ? '' : s.value)}
+                  onClick={() => selectStore(s.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                     tripStore === s.value
                       ? 'bg-white text-orange-600 border-white shadow-sm'
