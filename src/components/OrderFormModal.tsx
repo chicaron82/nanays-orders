@@ -4,6 +4,7 @@ import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock, Ro
 import type { Order, Stock, BlockedDay } from '../types';
 import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE, EARLY_ORDER_FEE, isEarlyFulfillment, noShowWatch, formatDate } from '../lib/utils';
 import { useOrderForm } from '../hooks/useOrderForm';
+import { AddressAutocomplete } from './AddressAutocomplete';
 
 interface Props {
   isOpen: boolean;
@@ -495,7 +496,14 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
             {form.delivery_type !== 'pickup' && (
               <div>
                 <label htmlFor="order-address" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><MapPin size={14}/> Delivery Address *</label>
-                <input id="order-address" name="address" autoComplete="off" value={form.address ?? ''} onChange={e => setField('address', e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors" placeholder="123 Main St, Winnipeg" />
+                <AddressAutocomplete
+                  id="order-address"
+                  value={form.address ?? ''}
+                  pinned={form.address_lat != null && form.address_lng != null}
+                  placeholder="123 Main St, Winnipeg"
+                  onChange={text => { setField('address', text); setField('address_lat', null); setField('address_lng', null); }}
+                  onPick={(addr, lat, lng) => { setField('address', addr); setField('address_lat', lat); setField('address_lng', lng); }}
+                />
               </div>
             )}
 

@@ -8,7 +8,7 @@ const initialForm: OrderForm = {
   lumpia: { enabled: false, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] },
   pancit: { enabled: false, full: 1, half: 0, large: 0, extraMeat: false },
   custom_items: [],
-  needed_date: "", pickup_time: "", delivery_type: "pickup", address: "",
+  needed_date: "", pickup_time: "", delivery_type: "pickup", address: "", address_lat: null, address_lng: null,
   payment_status: "Unpaid", deposit_amount: null, notes: "", preferences: "",
   rush_order: false, early_fee_waived: false, order_status: "Pending", saveCustomer: false,
   discount_type: "flat", discount_value: null, discount_label: "",

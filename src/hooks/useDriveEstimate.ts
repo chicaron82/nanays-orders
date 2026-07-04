@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { estimateDriveMinutes } from '../lib/routing';
+import { KITCHEN_BASE, driveMinutesBetween, estimateDriveMinutes } from '../lib/routing';
 
 export interface DriveEstimate {
   loading: boolean;
@@ -9,28 +9,38 @@ export interface DriveEstimate {
 
 const IDLE: DriveEstimate = { loading: false, minutes: null, failed: false };
 
-/** One-shot drive-time estimate from the kitchen base to a delivery address.
- *  Pass null/empty (e.g. pickup orders, or a closed modal) to stay idle. Aborts
- *  on unmount or address change so a slow response can't overwrite a newer one.
+/** One-shot drive-time estimate from the kitchen base to a delivery.
+ *  Prefers stored coords (exact, no geocode) when present; otherwise geocodes the
+ *  free-text address on the fly. Pass null/empty address + no coords to stay idle.
+ *  Aborts on unmount or input change so a slow reply can't overwrite a newer one.
  *
  *  Loading/idle/failed are DERIVED during render (the resolved result carries the
- *  query it answered), so the effect only sets state inside its async callback —
- *  no synchronous setState-in-effect, and no stale-state flash between addresses. */
-export function useDriveEstimate(address: string | null | undefined): DriveEstimate {
+ *  key it answered), so the effect only sets state inside its async callback. */
+export function useDriveEstimate(
+  address: string | null | undefined,
+  lat?: number | null,
+  lng?: number | null,
+): DriveEstimate {
+  const hasCoords = typeof lat === 'number' && typeof lng === 'number';
   const query = address?.trim() ?? '';
-  const [result, setResult] = useState<{ query: string; minutes: number | null } | null>(null);
+  const key = hasCoords ? `${lat},${lng}` : query;
+
+  const [result, setResult] = useState<{ key: string; minutes: number | null } | null>(null);
 
   useEffect(() => {
-    if (!query) return;
+    if (!key) return;
     const ctrl = new AbortController();
-    estimateDriveMinutes(query, ctrl.signal)
-      .then(minutes => { if (!ctrl.signal.aborted) setResult({ query, minutes }); })
-      .catch(() => { if (!ctrl.signal.aborted) setResult({ query, minutes: null }); });
+    const pending = hasCoords
+      ? driveMinutesBetween(KITCHEN_BASE, { lat: lat as number, lng: lng as number }, ctrl.signal)
+      : estimateDriveMinutes(query, ctrl.signal);
+    pending
+      .then(minutes => { if (!ctrl.signal.aborted) setResult({ key, minutes }); })
+      .catch(() => { if (!ctrl.signal.aborted) setResult({ key, minutes: null }); });
     return () => ctrl.abort();
-  }, [query]);
+  }, [key, hasCoords, lat, lng, query]);
 
-  if (!query) return IDLE;
-  if (result?.query === query) {
+  if (!key) return IDLE;
+  if (result?.key === key) {
     return { loading: false, minutes: result.minutes, failed: result.minutes == null };
   }
   return { loading: true, minutes: null, failed: false };

@@ -49,6 +49,8 @@ export interface Order {
   pickup_time?: string;
   delivery_type?: DeliveryType;
   address?: string;
+  address_lat?: number | null;  // geocoded when the address is picked from autocomplete
+  address_lng?: number | null;  // null → drive-time falls back to on-the-fly geocoding
   payment_status?: PaymentStatus;
   deposit_amount?: number | null;
   tip_amount?: number;  // overage kept as a tip when paid more than the total

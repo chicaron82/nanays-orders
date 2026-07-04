@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   KITCHEN_BASE, geocodeUrl, routeUrl, driveMinutes, formatDriveEstimate,
-  geocode, driveMinutesBetween, estimateDriveMinutes,
+  leaveByTime, geocode, driveMinutesBetween, estimateDriveMinutes,
+  searchUrl, shortAddress, searchAddresses,
 } from '../../src/lib/routing';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -39,6 +40,34 @@ describe('routing — pure helpers', () => {
   it('formatDriveEstimate renders the estimate, passes null through', () => {
     expect(formatDriveEstimate(7)).toBe('~7 min from the kitchen');
     expect(formatDriveEstimate(null)).toBeNull();
+  });
+});
+
+describe('leaveByTime', () => {
+  it('subtracts drive + default 10-min buffer from a 24h pickup time', () => {
+    expect(leaveByTime('13:03', 4)).toBe('12:49 PM'); // 783 − 4 − 10 = 769 → 12:49
+  });
+
+  it('honours an explicit buffer (0 = arrive exactly at pickup minus drive)', () => {
+    expect(leaveByTime('13:03', 4, 0)).toBe('12:59 PM');
+    expect(leaveByTime('09:00', 30, 10)).toBe('8:20 AM');
+  });
+
+  it('formats midnight/noon boundaries as 12', () => {
+    expect(leaveByTime('12:20', 10, 10)).toBe('12:00 PM');
+    expect(leaveByTime('00:40', 10, 10)).toBe('12:20 AM');
+  });
+
+  it('returns null for unparseable or out-of-range times', () => {
+    expect(leaveByTime('noon', 5)).toBeNull();
+    expect(leaveByTime('25:00', 5)).toBeNull();
+    expect(leaveByTime('10:75', 5)).toBeNull();
+    expect(leaveByTime(null, 5)).toBeNull();
+    expect(leaveByTime('', 5)).toBeNull();
+  });
+
+  it('returns null when drive + buffer would underflow before midnight', () => {
+    expect(leaveByTime('00:10', 30, 10)).toBeNull();
   });
 });
 
@@ -83,5 +112,39 @@ describe('routing — estimateDriveMinutes (composed)', () => {
   it('short-circuits to null when the address will not geocode', async () => {
     stubFetch(() => ({ body: [] }));
     expect(await estimateDriveMinutes('the blue house')).toBeNull();
+  });
+});
+
+describe('address autocomplete', () => {
+  it('searchUrl encodes the query and carries the limit', () => {
+    expect(searchUrl('1577 Erin St', 5)).toBe(
+      'https://nominatim-proxy.aaronsauddin.workers.dev/search?q=1577%20Erin%20St&format=json&limit=5'
+    );
+  });
+
+  it('shortAddress trims a verbose display_name to "street, city"', () => {
+    expect(shortAddress('629, Sherburn Street, Minto, West End, Winnipeg, Manitoba, R3E 0C7, Canada'))
+      .toBe('629 Sherburn Street, Winnipeg');
+    expect(shortAddress('123, Rue Marion Street, Central, Winnipeg, Manitoba, Canada'))
+      .toBe('123 Rue Marion Street, Winnipeg');
+  });
+
+  it('shortAddress does not duplicate the city and survives odd input', () => {
+    expect(shortAddress('Winnipeg, Manitoba, Canada')).toBe('Winnipeg');
+    expect(shortAddress('Somewhere, Selkirk, Manitoba')).toBe('Somewhere');
+    expect(shortAddress('Plain Text')).toBe('Plain Text');
+  });
+
+  it('searchAddresses maps hits and ignores short queries / failures', async () => {
+    stubFetch(() => ({ body: [
+      { display_name: '1577 Erin Street, Winnipeg', lat: '49.88', lon: '-97.17' },
+      { display_name: 'bad', lat: 'x', lon: 'y' },
+    ] }));
+    expect(await searchAddresses('1577 Erin St')).toEqual([
+      { label: '1577 Erin Street, Winnipeg', lat: 49.88, lng: -97.17 },
+    ]);
+    expect(await searchAddresses('ab')).toEqual([]); // too short — never fetches
+    stubFetch(() => 'throw');
+    expect(await searchAddresses('1577 Erin St')).toEqual([]);
   });
 });

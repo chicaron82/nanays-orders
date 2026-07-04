@@ -12,6 +12,8 @@ CREATE TABLE orders (
   pickup_time TEXT,
   delivery_type TEXT DEFAULT 'pickup',
   address TEXT,
+  address_lat NUMERIC,  -- geocoded delivery coords (see migration 017); null → on-the-fly geocode
+  address_lng NUMERIC,
   payment_status TEXT DEFAULT 'Unpaid',
   deposit_amount NUMERIC DEFAULT 0,
   notes TEXT,
