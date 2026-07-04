@@ -28,7 +28,15 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
     ? STATUS.Fulfilled
     : (order.order_status && STATUS[order.order_status]) || STATUS.Pending;
   const items = `${order.lumpia?.enabled ? '🥟' : ''}${order.pancit?.enabled ? '🍜' : ''}` || '🍽️';
-  const dp = order.delivery_type === 'pickup' ? 'P' : 'D';
+  // Match the order form's delivery vocabulary (🏠 Pickup / 🚗 City / 🛣️ Outside)
+  // so the calendar and the form speak one language; outside-city 🛣️ flags a
+  // longer haul at a glance. Any unexpected value falls back to a generic delivery.
+  const DELIVERY: Record<string, { icon: string; label: string }> = {
+    pickup:  { icon: '🏠', label: 'Pickup' },
+    city:    { icon: '🚗', label: 'City delivery' },
+    outside: { icon: '🛣️', label: 'Outside-city delivery' },
+  };
+  const delivery = DELIVERY[order.delivery_type ?? 'pickup'] ?? DELIVERY.city;
   const done = settled;
   const faded = settled || legacyFulfilled;
   const balance = order.payment_status === 'Deposit' ? (order.total ?? 0) - (Number(order.deposit_amount) || 0) : 0;
@@ -43,7 +51,7 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
       >
         <span className={`w-1.5 h-1.5 rounded-full ${s.dot} shrink-0`} />
         <span className="truncate">{items}</span>
-        <span className="ml-auto shrink-0">{dp}</span>
+        <span className="ml-auto shrink-0" title={delivery.label} aria-label={delivery.label}>{delivery.icon}</span>
       </div>
     );
   }
@@ -81,7 +89,7 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
       {cancelled ? (
         <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${noShow ? 'bg-amber-100 text-amber-700' : 'bg-stone-200 text-stone-500'}`}>{noShow ? 'No-Show' : 'Cancelled'}</span>
       ) : (
-        <span className={`shrink-0 w-6 h-6 rounded-full ${s.bg} ${s.text} text-[11px] font-black flex items-center justify-center`}>{dp}</span>
+        <span className={`shrink-0 w-6 h-6 rounded-full ${s.bg} ${s.text} text-[11px] font-black flex items-center justify-center`} title={delivery.label} aria-label={delivery.label}>{delivery.icon}</span>
       )}
     </button>
   );

@@ -69,15 +69,18 @@ describe('OrderChip', () => {
   it('renders a Cancelled pill instead of the delivery badge', () => {
     render(<OrderChip order={order({ order_status: 'Cancelled' })} />);
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
-    expect(screen.queryByText('P')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Pickup')).not.toBeInTheDocument();
   });
 
-  it('marks pickup with P and delivery with D', () => {
-    const { unmount } = render(<OrderChip order={order({ delivery_type: 'pickup' })} />);
-    expect(screen.getByText('P')).toBeInTheDocument();
-    unmount();
-    render(<OrderChip order={order({ delivery_type: 'city' })} />);
-    expect(screen.getByText('D')).toBeInTheDocument();
+  it('marks each delivery type with the matching icon (form vocabulary)', () => {
+    const { unmount: u1 } = render(<OrderChip order={order({ delivery_type: 'pickup' })} />);
+    expect(screen.getByLabelText('Pickup')).toHaveTextContent('🏠');
+    u1();
+    const { unmount: u2 } = render(<OrderChip order={order({ delivery_type: 'city' })} />);
+    expect(screen.getByLabelText('City delivery')).toHaveTextContent('🚗');
+    u2();
+    render(<OrderChip order={order({ delivery_type: 'outside' })} />);
+    expect(screen.getByLabelText('Outside-city delivery')).toHaveTextContent('🛣️');
   });
 
   it('surfaces a notes indicator when the order has notes or preferences', () => {
