@@ -81,6 +81,30 @@ Follow this shape for new data hooks.
 - `needed_date` is stored as a local `YYYY-MM-DD` string — use `localYMD()`, not `toISOString()`
   (which would shift evening dates a day forward).
 
+## Delivery navigation — drive-time / directions (added 2026-07-04)
+
+Delivery orders show a Directions link + a drive-time estimate + a "leave by" time
+(in `OrderDetailsModal`). Watch-points for anyone reviewing this cold:
+
+- **Two external free providers, no key, fail-soft** (`lib/routing.ts`): geocode via
+  Aaron's CORS-open Nominatim proxy (`nominatim-proxy.aaronsauddin.workers.dev`), route
+  via OSRM (`routing.openstreetmap.de/routed-car`) with a **×0.85** duration correction
+  (OSRM over-estimates free-flow). A provider hiccup or an un-geocodable address → the
+  estimate silently returns `null` and the row shows nothing; the Directions link
+  (Google Maps deep-link, Google's own geocoder) is always the fallback. Pure
+  URL/format/math helpers are tested; the async fns are thin `fetch` wrappers.
+- **`KITCHEN_BASE` (629 Sherburn) is a hardcoded constant** in `lib/routing.ts` — single
+  fixed kitchen, not operator-editable by design. Move to `app_settings` only if it moves.
+- **Estimate reliability is two-tier:** it prefers stored coords (`orders.address_lat/lng`,
+  migration 017) captured by `AddressAutocomplete` on the **internal** order form; legacy
+  or free-typed addresses fall back to on-the-fly geocoding, which is **fuzzy** (a bare
+  street name can mis-geocode to the wrong city). The public request page is still free-text.
+- **`deliveryBuffer` (leave-by cushion) is weekday-rush-aware:** 15 min base, 30 min on
+  Mon–Fri inside 7–9am / 3:30–6pm (hardcoded Winnipeg windows). Parses the date **local**
+  (`new Date(y,m-1,d)`), never `new Date("YYYY-MM-DD")` (UTC → weekday shifts a day).
+- **One delivery-type vocabulary** across the form and the calendar chips: 🏠 pickup /
+  🚗 city / 🛣️ outside (`OrderFormModal`, `OrderChip`). Don't let them diverge.
+
 ## Supabase
 
 - Base schema / RLS: `supabase-setup.sql`, `supabase-rls-setup.sql`. Incremental changes live in
