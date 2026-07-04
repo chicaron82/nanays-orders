@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   KITCHEN_BASE, geocodeUrl, routeUrl, driveMinutes, formatDriveEstimate,
-  leaveByTime, geocode, driveMinutesBetween, estimateDriveMinutes,
+  leaveByTime, deliveryBuffer, LEAVE_BUFFER_MIN, RUSH_BUFFER_MIN,
+  geocode, driveMinutesBetween, estimateDriveMinutes,
   searchUrl, shortAddress, searchAddresses,
 } from '../../src/lib/routing';
 
@@ -44,8 +45,8 @@ describe('routing — pure helpers', () => {
 });
 
 describe('leaveByTime', () => {
-  it('subtracts drive + default 10-min buffer from a 24h pickup time', () => {
-    expect(leaveByTime('13:03', 4)).toBe('12:49 PM'); // 783 − 4 − 10 = 769 → 12:49
+  it('subtracts drive + default 15-min buffer from a 24h pickup time', () => {
+    expect(leaveByTime('13:03', 4)).toBe('12:44 PM'); // 783 − 4 − 15 = 764 → 12:44
   });
 
   it('honours an explicit buffer (0 = arrive exactly at pickup minus drive)', () => {
@@ -68,6 +69,37 @@ describe('leaveByTime', () => {
 
   it('returns null when drive + buffer would underflow before midnight', () => {
     expect(leaveByTime('00:10', 30, 10)).toBeNull();
+  });
+});
+
+describe('deliveryBuffer', () => {
+  // 2026-07-03 is a Friday → 07-04 Sat, 07-05 Sun, 07-06 Mon.
+  it('uses the rush buffer for weekday AM and PM rush-hour pickups', () => {
+    expect(deliveryBuffer('2026-07-06', '08:00')).toBe(RUSH_BUFFER_MIN); // Mon AM
+    expect(deliveryBuffer('2026-07-06', '17:00')).toBe(RUSH_BUFFER_MIN); // Mon PM
+  });
+
+  it('uses the base buffer for weekday off-peak pickups', () => {
+    expect(deliveryBuffer('2026-07-06', '12:00')).toBe(LEAVE_BUFFER_MIN);
+    expect(deliveryBuffer('2026-07-06', '20:00')).toBe(LEAVE_BUFFER_MIN);
+  });
+
+  it('never counts weekends as rush, even inside the window', () => {
+    expect(deliveryBuffer('2026-07-04', '17:00')).toBe(LEAVE_BUFFER_MIN); // Saturday
+    expect(deliveryBuffer('2026-07-05', '08:00')).toBe(LEAVE_BUFFER_MIN); // Sunday
+  });
+
+  it('treats window edges as start-inclusive, end-exclusive', () => {
+    expect(deliveryBuffer('2026-07-06', '15:30')).toBe(RUSH_BUFFER_MIN);
+    expect(deliveryBuffer('2026-07-06', '15:29')).toBe(LEAVE_BUFFER_MIN);
+    expect(deliveryBuffer('2026-07-06', '18:00')).toBe(LEAVE_BUFFER_MIN);
+    expect(deliveryBuffer('2026-07-06', '09:00')).toBe(LEAVE_BUFFER_MIN);
+  });
+
+  it('falls back to the base buffer on unparseable date/time', () => {
+    expect(deliveryBuffer('2026-07-06', 'noon')).toBe(LEAVE_BUFFER_MIN);
+    expect(deliveryBuffer('not-a-date', '08:00')).toBe(LEAVE_BUFFER_MIN);
+    expect(deliveryBuffer(null, null)).toBe(LEAVE_BUFFER_MIN);
   });
 });
 

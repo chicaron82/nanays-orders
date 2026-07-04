@@ -4,7 +4,7 @@ import { X, Trash2, Edit2, Calendar, MapPin, Navigation, Car, Phone, MessageSqua
 import { toast } from 'sonner';
 import type { Order, PaymentStatus } from '../types';
 import { fmt, formatDate, urgencyLabel, getDaysUntil, buildOrderMessage, buildReadyMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, directionsUrl, PAYMENT_STATUS } from '../lib/utils';
-import { formatDriveEstimate, leaveByTime } from '../lib/routing';
+import { formatDriveEstimate, leaveByTime, deliveryBuffer, RUSH_BUFFER_MIN } from '../lib/routing';
 import { useDriveEstimate } from '../hooks/useDriveEstimate';
 
 interface Props {
@@ -207,9 +207,10 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs text-stone-400"><Car size={12}/> Estimating drive time…</div>
                 )}
                 {driveEstimate.minutes != null && (() => {
-                  const leaveBy = leaveByTime(order.pickup_time, driveEstimate.minutes);
+                  const buffer = deliveryBuffer(order.needed_date, order.pickup_time);
+                  const leaveBy = leaveByTime(order.pickup_time, driveEstimate.minutes, buffer);
                   const text = leaveBy
-                    ? `~${driveEstimate.minutes} min · leave by ${leaveBy}`
+                    ? `~${driveEstimate.minutes} min · leave by ${leaveBy}${buffer === RUSH_BUFFER_MIN ? ' · rush hour' : ''}`
                     : formatDriveEstimate(driveEstimate.minutes);
                   return (
                     <div className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-stone-500"><Car size={12} className="text-orange-500"/> {text}</div>

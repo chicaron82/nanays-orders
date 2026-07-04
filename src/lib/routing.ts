@@ -43,8 +43,12 @@ export function formatDriveEstimate(minutes: number | null): string | null {
   return minutes == null ? null : `~${minutes} min from the kitchen`;
 }
 
-/** Prep/park/hand-off cushion added on top of the drive when computing leave-by. */
-export const LEAVE_BUFFER_MIN = 10;
+/** Base prep/park/hand-off cushion added on top of the drive when computing leave-by. */
+export const LEAVE_BUFFER_MIN = 15;
+
+/** Heavier cushion for weekday rush-hour pickups — covers the congestion the
+ *  free-flow OSRM estimate is blind to. */
+export const RUSH_BUFFER_MIN = 30;
 
 /** "Leave by" clock time so a delivery arrives on time: pickup − drive − buffer.
  *  `pickupTime` is the order form's 24h "HH:MM" (<input type=time>). Returns a 12h
@@ -69,6 +73,32 @@ export function leaveByTime(
   const period = hh < 12 ? 'AM' : 'PM';
   const h12 = hh % 12 === 0 ? 12 : hh % 12;
   return `${h12}:${String(mm).padStart(2, '0')} ${period}`;
+}
+
+/** Winnipeg weekday rush windows (local time): 7:00–9:00 AM and 3:30–6:00 PM. */
+function inRushWindow(minutesOfDay: number): boolean {
+  return (minutesOfDay >= 7 * 60 && minutesOfDay < 9 * 60)
+      || (minutesOfDay >= 15 * 60 + 30 && minutesOfDay < 18 * 60);
+}
+
+/** Delivery buffer: RUSH_BUFFER_MIN when the pickup lands in a weekday rush window
+ *  (congestion the free-flow estimate can't see), else LEAVE_BUFFER_MIN. Weekend
+ *  pickups never count as rush — a Sunday 5 PM drop shouldn't be over-padded.
+ *  `neededDate` is "YYYY-MM-DD" (parsed as LOCAL so the weekday is right, not a
+ *  UTC-shifted day), `pickupTime` is 24h "HH:MM"; anything unparseable → base. */
+export function deliveryBuffer(
+  neededDate: string | null | undefined,
+  pickupTime: string | null | undefined,
+): number {
+  const t = /^(\d{1,2}):(\d{2})$/.exec((pickupTime ?? '').trim());
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec((neededDate ?? '').trim());
+  if (!t || !d) return LEAVE_BUFFER_MIN;
+
+  const minutesOfDay = Number(t[1]) * 60 + Number(t[2]);
+  const dow = new Date(Number(d[1]), Number(d[2]) - 1, Number(d[3])).getDay(); // 0=Sun … 6=Sat
+  const isWeekday = dow >= 1 && dow <= 5;
+
+  return isWeekday && inRushWindow(minutesOfDay) ? RUSH_BUFFER_MIN : LEAVE_BUFFER_MIN;
 }
 
 /** Geocode a free-text address → coords, or null if it can't be resolved. */
