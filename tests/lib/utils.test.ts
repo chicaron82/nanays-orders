@@ -11,7 +11,7 @@ import {
   getIngredientWarnings,
   localYMD, getWeekDays, getMonthGrid,
   dayLoad, LOAD_THRESHOLDS,
-  buildPrepList,
+  buildPrepList, directionsUrl,
   // pricing / payment / fee / deposit / rush — consolidated from the former
   // src/lib/utils.test.ts twin (2026-06-21 line-check) so utils has one test home
   isEarlyFulfillment, earlyFeeApplies, amountOwing, amountReceived, tipAmount,
@@ -932,5 +932,24 @@ describe('needsFollowUp', () => {
   it('does not flag cancelled or already-no-show orders', () => {
     expect(needsFollowUp(base({ payment_status: 'Unpaid', needed_date: '2026-06-15', order_status: 'Cancelled' }), TODAY)).toBe(false);
     expect(needsFollowUp(base({ payment_status: 'Unpaid', needed_date: '2026-06-15', no_show: true }), TODAY)).toBe(false);
+  });
+});
+
+describe('directionsUrl', () => {
+  it('builds a Google Maps directions link with the encoded destination', () => {
+    expect(directionsUrl('629 Sherburn St, Winnipeg')).toBe(
+      'https://www.google.com/maps/dir/?api=1&destination=629%20Sherburn%20St%2C%20Winnipeg'
+    );
+  });
+  it('trims surrounding whitespace before encoding', () => {
+    expect(directionsUrl('  123 Marion St  ')).toBe(
+      'https://www.google.com/maps/dir/?api=1&destination=123%20Marion%20St'
+    );
+  });
+  it('returns null for blank, whitespace, or missing input (caller hides the link)', () => {
+    expect(directionsUrl('')).toBeNull();
+    expect(directionsUrl('   ')).toBeNull();
+    expect(directionsUrl(null)).toBeNull();
+    expect(directionsUrl(undefined)).toBeNull();
   });
 });

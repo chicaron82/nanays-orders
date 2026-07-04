@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Edit2, Calendar, MapPin, Phone, MessageSquare, Share2, BellRing } from 'lucide-react';
+import { X, Trash2, Edit2, Calendar, MapPin, Navigation, Phone, MessageSquare, Share2, BellRing } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Order, PaymentStatus } from '../types';
-import { fmt, formatDate, urgencyLabel, getDaysUntil, buildOrderMessage, buildReadyMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, PAYMENT_STATUS } from '../lib/utils';
+import { fmt, formatDate, urgencyLabel, getDaysUntil, buildOrderMessage, buildReadyMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, directionsUrl, PAYMENT_STATUS } from '../lib/utils';
 
 interface Props {
   order: Order | null;
@@ -184,6 +184,15 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
               <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
                 <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1 flex items-center gap-1"><MapPin size={12}/> Delivery</div>
                 <div className="font-medium text-stone-800 capitalize">{order.delivery_type} {order.delivery_type !== 'pickup' && order.address ? ` — ${order.address}` : ''}</div>
+                {(() => {
+                  const url = order.delivery_type !== 'pickup' ? directionsUrl(order.address) : null;
+                  return url ? (
+                    <a href={url} target="_blank" rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline">
+                      <Navigation size={13}/> Directions
+                    </a>
+                  ) : null;
+                })()}
               </div>
             </div>
 

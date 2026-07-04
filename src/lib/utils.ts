@@ -725,3 +725,13 @@ export function buildPrepList(orders: Order[], ymd: string): { ymd: string; orde
 
   return { ymd, orders: rows, totals };
 }
+
+/** Google Maps directions deep-link for a delivery address. Google's own geocoder
+ *  resolves the free-text `address` (far more forgiving than an in-app geocoder for
+ *  messy input), and the driver's phone supplies the live origin. Returns null for
+ *  blank/whitespace input so callers hide the link rather than open an empty map. */
+export function directionsUrl(address: string | null | undefined): string | null {
+  const dest = address?.trim();
+  if (!dest) return null;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`;
+}
