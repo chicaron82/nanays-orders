@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Edit2, Calendar, MapPin, Navigation, Car, Phone, MessageSquare, Share2, BellRing } from 'lucide-react';
+import { X, Trash2, Edit2, Calendar, MapPin, Navigation, Car, Phone, MessageSquare, Share2, BellRing, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Order, PaymentStatus } from '../types';
 import { fmt, formatDate, urgencyLabel, getDaysUntil, buildOrderMessage, buildReadyMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, directionsUrl, PAYMENT_STATUS } from '../lib/utils';
@@ -73,6 +73,12 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
   };
 
   const handleCancelOrder = () => onPaymentChange(order.id!, { order_status: 'Cancelled', no_show: false, no_show_reason: undefined });
+
+  // Toggle fulfillment (picked up / delivered). Binary — no amount to record — so the calendar
+  // chip can do this in one tap too; the modal button is the same action from here.
+  const handleToggleFulfilled = () => onPaymentChange(order.id!, { fulfilled_at: order.fulfilled_at ? null : new Date().toISOString() });
+  const isFulfilled = !!order.fulfilled_at;
+  const fulfillVerb = order.delivery_type === 'pickup' ? 'Picked Up' : 'Delivered';
 
   // A no-show is a cancellation that also goes on the repeat-ghoster watchlist.
   const handleMarkNoShow = () => {
@@ -373,6 +379,18 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
                 </div>
               )}
             </div>
+
+            {!cancelled && (
+              <div className="border-t border-stone-200 pt-6">
+                <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-3">Fulfillment</label>
+                <button type="button" onClick={handleToggleFulfilled}
+                  className={`px-5 py-2.5 rounded-full font-bold text-sm transition-colors flex items-center gap-2 ${
+                    isFulfilled ? 'bg-emerald-600 text-white shadow-lg' : 'bg-white border-2 border-stone-200 text-stone-600 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-600'
+                  }`}>
+                  <Check size={16} strokeWidth={3} /> {isFulfilled ? `${fulfillVerb} ✓` : `Mark ${fulfillVerb}`}
+                </button>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-4">
               <button onClick={() => onEdit(order)} className="flex-1 bg-stone-100 text-stone-800 font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-stone-200 transition-colors">

@@ -14,11 +14,12 @@ interface Props {
   onUnblock?: (ymd: string) => void;
   onClose: () => void;
   onOrderClick: (order: Order) => void;
+  onToggleFulfilled: (order: Order) => void;
   onNewOrderForDate: (ymd: string) => void;
   onPrint?: (ymd: string) => void;
 }
 
-export default function DaySheet({ ymd, orders, isBlocked, blockedReason, onBlock, onUnblock, onClose, onOrderClick, onNewOrderForDate, onPrint }: Props) {
+export default function DaySheet({ ymd, orders, isBlocked, blockedReason, onBlock, onUnblock, onClose, onOrderClick, onToggleFulfilled, onNewOrderForDate, onPrint }: Props) {
   const [showCancelled, setShowCancelled] = useState(false);
   const [blockReasonInput, setBlockReasonInput] = useState('');
   const [showBlockInput, setShowBlockInput] = useState(false);
@@ -93,7 +94,7 @@ export default function DaySheet({ ymd, orders, isBlocked, blockedReason, onBloc
               <div className="text-center text-stone-400 text-sm py-6">No orders this day</div>
             )}
             {shown.map(o => (
-              <OrderChip key={o.id as string} order={o} variant="full" onClick={() => onOrderClick(o)} />
+              <OrderChip key={o.id as string} order={o} variant="full" onClick={() => onOrderClick(o)} onToggleFulfilled={onToggleFulfilled} />
             ))}
             {cancelled.length > 0 && (
               <button

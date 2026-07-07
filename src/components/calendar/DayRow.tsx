@@ -10,6 +10,7 @@ interface Props {
   isBlocked?: boolean;
   blockedReason?: string | null;
   onOrderClick: (order: Order) => void;
+  onToggleFulfilled: (order: Order) => void;
   onNewOrderForDate: (ymd: string) => void;
 }
 
@@ -22,7 +23,7 @@ const LEVEL = {
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-export default function DayRow({ ymd, orders, isToday, isBlocked, blockedReason, onOrderClick, onNewOrderForDate }: Props) {
+export default function DayRow({ ymd, orders, isToday, isBlocked, blockedReason, onOrderClick, onToggleFulfilled, onNewOrderForDate }: Props) {
   const d = new Date(ymd + 'T00:00:00');
   const visible = orders.filter(o => o.order_status !== 'Cancelled');
   const { units, level } = dayLoad(visible);
@@ -56,7 +57,7 @@ export default function DayRow({ ymd, orders, isToday, isBlocked, blockedReason,
       </div>
       <div className="p-2 space-y-1.5">
         {visible.map(o => (
-          <OrderChip key={o.id as string} order={o} variant="full" onClick={() => onOrderClick(o)} />
+          <OrderChip key={o.id as string} order={o} variant="full" onClick={() => onOrderClick(o)} onToggleFulfilled={onToggleFulfilled} />
         ))}
         <button
           onClick={() => onNewOrderForDate(ymd)}

@@ -65,6 +65,10 @@ export interface Order {
   discount_value?: number | null;
   discount_label?: string;
   order_status?: OrderStatus;
+  // Modern fulfillment axis (migration 018): when the order was picked up / delivered
+  // (null/absent = not yet). Distinct from payment — an order crosses off only when BOTH
+  // paid AND fulfilled. Legacy order_status='Fulfilled' rows stay done regardless.
+  fulfilled_at?: string | null;
   total?: number;
   source?: OrderSource;  // 'request' = came via the public link; defaults to 'manual'
   no_show?: boolean;     // customer ghosted — stored as a Cancelled order + this flag (drives the repeat-no-show watchlist)

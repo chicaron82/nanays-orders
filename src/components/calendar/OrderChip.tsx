@@ -1,4 +1,4 @@
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Check } from 'lucide-react';
 import type { Order, OrderStatus } from '../../types';
 import { orderSummary, fmt, isSettled, needsFollowUp } from '../../lib/utils';
 
@@ -6,6 +6,10 @@ interface Props {
   order: Order;
   variant?: 'full' | 'compact';
   onClick?: () => void;
+  // One-tap "mark delivered / picked up" — toggles fulfilled_at without opening the modal.
+  // Delivered is binary (nothing to record), so it's safe as a quick tap; payment stays in
+  // the modal because money has detail (overage → tip). Omitted → no toggle rendered.
+  onToggleFulfilled?: (order: Order) => void;
 }
 
 const STATUS: Record<OrderStatus, { dot: string; border: string; bg: string; text: string }> = {
@@ -15,16 +19,20 @@ const STATUS: Record<OrderStatus, { dot: string; border: string; bg: string; tex
   Cancelled: { dot: 'bg-stone-400',   border: 'border-l-stone-400',   bg: 'bg-stone-100',  text: 'text-stone-500' },
 };
 
-export default function OrderChip({ order, variant = 'full', onClick }: Props) {
-  // "Done" is payment-driven: a settled (fully paid) order is complete. Legacy
-  // rows hand-flipped to Fulfilled (pre-June-2026 status pills) keep their done
-  // treatment via the explicit Fulfilled checks.
-  const settled = isSettled(order);
+export default function OrderChip({ order, variant = 'full', onClick, onToggleFulfilled }: Props) {
+  // "Done" (crossed off) needs BOTH conditions: paid AND fulfilled. A paid-not-delivered
+  // order stays open (you owe them food); a delivered-not-paid order stays open (they owe
+  // you money). Legacy rows hand-flipped to order_status='Fulfilled' (pre-June-2026 pills,
+  // before the fulfilled_at axis existed) grandfather as done regardless of payment.
+  const settled = isSettled(order);              // paid in full
+  const fulfilled = !!order.fulfilled_at;         // picked up / delivered (modern axis)
   const legacyFulfilled = order.order_status === 'Fulfilled';
   const cancelled = order.order_status === 'Cancelled';
+  const done = (settled && fulfilled) || legacyFulfilled;
+  const faded = done;
   const noShow = order.no_show === true;
   const followUp = needsFollowUp(order);
-  const s = (!cancelled && settled)
+  const s = (!cancelled && done)
     ? STATUS.Fulfilled
     : (order.order_status && STATUS[order.order_status]) || STATUS.Pending;
   const items = `${order.lumpia?.enabled ? '🥟' : ''}${order.pancit?.enabled ? '🍜' : ''}` || '🍽️';
@@ -37,12 +45,16 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
     outside: { icon: '🛣️', label: 'Outside-city delivery' },
   };
   const delivery = DELIVERY[order.delivery_type ?? 'pickup'] ?? DELIVERY.city;
-  const done = settled;
-  const faded = settled || legacyFulfilled;
   const balance = order.payment_status === 'Deposit' ? (order.total ?? 0) - (Number(order.deposit_amount) || 0) : 0;
   const showBalance = order.payment_status === 'Deposit' && !legacyFulfilled && !cancelled && balance > 0;
   const unpaid = order.payment_status === 'Unpaid' && !legacyFulfilled && !cancelled;
+  // Paid, but not yet crossed off → paid-and-waiting-to-deliver (the prepaid rush order).
+  // Tells you money's in; the empty delivered-circle tells you it still has to go out.
+  const paidWaiting = settled && !done && !cancelled;
   const note = [order.preferences, order.notes].filter(Boolean).join(' · ');
+  // The quick delivered toggle: modern orders only (legacy done rows are historical; no toggle).
+  const showFulfillToggle = !!onToggleFulfilled && !cancelled && !legacyFulfilled;
+  const toggleFulfilled = (e: React.MouseEvent) => { e.stopPropagation(); onToggleFulfilled?.(order); };
 
   if (variant === 'compact') {
     return (
@@ -57,9 +69,12 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
   }
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`w-full text-left bg-white rounded-lg border-l-4 ${s.border} shadow-sm px-3 py-2 flex items-center gap-3 hover:shadow-md transition-shadow ${faded ? 'opacity-60' : ''}`}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
+      className={`w-full text-left bg-white rounded-lg border-l-4 ${s.border} shadow-sm px-3 py-2 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer ${faded ? 'opacity-60' : ''}`}
     >
       <div className="flex-1 min-w-0">
         <div className={`font-bold text-sm flex items-baseline gap-1.5 ${done ? 'text-stone-400' : 'text-stone-800'}`}>
@@ -75,6 +90,9 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
           {showBalance && (
             <span className="shrink-0 ml-auto text-xs font-bold text-amber-600">owes {fmt(balance)}</span>
           )}
+          {paidWaiting && (
+            <span className="shrink-0 ml-auto px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold" title="Paid in full — still to deliver">✓ paid</span>
+          )}
           {unpaid && followUp && (
             <span className="shrink-0 ml-auto px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-bold" title="Past its date and still unpaid — follow up?">⏰ follow up?</span>
           )}
@@ -86,11 +104,23 @@ export default function OrderChip({ order, variant = 'full', onClick }: Props) {
           {items} {orderSummary(order)}
         </div>
       </div>
+      {/* Quick "mark delivered" tap — checked = delivered; empty = still to go out. */}
+      {showFulfillToggle && (
+        <button
+          type="button"
+          onClick={toggleFulfilled}
+          title={fulfilled ? 'Delivered / picked up — tap to undo' : 'Mark delivered / picked up'}
+          aria-label={fulfilled ? 'Mark not delivered' : 'Mark delivered'}
+          className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center border transition-colors ${fulfilled ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-stone-300 text-transparent hover:border-emerald-400'}`}
+        >
+          <Check size={14} strokeWidth={3} />
+        </button>
+      )}
       {cancelled ? (
         <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${noShow ? 'bg-amber-100 text-amber-700' : 'bg-stone-200 text-stone-500'}`}>{noShow ? 'No-Show' : 'Cancelled'}</span>
       ) : (
         <span className={`shrink-0 w-6 h-6 rounded-full ${s.bg} ${s.text} text-[11px] font-black flex items-center justify-center`} title={delivery.label} aria-label={delivery.label}>{delivery.icon}</span>
       )}
-    </button>
+    </div>
   );
 }

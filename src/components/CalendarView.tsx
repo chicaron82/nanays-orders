@@ -12,6 +12,7 @@ interface Props {
   blockedDays: BlockedDay[];
   blockedSet: ReadonlySet<string>;
   onOrderClick: (order: Order) => void;
+  onToggleFulfilled: (order: Order) => void;
   onNewOrderForDate: (ymd: string) => void;
   onBlockDay: (date: string, reason?: string) => void;
   onUnblockDay: (date: string) => void;
@@ -23,7 +24,7 @@ const VIEWS: ViewType[] = ['week', 'month', 'agenda'];
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-export default function CalendarView({ orders, blockedDays, blockedSet, onOrderClick, onNewOrderForDate, onBlockDay, onUnblockDay }: Props) {
+export default function CalendarView({ orders, blockedDays, blockedSet, onOrderClick, onToggleFulfilled, onNewOrderForDate, onBlockDay, onUnblockDay }: Props) {
   const [view, setView] = useState<ViewType>('week');
   const [anchorDate, setAnchorDate] = useState<Date>(() => new Date());
   const [daySheetDate, setDaySheetDate] = useState<string | null>(null);
@@ -125,7 +126,7 @@ export default function CalendarView({ orders, blockedDays, blockedSet, onOrderC
               <div key={o.id as string} className="flex items-center gap-2">
                 <span className="text-[10px] font-bold text-red-500 shrink-0 w-20">{formatDate(o.needed_date)}</span>
                 <div className="flex-1 min-w-0">
-                  <OrderChip order={o} variant="full" onClick={() => onOrderClick(o)} />
+                  <OrderChip order={o} variant="full" onClick={() => onOrderClick(o)} onToggleFulfilled={onToggleFulfilled} />
                 </div>
               </div>
             ))}
@@ -144,6 +145,7 @@ export default function CalendarView({ orders, blockedDays, blockedSet, onOrderC
               isBlocked={blockedSet.has(ymd)}
               blockedReason={blockedByDate[ymd]?.reason}
               onOrderClick={onOrderClick}
+              onToggleFulfilled={onToggleFulfilled}
               onNewOrderForDate={onNewOrderForDate}
             />
           ))}
@@ -191,6 +193,7 @@ export default function CalendarView({ orders, blockedDays, blockedSet, onOrderC
               isBlocked={blockedSet.has(ymd)}
               blockedReason={blockedByDate[ymd]?.reason}
               onOrderClick={onOrderClick}
+              onToggleFulfilled={onToggleFulfilled}
               onNewOrderForDate={onNewOrderForDate}
             />
           ))}
@@ -207,6 +210,7 @@ export default function CalendarView({ orders, blockedDays, blockedSet, onOrderC
           onUnblock={onUnblockDay}
           onClose={() => setDaySheetDate(null)}
           onOrderClick={(o) => { setDaySheetDate(null); onOrderClick(o); }}
+          onToggleFulfilled={onToggleFulfilled}
           onNewOrderForDate={(ymd) => { setDaySheetDate(null); onNewOrderForDate(ymd); }}
         />
       )}

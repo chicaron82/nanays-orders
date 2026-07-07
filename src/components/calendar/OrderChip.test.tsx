@@ -56,14 +56,45 @@ describe('OrderChip', () => {
     expect(screen.queryByText('Unpaid')).not.toBeInTheDocument();
   });
 
-  it('a paid order reads as done — name struck through', () => {
+  // Two-condition crossing-off: done needs BOTH paid AND fulfilled.
+  it('a paid-but-not-delivered order is NOT struck through (still owes delivery)', () => {
     render(<OrderChip order={order({ payment_status: 'Prepaid' })} />);
+    expect(screen.getByText('Rosa').className).not.toContain('line-through');
+  });
+
+  it('shows a "paid" cue for a paid-but-not-delivered order', () => {
+    render(<OrderChip order={order({ payment_status: 'Prepaid' })} />);
+    expect(screen.getByText('✓ paid')).toBeInTheDocument();
+  });
+
+  it('a paid AND delivered order reads as done — name struck through', () => {
+    render(<OrderChip order={order({ payment_status: 'Prepaid', fulfilled_at: '2026-07-01T12:00:00Z' })} />);
+    expect(screen.getByText('Rosa').className).toContain('line-through');
+  });
+
+  it('a delivered-but-unpaid order is NOT struck through (they still owe money)', () => {
+    render(<OrderChip order={order({ payment_status: 'Unpaid', fulfilled_at: '2026-07-01T12:00:00Z' })} />);
+    expect(screen.getByText('Rosa').className).not.toContain('line-through');
+    expect(screen.getByText('Unpaid')).toBeInTheDocument();
+  });
+
+  it('grandfathers a legacy Fulfilled order as done regardless of payment', () => {
+    render(<OrderChip order={order({ payment_status: 'Unpaid', order_status: 'Fulfilled' })} />);
     expect(screen.getByText('Rosa').className).toContain('line-through');
   });
 
   it('an unpaid order is not struck through', () => {
     render(<OrderChip order={order({ payment_status: 'Unpaid' })} />);
     expect(screen.getByText('Rosa').className).not.toContain('line-through');
+  });
+
+  it('the delivered toggle fires onToggleFulfilled without opening the order (stopPropagation)', () => {
+    const onToggleFulfilled = vi.fn();
+    const onClick = vi.fn();
+    render(<OrderChip order={order()} onClick={onClick} onToggleFulfilled={onToggleFulfilled} />);
+    fireEvent.click(screen.getByLabelText('Mark delivered'));
+    expect(onToggleFulfilled).toHaveBeenCalledOnce();
+    expect(onClick).not.toHaveBeenCalled();
   });
 
   it('renders a Cancelled pill instead of the delivery badge', () => {

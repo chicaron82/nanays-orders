@@ -82,6 +82,12 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
     }
   };
 
+  // Toggle an order's fulfillment (picked up / delivered) — the calendar quick-tap and the
+  // modal both route here. Reuses handlePaymentChange so the open modal stays in sync too.
+  const handleToggleFulfilled = (order: Order) => {
+    handlePaymentChange(order.id!, { fulfilled_at: order.fulfilled_at ? null : new Date().toISOString() });
+  };
+
   const handleSaveOrder = async (orderData: Order) => {
     if (orderData.id) {
       await updateOrder(orderData.id, orderData);
@@ -196,6 +202,7 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
             blockedDays={blockedDays}
             blockedSet={blockedSet}
             onOrderClick={setSelectedOrder}
+            onToggleFulfilled={handleToggleFulfilled}
             onNewOrderForDate={handleNewOrderForDate}
             onBlockDay={blockDay}
             onUnblockDay={unblockDay}
