@@ -1,13 +1,49 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import type { Order } from '../types';
 
+// Christine (Aaron's sister) — her Supabase auth uid. Orders she inserts ping
+// Aaron on a separate channel (phone push via migration 020's trigger; in-app
+// toast + chime below). Kept in sync with the WHEN clause in that migration.
+const SISTER_UID = 'bf5238ff-3426-4862-bda1-d4037d9e5d5b';
+
+// Descending G–E–C — deliberately distinct from useOrderRequests' ascending
+// C–E–G so Aaron can tell a sister-order from a request-link ping by ear.
+function playSisterOrderChime() {
+  try {
+    const ctx = new AudioContext();
+    [784, 659, 523].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.15;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.3, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.4);
+      osc.start(start);
+      osc.stop(start + 0.4);
+    });
+  } catch {
+    // AudioContext blocked (e.g. no user gesture yet) — silent fail
+  }
+}
+
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  // The current session's uid, so a sister-order never chimes on Christine's own
+  // device — only on the *other* signed-in kitchen clients (Aaron, Nanay).
+  const myUidRef = useRef<string | null>(null);
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      myUidRef.current = session?.user?.id ?? null;
+    });
+
     fetchOrders();
 
     const subscription = supabase
@@ -15,7 +51,16 @@ export function useOrders() {
       // eslint-disable-next-line -- realtime payloads are dynamic DB rows
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload: any) => {
         if (payload.eventType === 'INSERT') {
-          setOrders(prev => prev.some(o => o.id === payload.new.id) ? prev : [payload.new, ...prev]);
+          const o = payload.new as Order;
+          setOrders(prev => prev.some(existing => existing.id === o.id) ? prev : [o, ...prev]);
+          // Sister-order alert: fire for everyone signed in EXCEPT Christine herself.
+          if (o.created_by === SISTER_UID && myUidRef.current !== SISTER_UID) {
+            toast.info(
+              `New order from Christine — ${o.customer_name ?? 'customer'} • $${(o.total ?? 0).toFixed(2)}`,
+              { duration: 8000 },
+            );
+            playSisterOrderChime();
+          }
         } else if (payload.eventType === 'UPDATE') {
           setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new : o));
         } else if (payload.eventType === 'DELETE') {

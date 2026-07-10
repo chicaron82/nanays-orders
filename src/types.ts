@@ -71,6 +71,7 @@ export interface Order {
   fulfilled_at?: string | null;
   total?: number;
   source?: OrderSource;  // 'request' = came via the public link; defaults to 'manual'
+  created_by?: string | null;  // auth uid of the account that inserted the row (migration 019); drives the sister-order alert
   no_show?: boolean;     // customer ghosted — stored as a Cancelled order + this flag (drives the repeat-no-show watchlist)
   no_show_reason?: string; // Christine's note on why it was flagged
   created_at?: string;
