@@ -10,6 +10,13 @@ function monthLabel(m: string, opts: Intl.DateTimeFormatOptions = { month: 'long
   return new Date(y, mo - 1, 1).toLocaleDateString('en-CA', opts);
 }
 
+/** Compact "Mon 'YY" — apostrophe year so a recent-months row reads as a year, not a date
+ *  (a bare "Jul 26" was misreading as the 26th). toLocaleDateString can't add the apostrophe. */
+function monthLabelShortYear(m: string): string {
+  const [y] = m.split('-').map(Number);
+  return `${monthLabel(m, { month: 'short' })} '${String(y).slice(-2)}`;
+}
+
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string }> = {
   wrappers:   { label: 'Wrappers',   emoji: '🧻' },
   pork:       { label: 'Meats',      emoji: '🥩' },
@@ -133,7 +140,7 @@ export default function InsightsView({ orders, expenses }: { orders: Order[]; ex
           <div className="space-y-2">
             {series.map(s => (
               <div key={s.month} className="flex items-center gap-3">
-                <span className="w-16 shrink-0 text-xs font-medium text-stone-500">{monthLabel(s.month, { month: 'short', year: '2-digit' })}</span>
+                <span className="w-16 shrink-0 text-xs font-medium text-stone-500">{monthLabelShortYear(s.month)}</span>
                 <div className="flex-1 bg-stone-100 rounded-full h-5 overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-orange-400 to-amber-400 rounded-full transition-all"
