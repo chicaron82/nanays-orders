@@ -21,6 +21,7 @@ import AcceptingOrdersToggle from './components/AcceptingOrdersToggle';
 import RequestsView from './components/RequestsView';
 import BuildStamp from './components/BuildStamp';
 import { getRepeatCustomers, nextAvailableDate, formatDate, buildRequestConfirmMessage, buildRequestDeclineMessage } from './lib/utils';
+import { findDuplicateOrder } from './lib/orderDuplicates';
 
 interface MainAppProps {
   onLogout: () => void;
@@ -40,6 +41,10 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
   const [newOrderDate, setNewOrderDate] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [blockedWarning, setBlockedWarning] = useState<{ date: string; next: string; reason?: string | null } | null>(null);
+  // A manual add that collides with an existing order (same customer + needed_date) —
+  // holds the pending order until the user confirms "add anyway" (repeat customers are
+  // legit, so it warns, never blocks). Guards the request-approved-then-re-typed dup.
+  const [dupWarning, setDupWarning] = useState<{ order: Order; existing: Order } | null>(null);
   const [requestMsg, setRequestMsg] = useState<{ msg: string; title: string; emoji: string; waLink?: string } | null>(null);
 
   const buildWaLink = (contact: string, msg: string) => {
@@ -88,15 +93,35 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
     handlePaymentChange(order.id!, { fulfilled_at: order.fulfilled_at ? null : new Date().toISOString() });
   };
 
-  const handleSaveOrder = async (orderData: Order) => {
-    if (orderData.id) {
-      await updateOrder(orderData.id, orderData);
-    } else {
-      await addOrder(orderData);
-    }
+  const closeForm = () => {
     setShowForm(false);
     setEditOrder(null);
     setNewOrderDate(null);
+  };
+
+  const handleSaveOrder = async (orderData: Order) => {
+    if (orderData.id) {
+      await updateOrder(orderData.id, orderData);
+      closeForm();
+      return;
+    }
+    // Manual add: if this looks like an order that already exists (same customer +
+    // needed_date — e.g. a request-link order that was approved, then re-typed by
+    // hand), hold it and ask first. Keeps the form open behind the confirm.
+    const existing = findDuplicateOrder(orders, orderData);
+    if (existing) {
+      setDupWarning({ order: orderData, existing });
+      return;
+    }
+    await addOrder(orderData);
+    closeForm();
+  };
+
+  const confirmDuplicateAdd = async () => {
+    if (!dupWarning) return;
+    await addOrder(dupWarning.order);
+    setDupWarning(null);
+    closeForm();
   };
 
   const openEdit = (order: Order) => {
@@ -264,6 +289,34 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
               </button>
               <button
                 onClick={() => setBlockedWarning(null)}
+                className="px-4 py-2.5 rounded-xl bg-stone-100 text-stone-600 font-bold text-sm hover:bg-stone-200 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {dupWarning && (
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setDupWarning(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
+            <div className="text-2xl mb-1">⚠️</div>
+            <div className="font-playfair text-lg font-black text-stone-800 mb-1">Possible duplicate</div>
+            <p className="text-sm text-stone-600 mb-4">
+              An order for <span className="font-bold text-orange-600">{dupWarning.existing.customer_name}</span> on{' '}
+              <span className="font-bold text-orange-600">{formatDate(dupWarning.existing.needed_date ?? '')}</span> already exists
+              {dupWarning.existing.source === 'request' ? ' — it came in through the request link.' : '.'} Add another anyway?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={confirmDuplicateAdd}
+                className="flex-1 bg-orange-500 text-white font-bold py-2.5 rounded-xl hover:bg-orange-600 transition-colors text-sm"
+              >
+                Add anyway
+              </button>
+              <button
+                onClick={() => setDupWarning(null)}
                 className="px-4 py-2.5 rounded-xl bg-stone-100 text-stone-600 font-bold text-sm hover:bg-stone-200 transition-colors"
               >
                 Cancel
