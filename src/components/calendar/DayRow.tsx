@@ -7,6 +7,8 @@ interface Props {
   ymd: string;
   orders: Order[];
   isToday: boolean;
+  /** A day before today — adding here is backfilling a past order, not scheduling a new one. */
+  isPast?: boolean;
   isBlocked?: boolean;
   blockedReason?: string | null;
   onOrderClick: (order: Order) => void;
@@ -23,7 +25,7 @@ const LEVEL = {
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-export default function DayRow({ ymd, orders, isToday, isBlocked, blockedReason, onOrderClick, onToggleFulfilled, onNewOrderForDate }: Props) {
+export default function DayRow({ ymd, orders, isToday, isPast, isBlocked, blockedReason, onOrderClick, onToggleFulfilled, onNewOrderForDate }: Props) {
   const d = new Date(ymd + 'T00:00:00');
   const visible = orders.filter(o => o.order_status !== 'Cancelled');
   const { units, level } = dayLoad(visible);
@@ -63,7 +65,7 @@ export default function DayRow({ ymd, orders, isToday, isBlocked, blockedReason,
           onClick={() => onNewOrderForDate(ymd)}
           className={`w-full flex items-center justify-center gap-1.5 text-xs font-medium transition-colors ${isBlocked ? 'text-slate-300 hover:text-slate-500' : 'text-stone-400 hover:text-orange-500'} ${visible.length === 0 ? 'py-2' : 'pt-1 border-t border-stone-100'}`}
         >
-          <Plus size={14} /> Add order
+          <Plus size={14} /> {isPast ? 'Log order' : 'Add order'}
         </button>
       </div>
     </div>

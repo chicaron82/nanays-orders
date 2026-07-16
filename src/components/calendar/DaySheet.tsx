@@ -8,6 +8,8 @@ import OrderChip from './OrderChip';
 interface Props {
   ymd: string | null;
   orders: Order[];
+  /** A day before today — adding here is backfilling a past order, not scheduling a new one. */
+  isPast?: boolean;
   isBlocked?: boolean;
   blockedReason?: string | null;
   onBlock?: (ymd: string, reason?: string) => void;
@@ -19,7 +21,7 @@ interface Props {
   onPrint?: (ymd: string) => void;
 }
 
-export default function DaySheet({ ymd, orders, isBlocked, blockedReason, onBlock, onUnblock, onClose, onOrderClick, onToggleFulfilled, onNewOrderForDate, onPrint }: Props) {
+export default function DaySheet({ ymd, orders, isPast, isBlocked, blockedReason, onBlock, onUnblock, onClose, onOrderClick, onToggleFulfilled, onNewOrderForDate, onPrint }: Props) {
   const [showCancelled, setShowCancelled] = useState(false);
   const [blockReasonInput, setBlockReasonInput] = useState('');
   const [showBlockInput, setShowBlockInput] = useState(false);
@@ -110,7 +112,7 @@ export default function DaySheet({ ymd, orders, isBlocked, blockedReason, onBloc
                 onClick={() => onNewOrderForDate(ymd)}
                 className="w-full flex items-center justify-center gap-2 py-3 mt-2 rounded-xl border-2 border-dashed border-stone-300 text-stone-500 font-bold text-sm hover:border-orange-400 hover:text-orange-500 transition-colors"
               >
-                <Plus size={16} /> New order this day
+                <Plus size={16} /> {isPast ? 'Log order this day' : 'New order this day'}
               </button>
             )}
 

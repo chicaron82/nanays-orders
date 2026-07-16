@@ -142,6 +142,7 @@ export default function CalendarView({ orders, blockedDays, blockedSet, onOrderC
               ymd={ymd}
               orders={ordersByDate[ymd] || []}
               isToday={ymd === todayYMD}
+              isPast={ymd < todayYMD}
               isBlocked={blockedSet.has(ymd)}
               blockedReason={blockedByDate[ymd]?.reason}
               onOrderClick={onOrderClick}
@@ -190,6 +191,7 @@ export default function CalendarView({ orders, blockedDays, blockedSet, onOrderC
               ymd={ymd}
               orders={ordersByDate[ymd] || []}
               isToday={ymd === todayYMD}
+              isPast={ymd < todayYMD}
               isBlocked={blockedSet.has(ymd)}
               blockedReason={blockedByDate[ymd]?.reason}
               onOrderClick={onOrderClick}
@@ -204,6 +206,7 @@ export default function CalendarView({ orders, blockedDays, blockedSet, onOrderC
         <DaySheet
           ymd={daySheetDate}
           orders={ordersByDate[daySheetDate] || []}
+          isPast={daySheetDate < todayYMD}
           isBlocked={blockedSet.has(daySheetDate)}
           blockedReason={blockedByDate[daySheetDate]?.reason}
           onBlock={onBlockDay}
