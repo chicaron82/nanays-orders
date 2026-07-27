@@ -3,7 +3,7 @@ import type { Order, OrderRequest, LumpiaOrder, Stock, DeliveryType, LumpiaSauce
 // ─── CONTACT ─────────────────────────────────────────────────────────────────
 // 10-digit Canadian number, no formatting (e.g. '2045550100').
 // Set this to enable the "Message Christine on WhatsApp" button on the public request page.
-export const NANAY_CONTACT_NUMBER = '4313736620';
+export const NANAY_CONTACT_NUMBER = '4313362271';
 
 // Where the public page sends customers when online requests are paused — a
 // Messenger link to whoever takes FB orders (most orders arrive via a marketplace
