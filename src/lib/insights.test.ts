@@ -36,8 +36,8 @@ describe('lumpiaRevenue', () => {
 describe('pancitRevenue', () => {
   it('prices full / half / large + extra meat', () => {
     const o = order({ pancit: { enabled: true, full: 1, half: 2, large: 1, extraMeat: true } });
-    // 25 + 2×13 + 50 + 10 = 111
-    expect(pancitRevenue(o)).toBe(111);
+    // 25 + 2×15 + 50 + 10 = 115
+    expect(pancitRevenue(o)).toBe(115);
   });
   it('is 0 when pancit is not enabled', () => {
     expect(pancitRevenue(order({ pancit: { enabled: false, full: 3 } }))).toBe(0);
@@ -101,7 +101,7 @@ describe('ordersWithinDays', () => {
 describe('itemBreakdownForMonth', () => {
   const orders: Order[] = [
     order({ needed_date: '2026-05-03', lumpia: { enabled: true, sets: 2, setsCooked: true } }),       // 70
-    order({ needed_date: '2026-05-20', pancit: { enabled: true, full: 1, half: 1 } }),                 // 38
+    order({ needed_date: '2026-05-20', pancit: { enabled: true, full: 1, half: 1 } }),                 // 40
     order({ needed_date: '2026-05-25', lumpia: { enabled: true, halves: 2, halvesCooked: true },
             pancit: { enabled: true, large: 1 } }),                                                    // 35 + 50
     order({ needed_date: '2026-04-15', lumpia: { enabled: true, sets: 5, setsCooked: true } }),        // other month
@@ -117,8 +117,8 @@ describe('itemBreakdownForMonth', () => {
     expect(b.pancit.half).toBe(1);
     expect(b.pancit.large).toBe(1);
     expect(b.lumpia.revenue).toBeCloseTo(70 + 2 * 20);      // 110
-    expect(b.pancit.revenue).toBeCloseTo(25 + 13 + 50);  // 88
-    expect(b.itemRevenue).toBeCloseTo(198);
+    expect(b.pancit.revenue).toBeCloseTo(25 + 15 + 50);  // 90
+    expect(b.itemRevenue).toBeCloseTo(200);
   });
 
   it('returns an empty breakdown for a month with no orders', () => {

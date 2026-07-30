@@ -13,7 +13,7 @@ export const FB_ORDER_URL = 'https://m.me/christine.sauddin';
 // ─── PRICING ─────────────────────────────────────────────────────────────────
 export const LUMPIA_PRICE = { uncooked: 30, cooked: 35 };
 export const LUMPIA_HALF_PRICE = { uncooked: 18, cooked: 20 };
-export const PANCIT_PRICE = { full: 25, half: 13, large: 50 };
+export const PANCIT_PRICE = { full: 25, half: 15, large: 50 };
 export const PANCIT_SAUCE_PRICE: Record<string, number> = { sweet_and_sour: 2, sweet_chili: 2 };
 export const PANCIT_EXTRA_MEAT_PRICE = 10;
 export const RUSH_ORDER_FEE = 10;
