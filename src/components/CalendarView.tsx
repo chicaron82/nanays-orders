@@ -37,6 +37,12 @@ export default function CalendarView({ orders, blockedDays, blockedSet, onOrderC
       if (!o.needed_date) return;
       (map[o.needed_date] = map[o.needed_date] || []).push(o);
     });
+    // Within each day, order by pickup time (earliest first) so the list reads in
+    // delivery order — otherwise a later 16:00 can sit above the 13:00 you're
+    // actually delivering. Matches DaySheet's own sort.
+    Object.values(map).forEach(list =>
+      list.sort((a, b) => (a.pickup_time || '').localeCompare(b.pickup_time || ''))
+    );
     return map;
   }, [orders]);
 
