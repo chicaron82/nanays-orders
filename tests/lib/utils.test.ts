@@ -4,7 +4,7 @@ import {
   calcTotal, orderSubtotal, discountAmount, orderSummary,
   getDaysUntil, urgencyLabel,
   getReserved, getAvailable, checkShortage, getMakeMoreNeeds,
-  getRevenue, isSettled,
+  getRevenue, revenueForMonth, isSettled,
   fuzzyMatch, getRepeatCustomers, isRepeat, lastOrderFor,
   noShowWatch, needsFollowUp,
   formatDate, fmt, buildOrderMessage, buildReadyMessage,
@@ -705,6 +705,40 @@ describe('getRevenue — monthly bucketing by needed_date', () => {
     const rev = getRevenue([order]);
     expect(rev.month).toBe(0);
     expect(rev.total).toBeCloseTo(42.5);
+  });
+});
+
+describe('revenueForMonth — bounded single-month revenue (for month-over-month)', () => {
+  const jul = base({ payment_status: 'Prepaid', total: 100, needed_date: '2026-07-10' });
+  const jun = base({ payment_status: 'Prepaid', total: 60, needed_date: '2026-06-20' });
+  const aug = base({ payment_status: 'Deposit', deposit_amount: 25, total: 200, needed_date: '2026-08-05' });
+  const julUnpaid = base({ payment_status: 'Unpaid', total: 40, needed_date: '2026-07-12' });
+  const orders = [jul, jun, aug, julUnpaid];
+
+  it('sums only the named month, ignoring other months', () => {
+    expect(revenueForMonth(orders, '2026-07')).toBeCloseTo(100);
+    expect(revenueForMonth(orders, '2026-06')).toBeCloseTo(60);
+  });
+
+  it('is bounded — a FUTURE paid order does not leak into an earlier month (unlike getRevenue.month)', () => {
+    // aug is Deposit/paid but needed in August; July must not include it.
+    expect(revenueForMonth(orders, '2026-07')).toBeCloseTo(100);
+    expect(revenueForMonth(orders, '2026-08')).toBeCloseTo(200);
+  });
+
+  it('counts only Prepaid/Deposit (excludes Unpaid), matching the revenue basis', () => {
+    // julUnpaid ($40) is excluded; only the $100 Prepaid July order counts.
+    expect(revenueForMonth(orders, '2026-07')).toBeCloseTo(100);
+  });
+
+  it('includes tips as cash', () => {
+    const tipped = base({ payment_status: 'Prepaid', total: 100, tip_amount: 8, needed_date: '2026-07-10' });
+    expect(revenueForMonth([tipped], '2026-07')).toBeCloseTo(108);
+  });
+
+  it('falls back to created_at month when needed_date is absent', () => {
+    const noNeeded = base({ payment_status: 'Prepaid', total: 50, needed_date: undefined, created_at: '2026-07-03T09:00:00Z' });
+    expect(revenueForMonth([noNeeded], '2026-07')).toBeCloseTo(50);
   });
 });
 

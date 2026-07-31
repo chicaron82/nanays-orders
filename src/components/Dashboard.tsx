@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Order, Expense } from '../types';
-import { getRevenue, fmt, amountOwing, localYMD, getRepeatCustomers, customerKey, orderSummary } from '../lib/utils';
+import { getRevenue, revenueForMonth, fmt, amountOwing, localYMD, getRepeatCustomers, customerKey, orderSummary } from '../lib/utils';
+import { recentMonths } from '../lib/insights';
 import { Repeat, DollarSign, Clock, TrendingUp, Wallet } from 'lucide-react';
 
 interface Props {
@@ -12,6 +13,19 @@ interface Props {
 export default function Dashboard({ orders, repeatCount, expenses = [] }: Props) {
   const [showRepeat, setShowRepeat] = useState(false);
   const revenue = getRevenue(orders);
+
+  // Month revenue as a BOUNDED single month (not getRevenue's unbounded `.month`), so the
+  // headline and its "vs last month" delta are the same, apples-to-apples basis. This is the
+  // number the item-sales card compares against — surfacing it here removes the trap where
+  // $1772 revenue looked like it beat last month when it was really being read against last
+  // month's food-only figure.
+  const [thisMonth, lastMonth] = recentMonths(2);
+  const monthRevenue = revenueForMonth(orders, thisMonth);
+  const prevMonthRevenue = revenueForMonth(orders, lastMonth);
+  const revMomPct = prevMonthRevenue > 0
+    ? Math.round(((monthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100)
+    : null;
+  const lastMonthShort = new Date(lastMonth + '-01T00:00:00').toLocaleString('en-US', { month: 'short' });
 
   const repeatCustomers = (() => {
     const repeatMap = getRepeatCustomers(orders);
@@ -32,7 +46,7 @@ export default function Dashboard({ orders, repeatCount, expenses = [] }: Props)
   const monthlySpend = expenses
     .filter(e => String(e.date).startsWith(monthPrefix))
     .reduce((sum, e) => sum + Number(e.amount), 0);
-  const net = revenue.month - monthlySpend;
+  const net = monthRevenue - monthlySpend;
 
   // Workload counts by date, not status — the order lifecycle is payment-only.
   const todayYMD = localYMD(now);
@@ -53,7 +67,12 @@ export default function Dashboard({ orders, repeatCount, expenses = [] }: Props)
       <div className="col-span-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 p-4 opacity-20"><DollarSign size={48} /></div>
         <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">Revenue This Month</div>
-        <div className="font-playfair text-3xl font-black leading-tight">{fmt(revenue.month)}</div>
+        <div className="font-playfair text-3xl font-black leading-tight">{fmt(monthRevenue)}</div>
+        {revMomPct !== null && (
+          <div className={`text-xs font-bold mt-0.5 ${revMomPct >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+            {revMomPct >= 0 ? '▲' : '▼'} {Math.abs(revMomPct)}% vs {lastMonthShort}
+          </div>
+        )}
         <div className="text-xs text-white/70 mt-1">All time: {fmt(revenue.total)} · paid &amp; deposit orders</div>
       </div>
 
@@ -61,7 +80,7 @@ export default function Dashboard({ orders, repeatCount, expenses = [] }: Props)
         <div className="absolute top-0 right-0 p-4 opacity-20"><TrendingUp size={48} /></div>
         <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">This Month — Net</div>
         <div className={`font-playfair text-3xl font-black leading-tight ${net >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>{fmt(net)}</div>
-        <div className="text-xs text-white/70 mt-1">{fmt(revenue.month)} revenue · {fmt(monthlySpend)} expenses</div>
+        <div className="text-xs text-white/70 mt-1">{fmt(monthRevenue)} revenue · {fmt(monthlySpend)} expenses</div>
       </div>
 
       <button

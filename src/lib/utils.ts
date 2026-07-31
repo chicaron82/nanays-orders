@@ -335,6 +335,24 @@ export function getRevenue(orders: Order[]): { total: number; month: number } {
   };
 }
 
+/**
+ * Revenue (cash received: order value + tips, Prepaid/Deposit only) for ONE bounded
+ * calendar month. `month` = 'YYYY-MM', bucketed by needed_date (fallback created_at).
+ * Same cash basis as getRevenue but bounded to a single month — so a month-over-month
+ * comparison is apples-to-apples (getRevenue's `.month` is unbounded `>= monthStart`,
+ * which also sweeps in future-dated paid orders).
+ */
+export function revenueForMonth(orders: Order[], month: string): number {
+  const cash = (o: Order) => Number(o.total ?? calcTotal(o)) + tipAmount(o);
+  return orders
+    .filter(o => o.payment_status === "Prepaid" || o.payment_status === "Deposit")
+    .filter(o => {
+      const dateStr = o.needed_date || (o.created_at ? o.created_at.slice(0, 10) : null);
+      return !!dateStr && dateStr.slice(0, 7) === month;
+    })
+    .reduce((s, o) => s + cash(o), 0);
+}
+
 // ─── REPEAT CUSTOMERS ────────────────────────────────────────────────────────
 export function fuzzyMatch(a?: string | null, b?: string | null): boolean {
   if (!a || !b) return false;
