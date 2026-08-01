@@ -408,7 +408,7 @@ export default function PublicRequestPage() {
                   <p className="text-xs text-stone-400">🔥 <span className="font-medium text-stone-500">Cooked</span> = ready to eat · ❄️ <span className="font-medium text-stone-500">Frozen</span> = uncooked, fry fresh at home · tap the badge on each row to switch</p>
                   {/* Full Set */}
                   <ItemRowPicker
-                    label="Full Batch (100 pcs)"
+                    label="Full Batch (100 pcs · serves 12-15)"
                     price={fmt(LUMPIA_PRICE[lumpiaSetsCooked ? 'cooked' : 'uncooked'])}
                     count={lumpiaSets}
                     onChange={setLumpiaSets}
@@ -418,7 +418,7 @@ export default function PublicRequestPage() {
 
                   {/* Half Set */}
                   <ItemRowPicker
-                    label="Half Batch (50 pcs)"
+                    label="Half Batch (50 pcs · serves 6-8)"
                     price={fmt(LUMPIA_HALF_PRICE[lumpiaHalvesCooked ? 'cooked' : 'uncooked'])}
                     count={lumpiaHalves}
                     onChange={setLumpiaHalves}
