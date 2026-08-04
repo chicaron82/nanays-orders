@@ -12,7 +12,7 @@ Order management and kitchen operations app for a Filipino home food business (l
 
 ## Stack
 
-- React 19 (no TypeScript)
+- React 19 with TypeScript
 - Supabase (Postgres + realtime)
 - Vite
 
