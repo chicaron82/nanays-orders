@@ -1,6 +1,6 @@
 import { MessageSquare, Check } from 'lucide-react';
 import type { Order, OrderStatus } from '../../types';
-import { orderSummary, fmt, isSettled, needsFollowUp } from '../../lib/utils';
+import { orderSummary, fmt, isSettled, needsFollowUp, formatTime12 } from '../../lib/utils';
 
 interface Props {
   order: Order;
@@ -80,7 +80,7 @@ export default function OrderChip({ order, variant = 'full', onClick, onToggleFu
         <div className={`font-bold text-sm flex items-baseline gap-1.5 ${done ? 'text-stone-400' : 'text-stone-800'}`}>
           <span className={`truncate ${done ? 'line-through' : ''}`}>{order.customer_name}</span>
           {order.pickup_time && (
-            <span className="shrink-0 text-xs font-mono font-normal text-stone-400">{order.pickup_time}</span>
+            <span className="shrink-0 text-xs font-mono font-normal text-stone-400">{formatTime12(order.pickup_time)}</span>
           )}
           {note && (
             <span className="shrink-0 self-center text-stone-400" title={note} aria-label="Has notes">

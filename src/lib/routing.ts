@@ -1,3 +1,4 @@
+import { formatTime12 } from './utils';
 // Drive-time estimates for delivery orders. Geocodes the destination address and
 // routes it from the kitchen base, reusing the same free public providers as the
 // roadtrip planner: Nominatim (via Aaron's CORS-open Cloudflare Worker proxy) for
@@ -70,9 +71,9 @@ export function leaveByTime(
 
   const hh = Math.floor(total / 60);
   const mm = total % 60;
-  const period = hh < 12 ? 'AM' : 'PM';
-  const h12 = hh % 12 === 0 ? 12 : hh % 12;
-  return `${h12}:${String(mm).padStart(2, '0')} ${period}`;
+  // Shares the one 12-hour formatter with every display site (2026-08-18) — this file had its own
+  // copy, and two conversions of the same rule are two chances to drift on the midnight/noon edge.
+  return formatTime12(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
 }
 
 /** Winnipeg weekday rush windows (local time): 7:00–9:00 AM and 3:30–6:00 PM. */

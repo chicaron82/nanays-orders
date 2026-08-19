@@ -22,6 +22,7 @@ import {
   NANAY_CONTACT_NUMBER,
   FB_ORDER_URL,
   buildRequestSubmittedMessage,
+  formatTime12,
 } from '../lib/utils';
 
 export default function PublicRequestPage() {
@@ -246,7 +247,7 @@ export default function PublicRequestPage() {
           <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 text-left space-y-2 text-sm text-stone-700">
             <div className="font-semibold text-orange-800 border-b border-orange-200 pb-1.5 mb-2">Request Summary</div>
             <div>📅 **Date Requested**: {formatDate(submittedRequest.needed_date)}</div>
-            <div>⏰ **Time**: {submittedRequest.pickup_time}</div>
+            <div>⏰ **Time**: {formatTime12(submittedRequest.pickup_time)}</div>
             <div>🚗 **Delivery**: {submittedRequest.delivery_type === 'pickup' ? '🏠 Pickup' : `🚗 Delivery to: ${submittedRequest.address}`}</div>
             <div>💵 **Estimated Total**: <span className="font-black text-orange-600">{fmt(submittedRequest.total)}</span></div>
           </div>
@@ -389,6 +390,17 @@ export default function PublicRequestPage() {
 
             {/* Lumpia */}
             <div className={`border-2 rounded-xl overflow-hidden transition-colors ${lumpiaEnabled ? 'border-orange-400' : 'border-stone-200'}`}>
+                {/* The photo is DISAMBIGUATION, not decoration. A customer ordered expecting
+                    lumpia SARIWA — the fresh, soft, unfried kind — and this page already said
+                    "Lumpia Shanghai" in two places, so more words were not the fix. The picture
+                    does the job the name couldn't, and it sits INSIDE the selector because the
+                    confusion happens at the moment of choosing, not on the way past a header. */}
+                <img
+                  src="/menu/lumpia-shanghai.jpg"
+                  alt="Lumpiang Shanghai — thin, crispy, deep-fried pork-and-vegetable rolls in a tray"
+                  loading="lazy"
+                  className="w-full h-28 sm:h-32 object-cover"
+                />
               <button
                 type="button"
                 className="w-full p-4 bg-orange-50/40 flex items-center cursor-pointer gap-4 text-left"
@@ -464,6 +476,14 @@ export default function PublicRequestPage() {
 
             {/* Pancit */}
             <div className={`border-2 rounded-xl overflow-hidden transition-colors ${pancitEnabled ? 'border-orange-400' : 'border-stone-200'}`}>
+                {/* Paired with the lumpia photo — a menu that shows one dish and describes the
+                    other reads as though only one is worth looking at, on a page selling both. */}
+                <img
+                  src="/menu/pancit.jpg"
+                  alt="Chicken pancit bihon — thin rice noodles with carrots, snap peas and green onion in a tray"
+                  loading="lazy"
+                  className="w-full h-28 sm:h-32 object-cover"
+                />
               <button
                 type="button"
                 className="w-full p-4 bg-orange-50/40 flex items-center cursor-pointer gap-4 text-left"

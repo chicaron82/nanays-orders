@@ -461,6 +461,30 @@ export function formatDate(s?: string | null): string {
 
 export function fmt(n: number): string { return "$" + Number(n).toFixed(2); }
 
+/** `"14:30"` → `"2:30 PM"`. Display only — pickup_time stays stored as 24-hour `HH:MM`.
+ *
+ *  Aaron's sister asked for AM/PM (2026-08-18). The STORAGE deliberately doesn't change: the
+ *  delivery-buffer maths in lib/routing.ts, the calendar ordering and every date/time comparison
+ *  all depend on `HH:MM` sorting lexicographically. Only what a human reads is converted.
+ *
+ *  ⚠️ The two that bite are midnight and noon. `00:15` is 12:15 AM and `12:15` is 12:15 PM — get
+ *  the modulo wrong and a customer reads their own pickup time as twelve hours out, on a page
+ *  where that number is the whole point. Hence the tests.
+ *
+ *  Unparseable input is returned as-is rather than blanked: a weird stored value should look weird
+ *  to whoever can fix it, not vanish. */
+export function formatTime12(s?: string | null): string {
+  if (!s) return "";
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s.trim());
+  if (!m) return s;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return s;
+  const period = h < 12 ? "AM" : "PM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(min).padStart(2, "0")} ${period}`;
+}
+
 /** Customer-facing order confirmation text for sharing (Web Share / clipboard). */
 export function buildOrderMessage(order: Order): string {
   const total = order.total ?? calcTotal(order);

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CalendarDays, Clock, MapPin, Check, Trash2, Phone, ChefHat } from 'lucide-react';
 import type { OrderRequest, Order } from '../types';
-import { fmt, orderSummary, formatDate, noShowWatch } from '../lib/utils';
+import { fmt, orderSummary, formatDate, formatTime12, noShowWatch } from '../lib/utils';
 
 interface RequestsViewProps {
   requests: OrderRequest[];
@@ -89,7 +89,7 @@ export default function RequestsView({ requests, orders, blockedSet, onApprove, 
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock size={16} className="text-stone-400" />
-                    <span>{req.pickup_time}</span>
+                    <span>{formatTime12(req.pickup_time)}</span>
                   </div>
                   <div className="flex items-start gap-2 sm:col-span-2">
                     <MapPin size={16} className="text-stone-400 mt-0.5" />
