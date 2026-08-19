@@ -131,8 +131,23 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                   <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${form.lumpia?.enabled ? 'bg-orange-500 border-orange-500' : 'border-stone-300'}`}>
                     {form.lumpia?.enabled && <Check size={14} className="text-white" />}
                   </div>
+                  {/* The photo REPLACES the emoji rather than sitting above the row as a banner.
+                      The public page gets full-width shots because a customer needs to see WHICH
+                      lumpia (one ordered expecting sariwa) — Nanay's own crew already knows. Here
+                      the picture is for warmth, and this form is a modal worked through fast with
+                      someone waiting, so two banners would cost ~224px of scrolling on every order
+                      to tell her something she knows. In the row instead: the 36px thumb sits where
+                      a 24px checkbox already set the height, so each section grows ~12px — ~24px
+                      total, against ~224px for banners. Not free, just nearly. */}
+                  <img
+                    src="/menu/lumpia-thumb.jpg"
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    className="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-orange-200"
+                  />
                   <div className="flex-1">
-                    <div className="font-bold text-stone-800">🥟 Lumpia</div>
+                    <div className="font-bold text-stone-800">Lumpia</div>
                     <div className="text-xs text-stone-500">Full batch 100 pcs · Half batch 50 pcs</div>
                   </div>
                 </button>
@@ -249,8 +264,15 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                   <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${form.pancit?.enabled ? 'bg-orange-500 border-orange-500' : 'border-stone-300'}`}>
                     {form.pancit?.enabled && <Check size={14} className="text-white" />}
                   </div>
+                  <img
+                    src="/menu/pancit-thumb.jpg"
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    className="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-orange-200"
+                  />
                   <div className="flex-1">
-                    <div className="font-bold text-stone-800">🍜 Pancit Tray</div>
+                    <div className="font-bold text-stone-800">Pancit Tray</div>
                     <div className="text-xs text-stone-500">Regular {fmt(PANCIT_PRICE.full)} · Small {fmt(PANCIT_PRICE.half)} · Large {fmt(PANCIT_PRICE.large)}</div>
                   </div>
                 </button>
