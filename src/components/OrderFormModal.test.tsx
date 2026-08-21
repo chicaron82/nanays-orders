@@ -65,3 +65,51 @@ describe('OrderFormModal — sauce stepper edit-mode pre-population', () => {
     expect(within(sweetChili).getByText('1')).toBeInTheDocument();
   });
 });
+
+// ── Delivery-slot load note ───────────────────────────────────────────────────
+// Reproduces the Saturday that prompted this: three city deliveries all asking
+// for 5pm on 2026-08-22. Reported to whoever is taking the order, never blocking.
+const sat = (id: number, name: string, time: string, type: Order['delivery_type'] = 'city'): Order => ({
+  id, customer_name: name, needed_date: '2026-08-22', pickup_time: time,
+  delivery_type: type, payment_status: 'Unpaid', total: 40,
+});
+
+describe('OrderFormModal — delivery slot load', () => {
+  const open = (editOrder: Order, allOrders: Order[]) =>
+    render(
+      <OrderFormModal
+        isOpen onClose={vi.fn()} onSave={vi.fn()} editOrder={editOrder}
+        allOrders={allOrders} stock={stock}
+      />,
+    );
+
+  it('names the deliveries already booked near this time, and offers clear ones', async () => {
+    const billie = sat(3, 'Billie', '17:00');
+    open(billie, [sat(1, 'Keira', '17:00'), sat(2, 'Zoey', '17:00'), billie]);
+
+    expect(await screen.findByText(/2 deliveries already near this time/)).toBeInTheDocument();
+    expect(screen.getByText(/Keira 5:00 PM, Zoey 5:00 PM/)).toBeInTheDocument();
+    expect(screen.getByText(/Clear: 4:00 PM or 6:00 PM/)).toBeInTheDocument();
+  });
+
+  it('never counts the order being edited against itself', async () => {
+    const zoey = sat(2, 'Zoey', '17:00');
+    open(zoey, [sat(1, 'Keira', '17:00'), zoey]);
+    // One neighbour, not two — Zoey must not see herself.
+    expect(await screen.findByText(/1 delivery already near this time/)).toBeInTheDocument();
+  });
+
+  it('stays silent when this order is a pickup — no driver is needed', async () => {
+    const walkIn = sat(3, 'Billie', '17:00', 'pickup');
+    open(walkIn, [sat(1, 'Keira', '17:00'), sat(2, 'Zoey', '17:00'), walkIn]);
+    await screen.findByLabelText(/Pickup Time/i);
+    expect(screen.queryByText(/already near this time/)).not.toBeInTheDocument();
+  });
+
+  it('stays silent when the slot is genuinely free', async () => {
+    const solo = sat(1, 'Keira', '17:00');
+    open(solo, [solo, sat(2, 'Zoey', '12:00')]);
+    await screen.findByLabelText(/Delivery Time/i);
+    expect(screen.queryByText(/already near this time/)).not.toBeInTheDocument();
+  });
+});

@@ -5,6 +5,7 @@ import type { Order, Stock, BlockedDay } from '../types';
 import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE, EARLY_ORDER_FEE, isEarlyFulfillment, noShowWatch, formatDate } from '../lib/utils';
 import { useOrderForm } from '../hooks/useOrderForm';
 import { AddressAutocomplete } from './AddressAutocomplete';
+import { deliveryLoadAt, formatTimeLabel } from '../lib/deliveryLoad';
 
 interface Props {
   isOpen: boolean;
@@ -29,6 +30,14 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
     addCustomItem, updateCustomItem, removeCustomItem,
     isDateBlocked,
   } = useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave, blockedSet });
+
+  // How busy this delivery slot already is. Reported, never enforced — see lib/deliveryLoad:
+  // the app can't know how many drivers are free, so it hands mom the fact while the customer
+  // is still on the phone and lets her make the call. A pickup needs no driver, so this stays
+  // silent when THIS order is a pickup.
+  const deliveryLoad = form.delivery_type === 'pickup'
+    ? { count: 0, orders: [], earlier: null, later: null }
+    : deliveryLoadAt(allOrders, form.needed_date, form.pickup_time, { excludeId: editOrder?.id });
 
   const [dateTbd, setDateTbd] = useState(editOrder ? !editOrder.needed_date : false);
   // Re-sync the TBD toggle whenever the modal (re)opens or swaps to a different
@@ -504,6 +513,24 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
               <div>
                 <label htmlFor="order-time" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><Clock size={14}/> {form.delivery_type === 'pickup' ? 'Pickup Time' : 'Delivery Time'}</label>
                 <input id="order-time" name="pickup_time" type="time" value={form.pickup_time ?? ''} onChange={e => setField('pickup_time', e.target.value)} className="w-full border-2 border-stone-200 rounded-xl px-4 py-2.5 focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors" />
+                {deliveryLoad.count > 0 && (
+                  <p className="text-xs text-amber-700 mt-1.5 leading-relaxed">
+                    <span className="font-semibold">
+                      🚗 {deliveryLoad.count} {deliveryLoad.count === 1 ? 'delivery' : 'deliveries'} already near this time
+                    </span>
+                    {' — '}
+                    {deliveryLoad.orders.map(o => `${o.customer_name} ${formatTimeLabel(o.pickup_time ?? '')}`).join(', ')}.
+                    {(deliveryLoad.earlier || deliveryLoad.later) && (
+                      <>
+                        {' '}Clear:{' '}
+                        {[deliveryLoad.earlier, deliveryLoad.later]
+                          .filter((t): t is string => !!t)
+                          .map(formatTimeLabel)
+                          .join(' or ')}.
+                      </>
+                    )}
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="order-delivery-type" className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2"><MapPin size={14}/> Delivery Type</label>
