@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CalendarDays, Clock, MapPin, Check, Trash2, Phone, ChefHat } from 'lucide-react';
 import type { OrderRequest, Order } from '../types';
 import { fmt, orderSummary, formatDate, formatTime12, noShowWatch } from '../lib/utils';
+import { deliveryLoadAt, formatTimeLabel } from '../lib/deliveryLoad';
 
 interface RequestsViewProps {
   requests: OrderRequest[];
@@ -43,6 +44,14 @@ export default function RequestsView({ requests, orders, blockedSet, onApprove, 
       <div className="grid grid-cols-1 gap-6">
         {requests.map(req => {
           const isBlocked = blockedSet.has(req.needed_date);
+          // Approving a request never opens OrderFormModal — it writes the order straight
+          // through (App.handleApproveRequest) — so the slot-load note has to live HERE, on the
+          // card, or the whole public-request path would never see one. Shown BEFORE she decides,
+          // which is the point: a collision is something to message the customer about, not
+          // something to discover afterwards. A pickup needs no driver, so it stays silent.
+          const load = req.delivery_type === 'pickup'
+            ? null
+            : deliveryLoadAt(orders, req.needed_date, req.pickup_time);
           const ghost = noShowWatch(req.customer_name, req.contact, orders);
           const showGhost = ghost.matched && !dismissed.has(req.id!);
 
@@ -100,6 +109,28 @@ export default function RequestsView({ requests, orders, blockedSet, onApprove, 
                     </span>
                   </div>
                 </div>
+
+                {load && load.count > 0 && (
+                  <div className="flex items-start gap-2 text-xs bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                    <Clock size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                    <p className="text-amber-800 leading-relaxed">
+                      <span className="font-bold">
+                        {load.count} {load.count === 1 ? 'delivery is' : 'deliveries are'} already booked near {formatTimeLabel(req.pickup_time)}
+                      </span>
+                      {' — '}
+                      {load.orders.map(o => `${o.customer_name} ${formatTimeLabel(o.pickup_time ?? '')}`).join(', ')}.
+                      {(load.earlier || load.later) && (
+                        <>
+                          {' '}Clear nearby:{' '}
+                          <span className="font-semibold">
+                            {[load.earlier, load.later].filter((t): t is string => !!t).map(formatTimeLabel).join(' or ')}
+                          </span>.
+                        </>
+                      )}
+                      {' '}Worth a message before approving.
+                    </p>
+                  </div>
+                )}
 
                 {/* Items Description */}
                 <div>
