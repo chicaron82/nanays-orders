@@ -111,6 +111,27 @@ Delivery orders show a Directions link + a drive-time estimate + a "leave by" ti
   `migrations/` (e.g. `001_stock_ingredients.sql`, `002_add_rush_order.sql`).
 - Env: `.env.local` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 
+### A new table needs explicit GRANTs (Supabase change, effective 2026-10-30)
+
+From **October 30, 2026** Supabase stops auto-granting Data API access to new `public` tables
+([changelog 45329](https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically)).
+Existing tables keep their grants (today `orders` and `order_requests` carry full grants for both
+`anon` and `authenticated`, with RLS doing the privacy work) — **nothing to backfill.** A table
+created after that date with no `GRANT` works in SQL while the app reports it missing.
+
+So every new-table migration carries its grants, and here the grant is a chance to be as narrow as
+the RLS already is:
+
+```sql
+grant select, insert, update, delete on public.<table> to authenticated;  -- the dashboard
+grant insert on public.<table> to anon;   -- ONLY if the public order form writes to it
+grant all on public.<table> to service_role;
+```
+
+⚠️ Never grant `anon` SELECT on a table holding customer details — same reason there is no anon
+SELECT policy on `order_requests` (see below). RLS decides which rows; the GRANT decides whether
+the role may touch the table at all.
+
 ### Anon / public writes — RLS rules (learned in the wild, 2026-06-25)
 
 The public order form runs as the **anon** role. It may INSERT an `order_requests` row but must
