@@ -17,6 +17,11 @@ import type { Order } from '../types';
 const order = (over: Partial<Order> = {}): Order => ({ needed_date: '2026-05-10', ...over });
 
 describe('lumpiaRevenue', () => {
+  // 2026-10-04: one order may now mix cooked and uncooked of the same size.
+  it('⭐ prices a mixed order — 1 cooked half + 1 uncooked half = $38', () => {
+    expect(lumpiaRevenue(order({ lumpia: { enabled: true, halves: 2, halvesUncooked: 1 } }))).toBe(38);
+  });
+
   it('prices full sets + halves by cooked/uncooked, plus sauces', () => {
     const o = order({
       lumpia: { enabled: true, sets: 2, setsCooked: true, halves: 1, halvesCooked: false, sauces: ['sweet_chili'] },

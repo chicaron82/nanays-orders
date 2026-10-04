@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { fuzzyMatch, calcTotal, orderSubtotal, discountAmount, lastOrderFor, isAutoRush, requiresDeposit, depositFor } from '../lib/utils';
+import { fuzzyMatch, calcTotal, orderSubtotal, discountAmount, lastOrderFor, isAutoRush, requiresDeposit, depositFor, lumpiaSplit, lumpiaFromCounts } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import type { Order, OrderForm } from '../types';
 
 const initialForm: OrderForm = {
   customer_name: "", contact: "",
-  lumpia: { enabled: false, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] },
+  lumpia: { enabled: false, sets: 1, setsCooked: true, setsUncooked: 0, halves: 0, halvesCooked: true, halvesUncooked: 0, sauces: [] },
   pancit: { enabled: false, full: 1, half: 0, large: 0, extraMeat: false },
   custom_items: [],
   needed_date: "", pickup_time: "", delivery_type: "pickup", address: "", address_lat: null, address_lng: null,
@@ -32,9 +32,9 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
       setTimeout(() => {
         if (editOrder) {
           const lumpia = editOrder.lumpia;
-          const migratedLumpia = lumpia?.style != null
-            ? { ...lumpia, setsCooked: lumpia.style === 'cooked', halvesCooked: lumpia.style === 'cooked' }
-            : lumpia;
+          // Every generation of order (style → per-size switch → counts) opens as explicit counts, so the
+          // cooked/uncooked steppers show what the order really holds. lumpiaSplit reads all three.
+          const migratedLumpia = lumpia ? lumpiaFromCounts(lumpia, lumpiaSplit(lumpia)) : lumpia;
           setForm({ ...editOrder, lumpia: migratedLumpia, saveCustomer: false });
         } else {
           const nd = initialDate || new Date().toISOString().split('T')[0];

@@ -11,10 +11,17 @@ export type StockLevel = 'plenty' | 'low' | 'out';
 
 export interface LumpiaOrder {
   enabled?: boolean;
+  /** Full batches (100 pcs) in TOTAL, cooked and uncooked together. Stock and work math read this. */
   sets?: number;
+  /** Legacy per-size switch: true = all `sets` cooked. Superseded by `setsUncooked` when that is present. */
   setsCooked?: boolean;
+  /** How many of `sets` are UNCOOKED (2026-10-04) — the rest are cooked. Lets one order mix both. */
+  setsUncooked?: number;
+  /** Half batches (50 pcs) in TOTAL. */
   halves?: number;
   halvesCooked?: boolean;
+  /** How many of `halves` are UNCOOKED. */
+  halvesUncooked?: number;
   sauces?: LumpiaSauce[];
   /** Legacy single-style field, superseded by setsCooked / halvesCooked. */
   style?: string;

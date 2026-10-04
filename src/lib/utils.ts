@@ -79,11 +79,51 @@ export function isAutoRush(order: Order, now: Date = new Date()): boolean {
   return hoursUntil < 24;
 }
 
-// Resolve cooked/uncooked for a lumpia batch — handles both old (style) and new (setsCooked/halvesCooked) formats
-function lumpiaStyleFor(lumpia: LumpiaOrder, key: 'sets' | 'halves'): 'cooked' | 'uncooked' {
-  const cooked = key === 'sets' ? lumpia.setsCooked : lumpia.halvesCooked;
-  if (cooked != null) return cooked ? 'cooked' : 'uncooked';
-  return lumpia.style === 'cooked' ? 'cooked' : 'uncooked';
+/** A lumpia order as four counts: full and half batches, each split cooked / uncooked. */
+export interface LumpiaSplit { setsCooked: number; setsUncooked: number; halvesCooked: number; halvesUncooked: number }
+
+/**
+ * How many full and half batches are cooked and how many uncooked — the ONE reader of lumpia style.
+ *
+ * Aaron, 2026-10-04: *"how would one order an uncooked order and cooked order at the same time without doing
+ * separate orders. like one 50 pieces lumpia cooked, and another 50 pieces uncooked"*. Each size used to carry a
+ * single cooked switch, so two halves could not differ. Now an order may say how many of its batches are uncooked.
+ *
+ * Three generations of orders, newest wins, per size:
+ *   1. `setsUncooked` / `halvesUncooked` — an explicit count (clamped to the total);
+ *   2. `setsCooked` / `halvesCooked` — the per-size switch: all cooked or all uncooked;
+ *   3. `style` — the original single switch for the whole order; absent means uncooked.
+ * `sets` and `halves` stay the TOTALS, so stock, work units and piece counts never needed to change.
+ */
+export function lumpiaSplit(lumpia: LumpiaOrder): LumpiaSplit {
+  const legacyCooked = lumpia.style === 'cooked';
+  const uncookedOf = (total: number, explicit: number | undefined, flag: boolean | undefined): number => {
+    if (explicit != null) return Math.min(Math.max(0, explicit), total);
+    const cooked = flag != null ? flag : legacyCooked;
+    return cooked ? 0 : total;
+  };
+  const sets = lumpia.sets || 0;
+  const halves = lumpia.halves || 0;
+  const setsUncooked = uncookedOf(sets, lumpia.setsUncooked, lumpia.setsCooked);
+  const halvesUncooked = uncookedOf(halves, lumpia.halvesUncooked, lumpia.halvesCooked);
+  return { setsCooked: sets - setsUncooked, setsUncooked, halvesCooked: halves - halvesUncooked, halvesUncooked };
+}
+
+/**
+ * The ONE writer: a stored lumpia from four counts. Totals go in `sets` / `halves`; the per-size switch is kept
+ * honest for anything still reading it (true only when nothing of that size is uncooked); legacy `style` is
+ * dropped, because an explicit count now outranks it.
+ */
+export function lumpiaFromCounts(base: LumpiaOrder, c: LumpiaSplit): LumpiaOrder {
+  const n = (v: number) => Math.max(0, Math.floor(v || 0));
+  const sc = n(c.setsCooked), su = n(c.setsUncooked), hc = n(c.halvesCooked), hu = n(c.halvesUncooked);
+  const next: LumpiaOrder = {
+    ...base,
+    sets: sc + su, setsUncooked: su, setsCooked: su === 0,
+    halves: hc + hu, halvesUncooked: hu, halvesCooked: hu === 0,
+  };
+  delete next.style;
+  return next;
 }
 
 /** Sum of any ad-hoc custom items (one-off dishes) on an order. */
@@ -95,8 +135,9 @@ export function customItemsTotal(order: Order): number {
 export function orderSubtotal(order: Order): number {
   let t = 0;
   if (order.lumpia?.enabled) {
-    t += LUMPIA_PRICE[lumpiaStyleFor(order.lumpia, 'sets')] * (order.lumpia.sets || 0);
-    t += LUMPIA_HALF_PRICE[lumpiaStyleFor(order.lumpia, 'halves')] * (order.lumpia.halves || 0);
+    const l = lumpiaSplit(order.lumpia);
+    t += LUMPIA_PRICE.cooked * l.setsCooked + LUMPIA_PRICE.uncooked * l.setsUncooked;
+    t += LUMPIA_HALF_PRICE.cooked * l.halvesCooked + LUMPIA_HALF_PRICE.uncooked * l.halvesUncooked;
     t += (order.lumpia.sauces || []).reduce((s, sauce) => s + (PANCIT_SAUCE_PRICE[sauce] || 0), 0);
   }
   if (order.pancit?.enabled) {
@@ -133,13 +174,14 @@ export function orderSummary(order: Order): string {
   const parts: string[] = [];
   if (order.lumpia?.enabled) {
     const ls: string[] = [];
-    if ((order.lumpia.sets || 0) > 0) {
-      const cooked = order.lumpia.setsCooked != null ? order.lumpia.setsCooked : order.lumpia.style === 'cooked';
-      ls.push(`${order.lumpia.sets}× full (${cooked ? 'Cooked' : 'Uncooked'})`);
+    const split = lumpiaSplit(order.lumpia);
+    const describe = (cooked: number, uncooked: number) =>
+      cooked > 0 && uncooked > 0 ? `${cooked} Cooked, ${uncooked} Uncooked` : cooked > 0 ? 'Cooked' : 'Uncooked';
+    if (split.setsCooked + split.setsUncooked > 0) {
+      ls.push(`${split.setsCooked + split.setsUncooked}× full (${describe(split.setsCooked, split.setsUncooked)})`);
     }
-    if ((order.lumpia.halves || 0) > 0) {
-      const cooked = order.lumpia.halvesCooked != null ? order.lumpia.halvesCooked : order.lumpia.style === 'cooked';
-      ls.push(`${order.lumpia.halves}× half (${cooked ? 'Cooked' : 'Uncooked'})`);
+    if (split.halvesCooked + split.halvesUncooked > 0) {
+      ls.push(`${split.halvesCooked + split.halvesUncooked}× half (${describe(split.halvesCooked, split.halvesUncooked)})`);
     }
     parts.push(`Lumpia ${ls.join(' + ') || '—'}`);
     const sauces = order.lumpia.sauces || [];
@@ -746,12 +788,11 @@ export function buildPrepList(orders: Order[], ymd: string): { ymd: string; orde
 
   for (const o of rows) {
     if (o.lumpia?.enabled) {
-      const setsCooked = o.lumpia.setsCooked != null ? o.lumpia.setsCooked : o.lumpia.style === "cooked";
-      const halvesCooked = o.lumpia.halvesCooked != null ? o.lumpia.halvesCooked : o.lumpia.style === "cooked";
-      const sets = o.lumpia.sets || 0;
-      const halves = o.lumpia.halves || 0;
-      if (setsCooked) totals.lumpia.setsCooked += sets; else totals.lumpia.setsUncooked += sets;
-      if (halvesCooked) totals.lumpia.halvesCooked += halves; else totals.lumpia.halvesUncooked += halves;
+      const split = lumpiaSplit(o.lumpia);
+      totals.lumpia.setsCooked += split.setsCooked;
+      totals.lumpia.setsUncooked += split.setsUncooked;
+      totals.lumpia.halvesCooked += split.halvesCooked;
+      totals.lumpia.halvesUncooked += split.halvesUncooked;
       for (const s of (o.lumpia.sauces || [])) {
         if (totals.sauces[s] != null) totals.sauces[s] += 1;
       }

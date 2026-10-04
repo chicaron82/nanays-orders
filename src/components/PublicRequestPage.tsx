@@ -10,8 +10,6 @@ import type { OrderRequest, BlockedDay, Order } from '../types';
 import {
   calcTotal,
   fmt,
-  LUMPIA_PRICE,
-  LUMPIA_HALF_PRICE,
   PANCIT_PRICE,
   PANCIT_SAUCE_PRICE,
   PANCIT_EXTRA_MEAT_PRICE,
@@ -23,7 +21,14 @@ import {
   FB_ORDER_URL,
   buildRequestSubmittedMessage,
   formatTime12,
+  lumpiaSplit,
+  lumpiaFromCounts,
+  type LumpiaSplit,
 } from '../lib/utils';
+import LumpiaCountsPicker from './LumpiaCountsPicker';
+
+/** A new request starts at one cooked full batch, as it always has. */
+const DEFAULT_LUMPIA_COUNTS: LumpiaSplit = { setsCooked: 1, setsUncooked: 0, halvesCooked: 0, halvesUncooked: 0 };
 
 export default function PublicRequestPage() {
   const { submitRequest } = useOrderRequests();
@@ -68,10 +73,8 @@ export default function PublicRequestPage() {
 
   // Lumpia Choice
   const [lumpiaEnabled, setLumpiaEnabled] = useState(false);
-  const [lumpiaSets, setLumpiaSets] = useState(1);
-  const [lumpiaSetsCooked, setLumpiaSetsCooked] = useState(true);
-  const [lumpiaHalves, setLumpiaHalves] = useState(0);
-  const [lumpiaHalvesCooked, setLumpiaHalvesCooked] = useState(true);
+  // Cooked and uncooked counts per size (2026-10-04) — one order may mix them. See LumpiaCountsPicker.
+  const [lumpiaCounts, setLumpiaCounts] = useState<LumpiaSplit>(DEFAULT_LUMPIA_COUNTS);
   const [lumpiaSauces, setLumpiaSauces] = useState<('sweet_and_sour' | 'sweet_chili')[]>([]);
 
   // Pancit Choice
@@ -102,14 +105,7 @@ export default function PublicRequestPage() {
       rush_order: rushOrder,
     };
     if (lumpiaEnabled) {
-      o.lumpia = {
-        enabled: true,
-        sets: lumpiaSets,
-        setsCooked: lumpiaSetsCooked,
-        halves: lumpiaHalves,
-        halvesCooked: lumpiaHalvesCooked,
-        sauces: lumpiaSauces,
-      };
+      o.lumpia = lumpiaFromCounts({ enabled: true, sauces: lumpiaSauces }, lumpiaCounts);
     }
     if (pancitEnabled) {
       o.pancit = {
@@ -123,7 +119,7 @@ export default function PublicRequestPage() {
     return o;
   }, [
     neededDate, pickupTime, deliveryType, rushOrder,
-    lumpiaEnabled, lumpiaSets, lumpiaSetsCooked, lumpiaHalves, lumpiaHalvesCooked, lumpiaSauces,
+    lumpiaEnabled, lumpiaCounts, lumpiaSauces,
     pancitEnabled, pancitFull, pancitHalf, pancitLarge, pancitExtraMeat
   ]);
 
@@ -141,7 +137,7 @@ export default function PublicRequestPage() {
   const isDateTooSoon = !!(neededDate && neededDate < minDate);
 
   const hasItems =
-    (lumpiaEnabled && (lumpiaSets + lumpiaHalves > 0)) ||
+    (lumpiaEnabled && (lumpiaCounts.setsCooked + lumpiaCounts.setsUncooked + lumpiaCounts.halvesCooked + lumpiaCounts.halvesUncooked > 0)) ||
     (pancitEnabled && (pancitFull + pancitHalf + pancitLarge > 0));
 
   const isValid =
@@ -194,14 +190,9 @@ export default function PublicRequestPage() {
       const req: Omit<OrderRequest, 'status' | 'id' | 'created_at'> = {
         customer_name: customerName.trim(),
         contact: contact.trim(),
-        lumpia: lumpiaEnabled ? {
-          enabled: true,
-          sets: lumpiaSets,
-          setsCooked: lumpiaSetsCooked,
-          halves: lumpiaHalves,
-          halvesCooked: lumpiaHalvesCooked,
-          sauces: lumpiaSauces,
-        } : { enabled: false, sets: 0 },
+        lumpia: lumpiaEnabled
+          ? lumpiaFromCounts({ enabled: true, sauces: lumpiaSauces }, lumpiaCounts)
+          : { enabled: false, sets: 0 },
         pancit: pancitEnabled ? {
           enabled: true,
           full: pancitFull,
@@ -277,8 +268,7 @@ export default function PublicRequestPage() {
               setAddress('');
               setNotes('');
               setLumpiaEnabled(false);
-              setLumpiaSets(1);
-              setLumpiaHalves(0);
+              setLumpiaCounts(DEFAULT_LUMPIA_COUNTS);
               setPancitEnabled(false);
               setPancitFull(1);
               setPancitHalf(0);
@@ -417,25 +407,13 @@ export default function PublicRequestPage() {
 
               {lumpiaEnabled && (
                 <div className="px-4 py-3 bg-white border-t border-stone-100 space-y-3">
-                  <p className="text-xs text-stone-400">🔥 <span className="font-medium text-stone-500">Cooked</span> = ready to eat · ❄️ <span className="font-medium text-stone-500">Frozen</span> = uncooked, fry fresh at home · tap the badge on each row to switch</p>
-                  {/* Full Set */}
-                  <ItemRowPicker
-                    label="Full Batch (100 pcs · serves 12-15)"
-                    price={fmt(LUMPIA_PRICE[lumpiaSetsCooked ? 'cooked' : 'uncooked'])}
-                    count={lumpiaSets}
-                    onChange={setLumpiaSets}
-                    cooked={lumpiaSetsCooked}
-                    onCookedChange={setLumpiaSetsCooked}
-                  />
-
-                  {/* Half Set */}
-                  <ItemRowPicker
-                    label="Half Batch (50 pcs · serves 6-8)"
-                    price={fmt(LUMPIA_HALF_PRICE[lumpiaHalvesCooked ? 'cooked' : 'uncooked'])}
-                    count={lumpiaHalves}
-                    onChange={setLumpiaHalves}
-                    cooked={lumpiaHalvesCooked}
-                    onCookedChange={setLumpiaHalvesCooked}
+                  <p className="text-xs text-stone-400">🔥 <span className="font-medium text-stone-500">Cooked</span> = ready to eat · ❄️ <span className="font-medium text-stone-500">Frozen</span> = uncooked, fry fresh at home · mix and match in one order</p>
+                  <LumpiaCountsPicker
+                    lumpia={lumpiaFromCounts({ enabled: true, sauces: lumpiaSauces }, lumpiaCounts)}
+                    onChange={next => setLumpiaCounts(lumpiaSplit(next))}
+                    fullLabel="Full Batch (100 pcs · serves 12-15)"
+                    halfLabel="Half Batch (50 pcs · serves 6-8)"
+                    uncookedLabel="Frozen"
                   />
 
                   {/* Sauces */}

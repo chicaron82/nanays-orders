@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock, RotateCcw, Plus } from 'lucide-react';
 import type { Order, Stock, BlockedDay } from '../types';
-import { getIngredientWarnings, fmt, LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE, EARLY_ORDER_FEE, isEarlyFulfillment, noShowWatch, formatDate } from '../lib/utils';
+import { getIngredientWarnings, fmt, lumpiaFromCounts, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE, EARLY_ORDER_FEE, isEarlyFulfillment, noShowWatch, formatDate } from '../lib/utils';
 import { useOrderForm } from '../hooks/useOrderForm';
 import { AddressAutocomplete } from './AddressAutocomplete';
+import LumpiaCountsPicker from './LumpiaCountsPicker';
 import { deliveryLoadAt, formatTimeLabel } from '../lib/deliveryLoad';
 
 interface Props {
@@ -131,7 +132,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                   className="w-full p-4 bg-orange-50/50 flex items-center cursor-pointer gap-4 text-left"
                   onClick={() => {
                     if (!form.lumpia?.enabled) {
-                      setField('lumpia', { enabled: true, sets: 1, setsCooked: true, halves: 0, halvesCooked: true, sauces: [] });
+                      setField('lumpia', lumpiaFromCounts({ enabled: true, sauces: [] }, { setsCooked: 1, setsUncooked: 0, halvesCooked: 0, halvesUncooked: 0 }));
                     } else {
                       setField('lumpia.enabled', false);
                     }
@@ -163,59 +164,15 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
 
                 {form.lumpia?.enabled && (
                   <div className="px-4 py-3 bg-white border-t border-stone-100 space-y-3">
-                    {/* Full batch row */}
-                    <div className="flex items-center gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setField('lumpia.sets', (form.lumpia?.sets ?? 0) > 0 ? 0 : 1)}
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${(form.lumpia?.sets ?? 0) > 0 ? 'bg-orange-500 border-orange-500' : 'border-stone-300 hover:border-orange-300'}`}
-                      >
-                        {(form.lumpia?.sets ?? 0) > 0 && <Check size={11} className="text-white" />}
-                      </button>
-                      <div className="flex-1">
-                        <span className="text-sm font-semibold text-stone-700">Full batch</span>
-                        <span className="text-xs text-stone-400 ml-1.5">100 pcs · {fmt(LUMPIA_PRICE[form.lumpia?.setsCooked ? 'cooked' : 'uncooked'])}</span>
-                      </div>
-                      <div className={`flex items-center gap-2 transition-opacity ${(form.lumpia?.sets ?? 0) === 0 ? 'opacity-30 pointer-events-none' : ''}`}>
-                        <button type="button" onClick={() => setField('lumpia.sets', Math.max(1, (form.lumpia?.sets ?? 1) - 1))} className={ROW_BTN}>−</button>
-                        <span className="font-bold text-sm w-4 text-center">{form.lumpia?.sets ?? 0}</span>
-                        <button type="button" onClick={() => setField('lumpia.sets', (form.lumpia?.sets ?? 0) + 1)} className={ROW_BTN}>+</button>
-                        <button
-                          type="button"
-                          onClick={() => setField('lumpia.setsCooked', !form.lumpia?.setsCooked)}
-                          className={`ml-1 px-2.5 py-1 rounded-full border text-xs font-semibold transition-colors ${form.lumpia?.setsCooked ? 'bg-amber-50 border-amber-400 text-amber-700' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
-                        >
-                          cooked
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Half batch row */}
-                    <div className="flex items-center gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setField('lumpia.halves', (form.lumpia?.halves ?? 0) > 0 ? 0 : 1)}
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${(form.lumpia?.halves ?? 0) > 0 ? 'bg-orange-500 border-orange-500' : 'border-stone-300 hover:border-orange-300'}`}
-                      >
-                        {(form.lumpia?.halves ?? 0) > 0 && <Check size={11} className="text-white" />}
-                      </button>
-                      <div className="flex-1">
-                        <span className="text-sm font-semibold text-stone-700">Half batch</span>
-                        <span className="text-xs text-stone-400 ml-1.5">50 pcs · {fmt(LUMPIA_HALF_PRICE[form.lumpia?.halvesCooked ? 'cooked' : 'uncooked'])}</span>
-                      </div>
-                      <div className={`flex items-center gap-2 transition-opacity ${(form.lumpia?.halves ?? 0) === 0 ? 'opacity-30 pointer-events-none' : ''}`}>
-                        <button type="button" onClick={() => setField('lumpia.halves', Math.max(1, (form.lumpia?.halves ?? 1) - 1))} className={ROW_BTN}>−</button>
-                        <span className="font-bold text-sm w-4 text-center">{form.lumpia?.halves ?? 0}</span>
-                        <button type="button" onClick={() => setField('lumpia.halves', (form.lumpia?.halves ?? 0) + 1)} className={ROW_BTN}>+</button>
-                        <button
-                          type="button"
-                          onClick={() => setField('lumpia.halvesCooked', !form.lumpia?.halvesCooked)}
-                          className={`ml-1 px-2.5 py-1 rounded-full border text-xs font-semibold transition-colors ${form.lumpia?.halvesCooked ? 'bg-amber-50 border-amber-400 text-amber-700' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
-                        >
-                          cooked
-                        </button>
-                      </div>
-                    </div>
+                    {/* Each size has a cooked count AND an uncooked count, so one order can mix
+                        them (Aaron, 2026-10-04 — Option A from the mock). See LumpiaCountsPicker. */}
+                    <LumpiaCountsPicker
+                      lumpia={form.lumpia!}
+                      onChange={next => setField('lumpia', next)}
+                      fullLabel="Full batch · 100 pcs"
+                      halfLabel="Half batch · 50 pcs"
+                      uncookedLabel="Uncooked"
+                    />
 
                     {/* Sauces */}
                     <div className="pt-1 border-t border-stone-100">

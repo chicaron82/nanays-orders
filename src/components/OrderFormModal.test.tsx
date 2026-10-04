@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import OrderFormModal from './OrderFormModal';
 import type { Order, Stock } from '../types';
 
@@ -63,6 +63,43 @@ describe('OrderFormModal — sauce stepper edit-mode pre-population', () => {
 
     const sweetChili = screen.getByText('Sweet Chili').parentElement!;
     expect(within(sweetChili).getByText('1')).toBeInTheDocument();
+  });
+});
+
+// ── Cooked and uncooked in one order (2026-10-04) ─────────────────────────────
+// Aaron: "like one 50 pieces lumpia cooked, and another 50 pieces uncooked". Each size now has a cooked
+// count and an uncooked count (Option A, his pick from the mock).
+describe('OrderFormModal — lumpia cooked and uncooked counts', () => {
+  const open = (o: Order) =>
+    render(<OrderFormModal isOpen onClose={vi.fn()} onSave={vi.fn()} editOrder={o} allOrders={[o]} stock={stock} />);
+  const count = (label: string) => screen.getByLabelText(label).textContent;
+
+  it('⭐ an order saved before the change opens with its counts intact', async () => {
+    open(editOrder); // sets: 1, setsCooked: true
+    await screen.findByText('Sweet & Sour');
+    expect(count('Cooked full batches')).toBe('1');
+    expect(count('Uncooked full batches')).toBe('0');
+    expect(count('Cooked half batches')).toBe('0');
+  });
+
+  it('⭐ a mixed order shows one cooked half and one uncooked half', async () => {
+    open({ ...editOrder, lumpia: { enabled: true, sets: 0, halves: 2, halvesUncooked: 1, sauces: [] } });
+    await screen.findByText('Sweet & Sour');
+    expect(count('Cooked half batches')).toBe('1');
+    expect(count('Uncooked half batches')).toBe('1');
+  });
+
+  it('the steppers move one count without touching the other', async () => {
+    open(editOrder);
+    await screen.findByText('Sweet & Sour');
+    fireEvent.click(screen.getByRole('button', { name: 'More uncooked half batches' }));
+    expect(count('Uncooked half batches')).toBe('1');
+    expect(count('Cooked half batches')).toBe('0');
+    expect(count('Cooked full batches')).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: 'Fewer cooked full batches' }));
+    expect(count('Cooked full batches')).toBe('0');
+    // Nothing goes below zero: the minus is disabled at 0.
+    expect(screen.getByRole('button', { name: 'Fewer cooked full batches' })).toBeDisabled();
   });
 });
 

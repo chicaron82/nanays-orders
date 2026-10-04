@@ -3,7 +3,7 @@ import { m, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Edit2, Calendar, MapPin, Navigation, Car, Phone, MessageSquare, Share2, BellRing, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Order, PaymentStatus } from '../types';
-import { fmt, formatDate, formatTime12, urgencyLabel, getDaysUntil, buildOrderMessage, buildReadyMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, directionsUrl, PAYMENT_STATUS } from '../lib/utils';
+import { fmt, formatDate, formatTime12, urgencyLabel, getDaysUntil, buildOrderMessage, buildReadyMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, directionsUrl, PAYMENT_STATUS, lumpiaSplit } from '../lib/utils';
 import { formatDriveEstimate, leaveByTime, deliveryBuffer, RUSH_BUFFER_MIN } from '../lib/routing';
 import { useDriveEstimate } from '../hooks/useDriveEstimate';
 
@@ -144,11 +144,15 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
                   <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">🥟 Lumpia</div>
                   <div className="font-medium text-stone-800">
                     {(() => {
-                      const setsCooked = order.lumpia!.setsCooked != null ? order.lumpia!.setsCooked : order.lumpia!.style === 'cooked';
-                      const halvesCooked = order.lumpia!.halvesCooked != null ? order.lumpia!.halvesCooked : order.lumpia!.style === 'cooked';
+                      // One reader for every generation of order — see lumpiaSplit.
+                      const s = lumpiaSplit(order.lumpia!);
+                      const line = (n: number, size: string, style: string) =>
+                        n > 0 && `${n} ${size} batch${n !== 1 ? 'es' : ''} (${style})`;
                       return [
-                        (order.lumpia!.sets || 0) > 0 && `${order.lumpia!.sets} full batch${order.lumpia!.sets !== 1 ? 'es' : ''} (${setsCooked ? 'cooked' : 'uncooked'})`,
-                        (order.lumpia!.halves || 0) > 0 && `${order.lumpia!.halves} half batch${order.lumpia!.halves !== 1 ? 'es' : ''} (${halvesCooked ? 'cooked' : 'uncooked'})`,
+                        line(s.setsCooked, 'full', 'cooked'),
+                        line(s.setsUncooked, 'full', 'uncooked'),
+                        line(s.halvesCooked, 'half', 'cooked'),
+                        line(s.halvesUncooked, 'half', 'uncooked'),
                       ].filter(Boolean).join(' · ') || '—';
                     })()}
                   </div>

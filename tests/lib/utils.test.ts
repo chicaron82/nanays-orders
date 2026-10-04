@@ -17,6 +17,7 @@ import {
   isEarlyFulfillment, earlyFeeApplies, amountOwing, amountReceived, tipAmount,
   customItemsTotal, nextAvailableDate, requiresDeposit, depositFor, isAutoRush,
   lumpiaPieceCount, EARLY_ORDER_FEE, RUSH_ORDER_FEE, DELIVERY_FEE,
+  lumpiaSplit, lumpiaFromCounts,
 } from '../../src/lib/utils';
 
 // Build a local YYYY-MM-DD offset from today (deterministic regardless of run date)
@@ -987,3 +988,92 @@ describe('directionsUrl', () => {
     expect(directionsUrl(undefined)).toBeNull();
   });
 });
+
+// ─── LUMPIA: COOKED AND UNCOOKED IN ONE ORDER (2026-10-04) ─────────────────────
+// Aaron: "how would one order an uncooked order and cooked order at the same time without doing separate
+// orders. like one 50 pieces lumpia cooked, and another 50 pieces uncooked". Each size had ONE cooked switch.
+describe('lumpiaSplit — one reader for every generation of order', () => {
+  it('⭐ reads explicit counts: 1 cooked half + 1 uncooked half', () => {
+    expect(lumpiaSplit({ enabled: true, halves: 2, halvesUncooked: 1 }))
+      .toEqual({ setsCooked: 0, setsUncooked: 0, halvesCooked: 1, halvesUncooked: 1 });
+  });
+
+  it('reads the per-size switch exactly as before when there is no count', () => {
+    expect(lumpiaSplit({ enabled: true, sets: 2, setsCooked: true, halves: 3, halvesCooked: false }))
+      .toEqual({ setsCooked: 2, setsUncooked: 0, halvesCooked: 0, halvesUncooked: 3 });
+  });
+
+  it('falls back to the legacy whole-order style, and to uncooked when nothing says otherwise', () => {
+    expect(lumpiaSplit({ enabled: true, sets: 1, halves: 1, style: 'cooked' }))
+      .toEqual({ setsCooked: 1, setsUncooked: 0, halvesCooked: 1, halvesUncooked: 0 });
+    expect(lumpiaSplit({ enabled: true, sets: 1, halves: 1 }))
+      .toEqual({ setsCooked: 0, setsUncooked: 1, halvesCooked: 0, halvesUncooked: 1 });
+  });
+
+  it('a count outranks the switch, and is clamped to the total', () => {
+    expect(lumpiaSplit({ enabled: true, sets: 2, setsCooked: true, setsUncooked: 1 }).setsUncooked).toBe(1);
+    expect(lumpiaSplit({ enabled: true, sets: 2, setsUncooked: 5 })).toMatchObject({ setsCooked: 0, setsUncooked: 2 });
+    expect(lumpiaSplit({ enabled: true, sets: 2, setsUncooked: -3 })).toMatchObject({ setsCooked: 2, setsUncooked: 0 });
+  });
+
+  it('an empty order is all zeros', () => {
+    expect(lumpiaSplit({ enabled: true })).toEqual({ setsCooked: 0, setsUncooked: 0, halvesCooked: 0, halvesUncooked: 0 });
+  });
+});
+
+describe('lumpiaFromCounts — the one writer', () => {
+  it('⭐ stores totals in sets/halves so stock math is untouched', () => {
+    const l = lumpiaFromCounts({ enabled: true, sauces: [] }, { setsCooked: 1, setsUncooked: 2, halvesCooked: 1, halvesUncooked: 1 });
+    expect(l).toMatchObject({ sets: 3, setsUncooked: 2, halves: 2, halvesUncooked: 1 });
+    expect(lumpiaPieceCount(l)).toBe(400);
+  });
+
+  it('keeps the per-size switch honest: true only when nothing of that size is uncooked', () => {
+    const l = lumpiaFromCounts({ enabled: true }, { setsCooked: 2, setsUncooked: 0, halvesCooked: 1, halvesUncooked: 1 });
+    expect(l.setsCooked).toBe(true);
+    expect(l.halvesCooked).toBe(false);
+  });
+
+  it('drops a legacy style, keeps everything else on the order', () => {
+    const l = lumpiaFromCounts({ enabled: true, style: 'cooked', sauces: ['sweet_chili'] }, { setsCooked: 1, setsUncooked: 0, halvesCooked: 0, halvesUncooked: 0 });
+    expect(l.style).toBeUndefined();
+    expect(l.sauces).toEqual(['sweet_chili']);
+    expect(l.enabled).toBe(true);
+  });
+
+  it('round-trips through the reader, and never stores a negative or fractional count', () => {
+    const counts = { setsCooked: 2, setsUncooked: 1, halvesCooked: 0, halvesUncooked: 3 };
+    expect(lumpiaSplit(lumpiaFromCounts({ enabled: true }, counts))).toEqual(counts);
+    expect(lumpiaSplit(lumpiaFromCounts({ enabled: true }, { setsCooked: -1, setsUncooked: 1.7, halvesCooked: 0, halvesUncooked: 0 })))
+      .toEqual({ setsCooked: 0, setsUncooked: 1, halvesCooked: 0, halvesUncooked: 0 });
+  });
+});
+
+describe('a mixed lumpia order — priced, described and prepped', () => {
+  const mixed: LumpiaOrder = { enabled: true, sets: 0, halves: 2, halvesUncooked: 1, sauces: [] };
+
+  it('⭐⭐ 50 cooked + 50 uncooked is one order at $38', () => {
+    expect(calcTotal({ lumpia: mixed })).toBe(38); // 20 + 18
+  });
+
+  it('prices a mixed full batch too: 1 cooked + 1 uncooked = $65', () => {
+    expect(calcTotal({ lumpia: { enabled: true, sets: 2, setsUncooked: 1 } })).toBe(65); // 35 + 30
+  });
+
+  it('describes the mix in the summary the customer receives', () => {
+    expect(orderSummary({ lumpia: mixed })).toContain('2× half (1 Cooked, 1 Uncooked)');
+    expect(orderSummary({ lumpia: { enabled: true, sets: 1, setsUncooked: 1 } })).toContain('1× full (Uncooked)');
+  });
+
+  it('the prep sheet splits it into a cooked half and an uncooked half', () => {
+    const day = '2026-10-10';
+    const { totals } = buildPrepList([{ id: 1, needed_date: day, order_status: 'Pending', lumpia: mixed }], day);
+    expect(totals.lumpia).toEqual({ setsCooked: 0, setsUncooked: 0, halvesCooked: 1, halvesUncooked: 1 });
+  });
+
+  it('stock still counts both halves as one batch', () => {
+    const r = getReserved([{ order_status: 'Pending', needed_date: ymd(2), lumpia: mixed }]);
+    expect(r.lumpiaSets).toBe(1);
+  });
+});
+

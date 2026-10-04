@@ -1,23 +1,18 @@
 import type { Order, Expense } from '../types';
-import { LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, customItemsTotal } from './utils';
+import { LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, customItemsTotal, lumpiaSplit } from './utils';
 
 // ─── PER-ITEM REVENUE ────────────────────────────────────────────────────────
 // Splits an order's value into what each product line earned. Fees, delivery,
 // and tips are deliberately excluded — those live in the Dashboard's gross/net.
 // This answers "how much is the lumpia / the pancit making."
 
-function lumpiaStyle(l: NonNullable<Order['lumpia']>, key: 'sets' | 'halves'): 'cooked' | 'uncooked' {
-  const cooked = key === 'sets' ? l.setsCooked : l.halvesCooked;
-  if (cooked != null) return cooked ? 'cooked' : 'uncooked';
-  return l.style === 'cooked' ? 'cooked' : 'uncooked';
-}
-
 export function lumpiaRevenue(order: Order): number {
   const l = order.lumpia;
   if (!l?.enabled) return 0;
   let t = 0;
-  t += LUMPIA_PRICE[lumpiaStyle(l, 'sets')] * (l.sets || 0);
-  t += LUMPIA_HALF_PRICE[lumpiaStyle(l, 'halves')] * (l.halves || 0);
+  const split = lumpiaSplit(l);
+  t += LUMPIA_PRICE.cooked * split.setsCooked + LUMPIA_PRICE.uncooked * split.setsUncooked;
+  t += LUMPIA_HALF_PRICE.cooked * split.halvesCooked + LUMPIA_HALF_PRICE.uncooked * split.halvesUncooked;
   t += (l.sauces || []).reduce((s, sauce) => s + (PANCIT_SAUCE_PRICE[sauce] || 0), 0);
   return t;
 }
