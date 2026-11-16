@@ -35,10 +35,30 @@ export interface PancitOrder {
   extraMeat?: boolean;
 }
 
-/** An ad-hoc dish (e.g. embutido) — free-text name + price, for one-off orders. */
+/** A dish on an order beyond lumpia and pancit: a typed one-off (embutido for one customer), or a COPY of a menu
+ *  item taken when it was added (lib/menu), so a later re-price never changes this order. `price` is per piece. */
 export interface CustomItem {
   name: string;
   price: number;
+  /** How many. Absent on every row saved before 2026-11-16, and those mean 1. */
+  qty?: number;
+  /** Set when the line came from the Menu screen; absent on a typed one-off. */
+  menu_item_id?: string;
+}
+
+/** A dish sis manages on the Menu screen (migration 021). Lumpia and pancit are not here: they live in lib/utils. */
+export interface MenuItem {
+  id: string;
+  name: string;
+  price: number;
+  /** Path inside the `menu-photos` bucket, or null before she adds one. */
+  photo_path: string | null;
+  /** On the menu at all. Off = gone from both forms; orders that have it keep their copy. */
+  active: boolean;
+  /** Ticked = the customer request page offers it too. */
+  on_request_page: boolean;
+  sort: number;
+  created_at?: string;
 }
 
 /** Where an order originated: 'request' = approved from the public form/link,

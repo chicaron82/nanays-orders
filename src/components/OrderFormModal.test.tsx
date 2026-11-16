@@ -150,3 +150,46 @@ describe('OrderFormModal — delivery slot load', () => {
     expect(screen.queryByText(/already near this time/)).not.toBeInTheDocument();
   });
 });
+
+// ── The Menu block (2026-11-16, docs/ticket-orders-menu-items.md) ─────────────
+describe('OrderFormModal — menu items', () => {
+  const flan = { id: 'f', name: 'Leche Flan', price: 13, photo_path: null, active: true, on_request_page: true, sort: 0 };
+  const kitchenOnly = { id: 'k', name: 'Embutido', price: 20, photo_path: null, active: true, on_request_page: false, sort: 1 };
+  const retired = { id: 'r', name: 'Turon', price: 8, photo_path: null, active: false, on_request_page: false, sort: 2 };
+  const plain: Order = { id: 9, customer_name: 'Tita Cora', delivery_type: 'pickup', needed_date: '2026-06-20', payment_status: 'Unpaid', custom_items: [] };
+  const open = (o: Order, onSave = vi.fn()) =>
+    render(<OrderFormModal isOpen onClose={vi.fn()} onSave={onSave} editOrder={o} allOrders={[o]} stock={stock} menuItems={[flan, kitchenOnly, retired]} />);
+
+  it('offers every item on the menu, ticked for the customer page or not, and none taken off it', async () => {
+    open(plain);
+    expect(await screen.findByText('Leche Flan')).toBeInTheDocument();
+    expect(screen.getByText('Embutido')).toBeInTheDocument();
+    expect(screen.queryByText('Turon')).not.toBeInTheDocument();
+  });
+
+  it('saves the line with its qty and menu id, and the total counts it', async () => {
+    const onSave = vi.fn();
+    open(plain, onSave);
+    const row = (await screen.findByText('Leche Flan')).closest('div.flex')!;
+    fireEvent.click(within(row as HTMLElement).getAllByRole('button')[0]); // tick → 1
+    fireEvent.click(within(row as HTMLElement).getByText('+'));            // → 2
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    const saved = onSave.mock.calls[0][0] as Order;
+    expect(saved.custom_items).toEqual([{ name: 'Leche Flan', price: 13, qty: 2, menu_item_id: 'f' }]);
+    expect(saved.total).toBe(26);
+  });
+
+  it('an order holding an item since taken off the menu still shows it, at the price it was placed at', async () => {
+    open({ ...plain, custom_items: [{ name: 'Turon', price: 7, qty: 3, menu_item_id: 'r' }] });
+    const row = (await screen.findByText('Turon')).closest('div.flex')!;
+    expect(row).toHaveTextContent('$7.00');
+    expect(within(row as HTMLElement).getByText('3')).toBeInTheDocument();
+  });
+
+  it('a menu line never shows as a typed one-off', async () => {
+    open({ ...plain, custom_items: [{ name: 'Leche Flan', price: 13, qty: 1, menu_item_id: 'f' }, { name: 'Kare-kare', price: 45 }] });
+    await screen.findByText('Leche Flan');
+    const names = screen.getAllByPlaceholderText('Dish name') as HTMLInputElement[];
+    expect(names.map(n => n.value)).toEqual(['Kare-kare']);
+  });
+});

@@ -4,9 +4,11 @@ import { m, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useOrderRequests } from '../hooks/useOrderRequests';
 import { useStoreSettings } from '../hooks/useStoreSettings';
+import { useMenuItems } from '../hooks/useMenuItems';
+import { requestPageMenu, menuQty, setMenuQty } from '../lib/menu';
 import ItemRowPicker from './ItemRowPicker';
 import BuildStamp from './BuildStamp';
-import type { OrderRequest, BlockedDay, Order } from '../types';
+import type { OrderRequest, BlockedDay, Order, CustomItem } from '../types';
 import {
   calcTotal,
   fmt,
@@ -33,6 +35,9 @@ const DEFAULT_LUMPIA_COUNTS: LumpiaSplit = { setsCooked: 1, setsUncooked: 0, hal
 export default function PublicRequestPage() {
   const { submitRequest } = useOrderRequests();
   const { acceptingRequests, loading: settingsLoading, refresh: refreshAccepting } = useStoreSettings();
+  // The items sis ticked for this page on her Menu tab (RLS sends anon only those; requestPageMenu says so too).
+  const { menu } = useMenuItems();
+  const offered = requestPageMenu(menu);
   const totalRef = useRef<HTMLDivElement>(null);
   const [showFloatingTotal, setShowFloatingTotal] = useState(false);
 
@@ -84,6 +89,9 @@ export default function PublicRequestPage() {
   const [pancitLarge, setPancitLarge] = useState(0);
   const [pancitExtraMeat, setPancitExtraMeat] = useState(false);
 
+  // Menu items: copies of { name, price, qty, menu_item_id }, priced again from the menu when she approves (lib/menu).
+  const [menuLines, setMenuLines] = useState<CustomItem[]>([]);
+
   // Status
   const [submittedRequest, setSubmittedRequest] = useState<OrderRequest | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -103,6 +111,7 @@ export default function PublicRequestPage() {
       pickup_time: pickupTime,
       delivery_type: deliveryType,
       rush_order: rushOrder,
+      custom_items: menuLines,
     };
     if (lumpiaEnabled) {
       o.lumpia = lumpiaFromCounts({ enabled: true, sauces: lumpiaSauces }, lumpiaCounts);
@@ -118,7 +127,7 @@ export default function PublicRequestPage() {
     }
     return o;
   }, [
-    neededDate, pickupTime, deliveryType, rushOrder,
+    neededDate, pickupTime, deliveryType, rushOrder, menuLines,
     lumpiaEnabled, lumpiaCounts, lumpiaSauces,
     pancitEnabled, pancitFull, pancitHalf, pancitLarge, pancitExtraMeat
   ]);
@@ -138,7 +147,8 @@ export default function PublicRequestPage() {
 
   const hasItems =
     (lumpiaEnabled && (lumpiaCounts.setsCooked + lumpiaCounts.setsUncooked + lumpiaCounts.halvesCooked + lumpiaCounts.halvesUncooked > 0)) ||
-    (pancitEnabled && (pancitFull + pancitHalf + pancitLarge > 0));
+    (pancitEnabled && (pancitFull + pancitHalf + pancitLarge > 0)) ||
+    menuLines.length > 0;
 
   const isValid =
     customerName.trim().length > 0 &&
@@ -200,7 +210,7 @@ export default function PublicRequestPage() {
           large: pancitLarge,
           extraMeat: pancitExtraMeat,
         } : { enabled: false, full: 0 },
-        custom_items: [],
+        custom_items: menuLines,
         needed_date: neededDate,
         pickup_time: pickupTime,
         delivery_type: deliveryType,
@@ -515,6 +525,23 @@ export default function PublicRequestPage() {
                 </div>
               )}
             </div>
+
+            {/* The rest of the menu: what sis ticked "Show on the customer page" for (docs/ticket-orders-menu-items.md) */}
+            {offered.map(item => {
+              const qty = menuQty(menuLines, item.id);
+              return (
+                <div key={item.id} className={`border-2 rounded-xl overflow-hidden transition-colors ${qty > 0 ? 'border-orange-400' : 'border-stone-200'}`}>
+                  <div className="px-4 py-3 bg-orange-50/40">
+                    <ItemRowPicker
+                      label={item.name}
+                      price={fmt(item.price)}
+                      count={qty}
+                      onChange={n => setMenuLines(prev => setMenuQty(prev, item, n))}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Date & Logistics */}

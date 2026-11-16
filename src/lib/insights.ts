@@ -1,5 +1,6 @@
 import type { Order, Expense } from '../types';
 import { LUMPIA_PRICE, LUMPIA_HALF_PRICE, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, customItemsTotal, lumpiaSplit } from './utils';
+import { lineQty } from './menu';
 
 // ─── PER-ITEM REVENUE ────────────────────────────────────────────────────────
 // Splits an order's value into what each product line earned. Fees, delivery,
@@ -89,7 +90,7 @@ export function itemBreakdownForMonth(orders: Order[], month: string): ItemBreak
       b.pancit.revenue += pancitRevenue(o);
     }
     if (o.custom_items?.length) {
-      b.custom.count += o.custom_items.length;
+      b.custom.count += o.custom_items.reduce((n, c) => n + lineQty(c), 0); // 3 leche flans are 3
       b.custom.revenue += customItemsTotal(o);
     }
   }

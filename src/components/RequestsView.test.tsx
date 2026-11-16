@@ -78,3 +78,25 @@ describe('RequestsView — delivery slot load', () => {
     expect(screen.queryByText(/already booked near/)).not.toBeInTheDocument();
   });
 });
+
+// ── Menu prices on a request (2026-11-16, docs/ticket-orders-menu-items.md) ───
+// The customer's browser prices the request; Approve re-prices menu lines from the menu. The card says so first.
+describe('RequestsView — a menu price that is not the menu\'s', () => {
+  const flan = { id: 'f', name: 'Leche Flan', price: 13, photo_path: null, active: true, on_request_page: true, sort: 0 };
+  const withFlan = (price: number) => req({ delivery_type: 'pickup', custom_items: [{ name: 'Leche Flan', price, qty: 2, menu_item_id: 'f' }], total: 2 * price });
+  const showWithMenu = (r: OrderRequest) => render(
+    <RequestsView requests={[r]} orders={[]} blockedSet={new Set<string>()} menu={[flan]} onApprove={vi.fn()} onDecline={vi.fn()} />,
+  );
+
+  it('says the request had a different price, and the total Approve will use', () => {
+    showWithMenu(withFlan(1));
+    const note = screen.getByRole('status');
+    expect(note).toHaveTextContent('Leche Flan was $1.00 on the request; the menu says $13.00.');
+    expect(note).toHaveTextContent("Approving uses the menu's price: $26.00 in total.");
+  });
+
+  it('stays silent when the request agrees with the menu', () => {
+    showWithMenu(withFlan(13));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+});

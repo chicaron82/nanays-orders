@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import { CalendarDays, Clock, MapPin, Check, Trash2, Phone, ChefHat } from 'lucide-react';
-import type { OrderRequest, Order } from '../types';
+import type { OrderRequest, Order, MenuItem } from '../types';
 import { fmt, orderSummary, formatDate, formatTime12, noShowWatch } from '../lib/utils';
 import { deliveryLoadAt, formatTimeLabel } from '../lib/deliveryLoad';
+import { priceRequest } from '../lib/menu';
 
 interface RequestsViewProps {
   requests: OrderRequest[];
   orders: Order[];
   blockedSet: ReadonlySet<string>;
+  /** The Menu tab's items: a menu line on a request is priced against these before she approves (lib/menu). */
+  menu?: MenuItem[];
   onApprove: (request: OrderRequest) => void;
   onDecline: (request: OrderRequest) => void;
 }
 
-export default function RequestsView({ requests, orders, blockedSet, onApprove, onDecline }: RequestsViewProps) {
+export default function RequestsView({ requests, orders, blockedSet, menu = [], onApprove, onDecline }: RequestsViewProps) {
   const [dismissed, setDismissed] = useState<Set<string | number>>(new Set());
 
   if (requests.length === 0) {
@@ -131,6 +134,21 @@ export default function RequestsView({ requests, orders, blockedSet, onApprove, 
                     </p>
                   </div>
                 )}
+
+                {/* A menu price on the request that isn't the menu's: re-priced on Approve, said here first, so she can
+                    message the customer before the total changes under them. */}
+                {(() => {
+                  const { request: priced, changes } = priceRequest(req, menu);
+                  if (!changes.length) return null;
+                  return (
+                    <div role="status" className="bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 text-sm text-amber-900 space-y-0.5">
+                      {changes.map(c => (
+                        <p key={c.name}>💲 <span className="font-semibold">{c.name}</span> was {fmt(c.was)} on the request; the menu says {fmt(c.now)}.</p>
+                      ))}
+                      <p className="text-xs">Approving uses the menu's price: {fmt(priced.total)} in total.</p>
+                    </div>
+                  );
+                })()}
 
                 {/* Items Description */}
                 <div>

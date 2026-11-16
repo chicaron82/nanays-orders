@@ -1,4 +1,5 @@
 import type { Order, OrderRequest, LumpiaOrder, Stock, DeliveryType, LumpiaSauce, PaymentStatus } from '../types';
+import { lineQty, lineTotal } from './menu';
 
 // ─── CONTACT ─────────────────────────────────────────────────────────────────
 // 10-digit Canadian number, no formatting (e.g. '2045550100').
@@ -126,9 +127,9 @@ export function lumpiaFromCounts(base: LumpiaOrder, c: LumpiaSplit): LumpiaOrder
   return next;
 }
 
-/** Sum of any ad-hoc custom items (one-off dishes) on an order. */
+/** Sum of the order's other dishes: typed one-offs and menu items, each price × qty (no qty = 1, lib/menu). */
 export function customItemsTotal(order: Order): number {
-  return (order.custom_items || []).reduce((s, c) => s + (Number(c.price) || 0), 0);
+  return (order.custom_items || []).reduce((s, c) => s + lineTotal(c), 0);
 }
 
 /** Pre-discount total — items + fees. The number a discount applies to. */
@@ -202,7 +203,7 @@ export function orderSummary(order: Order): string {
     if (ps.length) parts.push(`Pancit: ${ps.join(' + ')}`);
   }
   for (const c of order.custom_items || []) {
-    if (c.name?.trim()) parts.push(c.name.trim());
+    if (c.name?.trim()) parts.push(lineQty(c) > 1 ? `${lineQty(c)}× ${c.name.trim()}` : c.name.trim());
   }
   if (order.rush_order) parts.push('Rush order');
   if (earlyFeeApplies(order)) parts.push('Early order fee');

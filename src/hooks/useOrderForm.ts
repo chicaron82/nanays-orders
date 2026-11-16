@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { fuzzyMatch, calcTotal, orderSubtotal, discountAmount, lastOrderFor, isAutoRush, requiresDeposit, depositFor, lumpiaSplit, lumpiaFromCounts } from '../lib/utils';
 import { supabase } from '../lib/supabase';
-import type { Order, OrderForm } from '../types';
+import { setMenuQty } from '../lib/menu';
+import type { MenuItem, Order, OrderForm } from '../types';
 
 const initialForm: OrderForm = {
   customer_name: "", contact: "",
@@ -119,6 +120,9 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
     setForm(f => ({ ...f, custom_items: (f.custom_items || []).map((c, idx) => idx === i ? { ...c, ...patch } : c) }));
   const removeCustomItem = (i: number) =>
     setForm(f => ({ ...f, custom_items: (f.custom_items || []).filter((_, idx) => idx !== i) }));
+  /** A menu item's count on this order (lib/menu): 0 takes it off, and a line already there keeps its price. */
+  const setMenuItemQty = (item: Pick<MenuItem, 'id' | 'name' | 'price'>, qty: number) =>
+    setForm(f => ({ ...f, custom_items: setMenuQty(f.custom_items, item, qty) }));
 
   const isDateBlocked = !!(
     form.needed_date &&
@@ -140,7 +144,12 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
       ...form,
       total,
       deposit_amount: form.deposit_amount ?? null,
-      custom_items: validCustomItems.map(c => ({ name: c.name.trim(), price: Number(c.price) || 0 })),
+      // A menu line keeps its qty and its menu_item_id; a typed one-off has neither, as before.
+      custom_items: validCustomItems.map(c => ({
+        name: c.name.trim(), price: Number(c.price) || 0,
+        ...(c.qty !== undefined ? { qty: c.qty } : {}),
+        ...(c.menu_item_id ? { menu_item_id: c.menu_item_id } : {}),
+      })),
       // A label without a value is noise — persist discount fields only as a pair.
       discount_value: hasDiscount ? Number(form.discount_value) : null,
       discount_label: hasDiscount ? (form.discount_label?.trim() || '') : '',
@@ -157,7 +166,7 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
     nameSuggestions, setField, formatPhone,
     handleSelectSuggestion, handleSubmit, hasItems, total, subtotal, discount,
     repeatAvailable, applyRepeatLast, repeatOrderCount,
-    addCustomItem, updateCustomItem, removeCustomItem,
+    addCustomItem, updateCustomItem, removeCustomItem, setMenuItemQty,
     isDateBlocked,
     depositRequired, suggestedDeposit, autoRushActive,
   };

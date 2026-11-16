@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Toaster, toast } from 'sonner';
-import { ChefHat, ClipboardList, Receipt, BarChart3, Plus, LogOut, Check, X } from 'lucide-react';
+import { ChefHat, ClipboardList, Receipt, BarChart3, Plus, LogOut, Check, X, UtensilsCrossed } from 'lucide-react';
 import type { Order, OrderRequest } from './types';
 import { useOrders } from './hooks/useOrders';
 import { useAuth } from './hooks/useAuth';
@@ -8,6 +8,8 @@ import { useExpenses } from './hooks/useExpenses';
 import { useBackGuard } from './hooks/useBackGuard';
 import { useBlockedDays } from './hooks/useBlockedDays';
 import { useOrderRequests } from './hooks/useOrderRequests';
+import { useMenuItems } from './hooks/useMenuItems';
+import { priceRequest } from './lib/menu';
 
 import Dashboard from './components/Dashboard';
 import CalendarView from './components/CalendarView';
@@ -19,6 +21,7 @@ import LoginScreen from './components/LoginScreen';
 import PublicRequestPage from './components/PublicRequestPage';
 import AcceptingOrdersToggle from './components/AcceptingOrdersToggle';
 import RequestsView from './components/RequestsView';
+import MenuView from './components/MenuView';
 import BuildStamp from './components/BuildStamp';
 import { getRepeatCustomers, nextAvailableDate, formatDate, buildRequestConfirmMessage, buildRequestDeclineMessage } from './lib/utils';
 import { findDuplicateOrder } from './lib/orderDuplicates';
@@ -33,8 +36,9 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
   const { expenses, addExpense, updateExpense, deleteExpense } = useExpenses();
   const { blockedDays, blockedSet, blockDay, unblockDay } = useBlockedDays();
   const { requests, approveRequest, declineRequest } = useOrderRequests();
+  const { menu, loaded: menuLoaded, addItem: addMenuItem, updateItem: updateMenuItem } = useMenuItems();
 
-  const [tab, setTab] = useState<'orders' | 'requests' | 'expenses' | 'insights'>('orders');
+  const [tab, setTab] = useState<'orders' | 'requests' | 'menu' | 'expenses' | 'insights'>('orders');
   const [showForm, setShowForm] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [editOrder, setEditOrder] = useState<Order | null>(null);
@@ -52,8 +56,11 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
     return digits ? `https://wa.me/1${digits}?text=${encodeURIComponent(msg)}` : undefined;
   };
 
-  const handleApproveRequest = async (req: OrderRequest) => {
+  const handleApproveRequest = async (asSent: OrderRequest) => {
     try {
+      // Menu lines are priced from the menu, not from the customer's browser (lib/menu). The request card has already
+      // shown her any difference; the order and the confirmation both carry the menu's price.
+      const req = priceRequest(asSent, menu).request;
       await approveRequest(req);
       const msg = buildRequestConfirmMessage(req);
       setRequestMsg({ emoji: '🎉', title: 'Order Confirmed!', msg, waLink: buildWaLink(req.contact, msg) });
@@ -206,6 +213,9 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
                 </span>
               )}
             </button>
+            <button onClick={() => setTab('menu')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${tab === 'menu' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
+              <UtensilsCrossed size={18} /> Menu
+            </button>
             <button onClick={() => setTab('expenses')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${tab === 'expenses' ? 'bg-white text-orange-600 shadow-sm' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
               <Receipt size={18} /> Expenses
             </button>
@@ -238,9 +248,13 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
             requests={requests}
             orders={orders}
             blockedSet={blockedSet}
+            menu={menu}
             onApprove={handleApproveRequest}
             onDecline={handleDeclineRequest}
           />
+        )}
+        {tab === 'menu' && (
+          <MenuView menu={menu} loaded={menuLoaded} onAdd={addMenuItem} onUpdate={updateMenuItem} />
         )}
         {tab === 'expenses' && (
           <ExpenseLog expenses={expenses} onAdd={addExpense} onUpdate={updateExpense} onDelete={deleteExpense} />
@@ -259,6 +273,7 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
         initialDate={newOrderDate}
         blockedSet={blockedSet}
         blockedDays={blockedDays}
+        menuItems={menu}
       />
 
       <OrderDetailsModal

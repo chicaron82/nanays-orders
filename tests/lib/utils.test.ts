@@ -799,6 +799,21 @@ describe('custom items', () => {
     const s = orderSummary(base({ custom_items: [{ name: 'Embutido', price: 40 }] }));
     expect(s).toContain('Embutido');
   });
+  // Menu items (2026-11-16, docs/ticket-orders-menu-items.md): a line carries qty, and price is per piece.
+  it('a menu line counts price × qty in the total', () => {
+    const flans = [{ name: 'Leche Flan', price: 13, qty: 2, menu_item_id: 'f' }];
+    expect(customItemsTotal(base({ custom_items: flans }))).toBe(26);
+    expect(calcTotal(base({ custom_items: flans }))).toBe(25 + 26);
+  });
+  it('a row saved before qty existed totals exactly what it did', () => {
+    expect(customItemsTotal(base({ custom_items: [{ name: 'Lumpia Shanghai', price: 30 }] }))).toBe(30);
+  });
+  it('orderSummary prints the count when there is more than one', () => {
+    expect(orderSummary(base({ custom_items: [{ name: 'Leche Flan', price: 13, qty: 2 }] }))).toContain('2× Leche Flan');
+    const one = orderSummary(base({ custom_items: [{ name: 'Leche Flan', price: 13, qty: 1 }] }));
+    expect(one).toContain('Leche Flan');
+    expect(one).not.toContain('1×');
+  });
 });
 
 describe('lumpiaPieceCount', () => {

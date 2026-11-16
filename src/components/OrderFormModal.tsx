@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
 import { X, Save, ChefHat, Check, User, CalendarDays, MapPin, PenLine, Clock, RotateCcw, Plus } from 'lucide-react';
-import type { Order, Stock, BlockedDay } from '../types';
+import type { Order, Stock, BlockedDay, MenuItem } from '../types';
 import { getIngredientWarnings, fmt, lumpiaFromCounts, PANCIT_PRICE, PANCIT_SAUCE_PRICE, PANCIT_EXTRA_MEAT_PRICE, RUSH_ORDER_FEE, EARLY_ORDER_FEE, isEarlyFulfillment, noShowWatch, formatDate } from '../lib/utils';
 import { useOrderForm } from '../hooks/useOrderForm';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import LumpiaCountsPicker from './LumpiaCountsPicker';
+import ItemRowPicker from './ItemRowPicker';
+import { kitchenMenu, menuQty } from '../lib/menu';
 import { deliveryLoadAt, formatTimeLabel } from '../lib/deliveryLoad';
 
 interface Props {
@@ -18,17 +20,19 @@ interface Props {
   initialDate?: string | null;
   blockedSet?: ReadonlySet<string>;
   blockedDays?: BlockedDay[];
+  /** The Menu screen's items (migration 021). Every one on the menu shows here, ticked for the customer page or not. */
+  menuItems?: MenuItem[];
 }
 
 const ROW_BTN = 'w-7 h-7 rounded border-2 border-stone-200 text-orange-600 font-bold hover:bg-orange-50 flex items-center justify-center text-sm transition-colors';
 
-export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = null, allOrders = [], stock = null, initialDate = null, blockedSet, blockedDays = [] }: Props) {
+export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = null, allOrders = [], stock = null, initialDate = null, blockedSet, blockedDays = [], menuItems = [] }: Props) {
   const {
     form, showSuggestions, setShowSuggestions,
     nameSuggestions, setField, formatPhone,
     handleSelectSuggestion, handleSubmit, hasItems, total, subtotal, discount,
     repeatAvailable, applyRepeatLast, repeatOrderCount,
-    addCustomItem, updateCustomItem, removeCustomItem,
+    addCustomItem, updateCustomItem, removeCustomItem, setMenuItemQty,
     isDateBlocked,
   } = useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave, blockedSet });
 
@@ -51,6 +55,18 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
     setSynced({ open: isOpen, order: editOrder });
     if (isOpen) { setDateTbd(editOrder ? !editOrder.needed_date : false); setNoShowDismissed(false); }
   }
+
+  // The Menu block: every item on the menu, plus any line this order already holds for an item since taken off the
+  // menu (it still counts in the total, so it has to be visible and removable). A held line shows ITS price, the one
+  // the order was placed at, never today's.
+  const lines = form.custom_items || [];
+  const onMenu = kitchenMenu(menuItems);
+  const menuRows: Pick<MenuItem, 'id' | 'name' | 'price'>[] = [
+    ...onMenu,
+    ...lines.filter(c => c.menu_item_id && !onMenu.some(m => m.id === c.menu_item_id))
+      .map(c => ({ id: c.menu_item_id!, name: c.name, price: c.price })),
+  ];
+  const linePrice = (id: string, fallback: number) => lines.find(c => c.menu_item_id === id)?.price ?? fallback;
 
   // Heads-up if the name/phone being entered matches a past no-show.
   const ghost = noShowWatch(form.customer_name, form.contact, allOrders);
@@ -309,15 +325,30 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                   </div>
                 )}
               </div>
+              {/* The rest of the menu, from the Menu tab (docs/ticket-orders-menu-items.md): same list, under pancit */}
+              {menuRows.length > 0 && (
+                <div className="border-2 border-stone-200 rounded-xl px-4 py-3 space-y-3 bg-orange-50/30">
+                  {menuRows.map(item => (
+                    <ItemRowPicker
+                      key={item.id}
+                      label={item.name}
+                      price={fmt(linePrice(item.id, item.price))}
+                      count={menuQty(lines, item.id)}
+                      onChange={n => setMenuItemQty(item, n)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Custom / one-off items */}
+            {/* Custom / one-off items. Menu lines share the list (custom_items) and are skipped here; the index stays
+                the list's own, which is what update/removeCustomItem address. */}
             <div>
               <label className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
                 <ChefHat size={14}/> Custom Items <span className="font-normal normal-case text-stone-400">— one-offs, e.g. embutido</span>
               </label>
               <div className="space-y-2">
-                {(form.custom_items || []).map((c, i) => (
+                {(form.custom_items || []).map((c, i) => c.menu_item_id ? null : (
                   <div key={i} className="flex items-center gap-2">
                     <input
                       type="text" value={c.name}

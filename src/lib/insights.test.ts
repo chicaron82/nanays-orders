@@ -142,6 +142,14 @@ describe('itemBreakdownForMonth', () => {
     expect(b.custom.revenue).toBe(105);
     expect(b.itemRevenue).toBeCloseTo(25 + 105); // one pancit reg + custom
   });
+
+  it('counts a menu line by its qty, not as one line (2026-11-16)', () => {
+    const b = itemBreakdownForMonth([
+      order({ needed_date: '2026-05-08', custom_items: [{ name: 'Leche Flan', price: 13, qty: 3, menu_item_id: 'f' }] }),
+    ], '2026-05');
+    expect(b.custom.count).toBe(3);
+    expect(b.custom.revenue).toBe(39);
+  });
 });
 
 describe('recentMonths', () => {
