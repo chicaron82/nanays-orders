@@ -6,6 +6,7 @@ import { useOrderRequests } from '../hooks/useOrderRequests';
 import { useStoreSettings } from '../hooks/useStoreSettings';
 import { useMenuItems } from '../hooks/useMenuItems';
 import { requestPageMenu, menuQty, setMenuQty } from '../lib/menu';
+import { menuPhotoUrl } from '../lib/photo';
 import ItemRowPicker from './ItemRowPicker';
 import BuildStamp from './BuildStamp';
 import type { OrderRequest, BlockedDay, Order, CustomItem } from '../types';
@@ -529,8 +530,11 @@ export default function PublicRequestPage() {
             {/* The rest of the menu: what sis ticked "Show on the customer page" for (docs/ticket-orders-menu-items.md) */}
             {offered.map(item => {
               const qty = menuQty(menuLines, item.id);
+              const photo = menuPhotoUrl(item.photo_path);
               return (
                 <div key={item.id} className={`border-2 rounded-xl overflow-hidden transition-colors ${qty > 0 ? 'border-orange-400' : 'border-stone-200'}`}>
+                  {/* Full width like the lumpia and pancit shots: a customer needs to see WHICH dish it is. */}
+                  {photo && <img src={photo} alt={item.name} loading="lazy" className="w-full h-28 sm:h-32 object-cover" />}
                   <div className="px-4 py-3 bg-orange-50/40">
                     <ItemRowPicker
                       label={item.name}

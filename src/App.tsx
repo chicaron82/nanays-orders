@@ -36,7 +36,7 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
   const { expenses, addExpense, updateExpense, deleteExpense } = useExpenses();
   const { blockedDays, blockedSet, blockDay, unblockDay } = useBlockedDays();
   const { requests, approveRequest, declineRequest } = useOrderRequests();
-  const { menu, loaded: menuLoaded, addItem: addMenuItem, updateItem: updateMenuItem } = useMenuItems();
+  const { menu, loaded: menuLoaded, addItem: addMenuItem, updateItem: updateMenuItem, uploadPhoto: uploadMenuPhoto } = useMenuItems();
 
   const [tab, setTab] = useState<'orders' | 'requests' | 'menu' | 'expenses' | 'insights'>('orders');
   const [showForm, setShowForm] = useState(false);
@@ -254,7 +254,7 @@ function MainApp({ onLogout, displayName }: MainAppProps) {
           />
         )}
         {tab === 'menu' && (
-          <MenuView menu={menu} loaded={menuLoaded} onAdd={addMenuItem} onUpdate={updateMenuItem} />
+          <MenuView menu={menu} loaded={menuLoaded} onAdd={addMenuItem} onUpdate={updateMenuItem} onPhoto={uploadMenuPhoto} />
         )}
         {tab === 'expenses' && (
           <ExpenseLog expenses={expenses} onAdd={addExpense} onUpdate={updateExpense} onDelete={deleteExpense} />

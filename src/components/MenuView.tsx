@@ -5,22 +5,25 @@
 // • Lumpia and pancit are not here: they carry stock and cooking math and stay in the code.
 // • A new item starts kitchen-only. The checkbox puts it on the customer page.
 // • No delete. "Take off the menu" hides it from both forms, and every order that has it keeps its own copy.
-import { useState } from 'react';
-import { Plus, Check, X, ChefHat, Eye, EyeOff } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus, Check, X, ChefHat, Eye, EyeOff, Camera } from 'lucide-react';
 import type { MenuItem } from '../types';
 import type { MenuItemDraft } from '../hooks/useMenuItems';
 import { fmt } from '../lib/utils';
+import { menuPhotoUrl } from '../lib/photo';
 
 interface Props {
   menu: MenuItem[];
   loaded: boolean;
   onAdd: (draft: MenuItemDraft) => Promise<MenuItem | null>;
   onUpdate: (id: string, patch: Partial<Omit<MenuItem, 'id' | 'created_at'>>) => Promise<boolean>;
+  /** Shrinks and uploads a photo for an item already saved (useMenuItems.uploadPhoto). */
+  onPhoto: (item: MenuItem, file: File) => Promise<boolean>;
 }
 
 const INPUT = 'w-full border-2 border-stone-200 rounded-lg px-3 py-2 text-sm focus-visible:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-400/20 outline-none transition-colors';
 
-export default function MenuView({ menu, loaded, onAdd, onUpdate }: Props) {
+export default function MenuView({ menu, loaded, onAdd, onUpdate, onPhoto }: Props) {
   // 'new' = the add sheet; an id = editing that item; null = just the list.
   const [editing, setEditing] = useState<string | 'new' | null>(null);
   const [showRetired, setShowRetired] = useState(false);
@@ -47,7 +50,13 @@ export default function MenuView({ menu, loaded, onAdd, onUpdate }: Props) {
           title="New menu item"
           initial={{ name: '', price: 0, on_request_page: false }}
           onCancel={() => setEditing(null)}
-          onSave={async d => { if (await onAdd(d)) setEditing(null); }}
+          onSave={async (d, file) => {
+            const added = await onAdd(d);
+            if (!added) return;
+            // The item exists now, so its photo has somewhere to go. A failed photo still leaves the item saved.
+            if (file) await onPhoto(added, file);
+            setEditing(null);
+          }}
         />
       )}
 
@@ -64,8 +73,13 @@ export default function MenuView({ menu, loaded, onAdd, onUpdate }: Props) {
                 <ItemEditor
                   title={`Editing ${item.name}`}
                   initial={item}
+                  photoUrl={menuPhotoUrl(item.photo_path)}
                   onCancel={() => setEditing(null)}
-                  onSave={async d => { if (await onUpdate(item.id, d)) setEditing(null); }}
+                  onSave={async (d, file) => {
+                    if (!(await onUpdate(item.id, d))) return;
+                    if (file && !(await onPhoto(item, file))) return; // stay open: the toast said why
+                    setEditing(null);
+                  }}
                   onRetire={async () => { if (await onUpdate(item.id, { active: false })) setEditing(null); }}
                 />
               </li>
@@ -73,6 +87,7 @@ export default function MenuView({ menu, loaded, onAdd, onUpdate }: Props) {
               <li key={item.id}>
                 <button type="button" onClick={() => setEditing(item.id)}
                   className="w-full bg-white border-2 border-stone-200 hover:border-orange-300 rounded-xl px-4 py-3 flex items-center gap-3 text-left transition-colors">
+                  <Thumb url={menuPhotoUrl(item.photo_path)} />
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-stone-800 truncate">{item.name}</div>
                     <div className="text-sm text-stone-500">{fmt(item.price)}</div>
@@ -113,28 +128,49 @@ export default function MenuView({ menu, loaded, onAdd, onUpdate }: Props) {
   );
 }
 
+/** A photo, or a camera placeholder before there is one. */
+function Thumb({ url, size = 'w-12 h-12' }: { url: string | null; size?: string }) {
+  return url
+    ? <img src={url} alt="" className={`${size} rounded-lg object-cover shrink-0 ring-1 ring-stone-200`} />
+    : <span className={`${size} rounded-lg shrink-0 bg-stone-100 text-stone-300 flex items-center justify-center`}><Camera size={18} /></span>;
+}
+
 interface EditorProps {
   title: string;
   initial: MenuItemDraft;
-  onSave: (draft: MenuItemDraft) => Promise<void>;
+  /** The saved photo, when editing an item that has one. */
+  photoUrl?: string | null;
+  /** `file` = a photo picked in this sheet, uploaded after the item saves. */
+  onSave: (draft: MenuItemDraft, file: File | null) => Promise<void>;
   onCancel: () => void;
   /** Only when editing an item already on the menu. */
   onRetire?: () => Promise<void>;
 }
 
-function ItemEditor({ title, initial, onSave, onCancel, onRetire }: EditorProps) {
+function ItemEditor({ title, initial, photoUrl = null, onSave, onCancel, onRetire }: EditorProps) {
   const [name, setName] = useState(initial.name);
   const [price, setPrice] = useState(initial.price ? String(initial.price) : '');
   const [onRequestPage, setOnRequestPage] = useState(initial.on_request_page);
   const [saving, setSaving] = useState(false);
   const [confirmRetire, setConfirmRetire] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const previewRef = useRef<string | null>(null);
+  useEffect(() => () => { if (previewRef.current) URL.revokeObjectURL(previewRef.current); }, []);
+  const pick = (f: File | undefined) => {
+    if (!f) return;
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    previewRef.current = URL.createObjectURL(f);
+    setPreview(previewRef.current);
+    setFile(f);
+  };
   const priceNum = Number(price);
   const valid = name.trim().length > 0 && priceNum > 0;
 
   const save = async () => {
     if (!valid || saving) return;
     setSaving(true);
-    try { await onSave({ name: name.trim(), price: Math.round(priceNum * 100) / 100, on_request_page: onRequestPage }); }
+    try { await onSave({ name: name.trim(), price: Math.round(priceNum * 100) / 100, on_request_page: onRequestPage }, file); }
     finally { setSaving(false); }
   };
 
@@ -150,6 +186,14 @@ function ItemEditor({ title, initial, onSave, onCancel, onRetire }: EditorProps)
           <span className="sr-only">Price</span>
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-stone-400 pointer-events-none">$</span>
           <input type="number" inputMode="decimal" min={0} step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className={`${INPUT} pl-6`} />
+        </label>
+      </div>
+      <div className="flex items-center gap-3">
+        <Thumb url={preview ?? photoUrl} size="w-16 h-16" />
+        {/* No `capture`: the phone offers both the camera and the photo library. */}
+        <label className="cursor-pointer text-sm font-semibold text-orange-600 hover:text-orange-700 flex items-center gap-1.5">
+          <Camera size={16} /> {preview || photoUrl ? 'Change photo' : 'Add photo'}
+          <input type="file" accept="image/*" className="sr-only" onChange={e => pick(e.target.files?.[0])} />
         </label>
       </div>
       <button type="button" onClick={() => setOnRequestPage(v => !v)} aria-pressed={onRequestPage}

@@ -12,8 +12,9 @@ const turon: MenuItem = { id: 't', name: 'Turon', price: 8, photo_path: null, ac
 function show(menu: MenuItem[] = [flan, turon]) {
   const onAdd = vi.fn(async () => flan);
   const onUpdate = vi.fn(async () => true);
-  render(<MenuView menu={menu} loaded onAdd={onAdd} onUpdate={onUpdate} />);
-  return { onAdd, onUpdate };
+  const onPhoto = vi.fn(async () => true);
+  render(<MenuView menu={menu} loaded onAdd={onAdd} onUpdate={onUpdate} onPhoto={onPhoto} />);
+  return { onAdd, onUpdate, onPhoto };
 }
 
 describe('MenuView', () => {
@@ -35,6 +36,21 @@ describe('MenuView', () => {
     fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '20' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onAdd).toHaveBeenCalledWith({ name: 'Embutido', price: 20, on_request_page: false }));
+  });
+
+  it('a photo picked for a new item uploads once the item exists, against the saved item', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:preview');
+    URL.revokeObjectURL = vi.fn();
+    const { onAdd, onPhoto } = show();
+    fireEvent.click(screen.getByRole('button', { name: /add an item/i }));
+    fireEvent.change(screen.getByPlaceholderText('Dish name'), { target: { value: 'Leche Flan' } });
+    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '13' } });
+    const photo = new File(['x'], 'flan.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByLabelText(/add photo/i), { target: { files: [photo] } });
+    expect(screen.getByLabelText(/change photo/i)).toBeInTheDocument(); // the preview took
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onPhoto).toHaveBeenCalledWith(flan, photo));
+    expect(onAdd.mock.invocationCallOrder[0]).toBeLessThan(onPhoto.mock.invocationCallOrder[0]);
   });
 
   it('will not save an item without a name or a price', () => {

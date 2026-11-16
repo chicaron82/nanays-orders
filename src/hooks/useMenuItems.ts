@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import type { MenuItem } from '../types';
+import { MENU_PHOTO_BUCKET, menuPhotoPath, shrinkPhoto } from '../lib/photo';
 
 export type MenuItemDraft = Pick<MenuItem, 'name' | 'price' | 'on_request_page'>;
 
@@ -95,5 +96,30 @@ export function useMenuItems() {
     }
   }
 
-  return { menu, loaded, addItem, updateItem };
+  /**
+   * A new photo for an item (migration 022): shrunk on the phone, uploaded, pointed at, and only THEN the old one
+   * removed, so a failure at any step leaves the item with a photo that exists. Returns whether it saved.
+   */
+  async function uploadPhoto(item: MenuItem, file: File): Promise<boolean> {
+    try {
+      const blob = await shrinkPhoto(file);
+      const path = menuPhotoPath(item.id, blob.type);
+      const { error } = await supabase.storage.from(MENU_PHOTO_BUCKET).upload(path, blob, { contentType: blob.type, upsert: false });
+      if (error) throw error;
+      const old = item.photo_path;
+      if (!(await updateItem(item.id, { photo_path: path }))) {
+        await supabase.storage.from(MENU_PHOTO_BUCKET).remove([path]);
+        return false;
+      }
+      if (old) await supabase.storage.from(MENU_PHOTO_BUCKET).remove([old]); // a leftover file is harmless; no toast
+      toast.success(`Photo saved for ${item.name} 📸`);
+      return true;
+    } catch (err) {
+      console.error('Error uploading a menu photo:', err.message);
+      toast.error("Couldn't save the photo");
+      return false;
+    }
+  }
+
+  return { menu, loaded, addItem, updateItem, uploadPhoto };
 }

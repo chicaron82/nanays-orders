@@ -11,13 +11,15 @@ interface ItemRowPickerProps {
   /** Optional cooked/frozen toggle — omit (with onCookedChange) for items that don't have it. */
   cooked?: boolean;
   onCookedChange?: (cooked: boolean) => void;
+  /** A small round photo before the name (the kitchen form's menu items, like its lumpia and pancit thumbs). */
+  thumb?: string | null;
 }
 
 /**
  * One selectable menu row: checkbox → quantity stepper → optional cooked/frozen toggle.
  * Shared by every lumpia and pancit size so the markup lives in one place.
  */
-export default function ItemRowPicker({ label, price, count, onChange, cooked, onCookedChange }: ItemRowPickerProps) {
+export default function ItemRowPicker({ label, price, count, onChange, cooked, onCookedChange, thumb }: ItemRowPickerProps) {
   const active = count > 0;
 
   return (
@@ -29,6 +31,7 @@ export default function ItemRowPicker({ label, price, count, onChange, cooked, o
       >
         {active && <Check size={11} className="text-white" />}
       </button>
+      {thumb && <img src={thumb} alt="" aria-hidden="true" loading="lazy" className="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-orange-200" />}
       <div className="flex-1">
         <div className="text-sm font-semibold text-stone-700">{label}</div>
         <div className="text-xs text-stone-400">{price}</div>

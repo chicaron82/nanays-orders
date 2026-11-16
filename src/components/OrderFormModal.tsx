@@ -8,6 +8,7 @@ import { AddressAutocomplete } from './AddressAutocomplete';
 import LumpiaCountsPicker from './LumpiaCountsPicker';
 import ItemRowPicker from './ItemRowPicker';
 import { kitchenMenu, menuQty } from '../lib/menu';
+import { menuPhotoUrl } from '../lib/photo';
 import { deliveryLoadAt, formatTimeLabel } from '../lib/deliveryLoad';
 
 interface Props {
@@ -61,10 +62,10 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
   // the order was placed at, never today's.
   const lines = form.custom_items || [];
   const onMenu = kitchenMenu(menuItems);
-  const menuRows: Pick<MenuItem, 'id' | 'name' | 'price'>[] = [
+  const menuRows: Pick<MenuItem, 'id' | 'name' | 'price' | 'photo_path'>[] = [
     ...onMenu,
     ...lines.filter(c => c.menu_item_id && !onMenu.some(m => m.id === c.menu_item_id))
-      .map(c => ({ id: c.menu_item_id!, name: c.name, price: c.price })),
+      .map(c => ({ id: c.menu_item_id!, name: c.name, price: c.price, photo_path: null })),
   ];
   const linePrice = (id: string, fallback: number) => lines.find(c => c.menu_item_id === id)?.price ?? fallback;
 
@@ -335,6 +336,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
                       price={fmt(linePrice(item.id, item.price))}
                       count={menuQty(lines, item.id)}
                       onChange={n => setMenuItemQty(item, n)}
+                      thumb={menuPhotoUrl(item.photo_path)}
                     />
                   ))}
                 </div>
