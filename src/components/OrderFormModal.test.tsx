@@ -193,3 +193,28 @@ describe('OrderFormModal — menu items', () => {
     expect(names.map(n => n.value)).toEqual(['Kare-kare']);
   });
 });
+
+// ── Repeat last order brings menu items (2026-11-16) ──────────────────────────
+describe('OrderFormModal — repeat last order with menu items', () => {
+  const flanNow = { id: 'f', name: 'Leche Flan', price: 13, photo_path: null, active: true, on_request_page: true, sort: 0 };
+  const turonOff = { id: 'r', name: 'Turon', price: 8, photo_path: null, active: false, on_request_page: false, sort: 1 };
+  const last: Order = {
+    id: 3, customer_name: 'Tita Cora', delivery_type: 'pickup', needed_date: '2026-05-01', payment_status: 'Unpaid',
+    created_at: '2026-05-01T10:00:00',
+    custom_items: [
+      { name: 'Leche Flan', price: 12, qty: 2, menu_item_id: 'f' },  // placed at an older price
+      { name: 'Turon', price: 8, qty: 1, menu_item_id: 'r' },        // since taken off the menu
+      { name: 'Kare-kare', price: 45 },                              // a typed one-off
+    ],
+  };
+
+  it('brings the menu items still on the menu, at today\'s price, and leaves the rest', async () => {
+    const onSave = vi.fn();
+    render(<OrderFormModal isOpen onClose={vi.fn()} onSave={onSave} allOrders={[last]} stock={stock} menuItems={[flanNow, turonOff]} initialDate="2026-12-01" />);
+    fireEvent.change(await screen.findByLabelText(/customer name/i), { target: { value: 'Tita Cora' } });
+    fireEvent.click(await screen.findByRole('button', { name: /repeat last order/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add order/i }));
+    const saved = onSave.mock.calls[0][0] as Order;
+    expect(saved.custom_items).toEqual([{ name: 'Leche Flan', price: 13, qty: 2, menu_item_id: 'f' }]);
+  });
+});

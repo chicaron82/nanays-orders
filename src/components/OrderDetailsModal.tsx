@@ -3,6 +3,7 @@ import { m, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Edit2, Calendar, MapPin, Navigation, Car, Phone, MessageSquare, Share2, BellRing, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Order, PaymentStatus } from '../types';
+import { lineQty } from '../lib/menu';
 import { fmt, formatDate, formatTime12, urgencyLabel, getDaysUntil, buildOrderMessage, buildReadyMessage, isEarlyFulfillment, EARLY_ORDER_FEE, amountOwing, tipAmount, isSettled, discountAmount, directionsUrl, PAYMENT_STATUS, lumpiaSplit } from '../lib/utils';
 import { formatDriveEstimate, leaveByTime, deliveryBuffer, RUSH_BUFFER_MIN } from '../lib/routing';
 import { useDriveEstimate } from '../hooks/useDriveEstimate';
@@ -176,6 +177,17 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEdit, onDe
                   {order.pancit.extraMeat && (
                     <div className="text-xs text-stone-500 mt-1">🥩 Extra meat &amp; veggies</div>
                   )}
+                </div>
+              )}
+              {/* Menu items and typed one-offs (custom_items). Missing here until 2026-11-16, so an order of only leche
+                  flan opened with nothing to cook (docs/November/ticket-orders-menu-items.md). */}
+              {(order.custom_items || []).some(c => c.name?.trim()) && (
+                <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
+                  <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">🍽️ Other items</div>
+                  <div className="font-medium text-stone-800">
+                    {(order.custom_items || []).filter(c => c.name?.trim())
+                      .map(c => lineQty(c) > 1 ? `${lineQty(c)}× ${c.name.trim()}` : c.name.trim()).join(' · ')}
+                  </div>
                 </div>
               )}
               {order.rush_order && (

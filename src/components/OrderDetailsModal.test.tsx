@@ -165,3 +165,17 @@ describe('OrderDetailsModal — cancelled in the payment row', () => {
     expect(onPaymentChange).toHaveBeenCalledWith(1, expect.objectContaining({ payment_status: 'Unpaid', order_status: 'Pending' }));
   });
 });
+
+// ── Other items (2026-11-16) ──────────────────────────────────────────────────
+// The details listed lumpia and pancit only, so an order of just leche flan opened with nothing to cook.
+describe('OrderDetailsModal — menu items and one-offs', () => {
+  it('shows each line with its count', () => {
+    renderModal(order({ pancit: undefined, custom_items: [{ name: 'Leche Flan', price: 13, qty: 2, menu_item_id: 'f' }, { name: 'Embutido', price: 40 }] }));
+    expect(screen.getByText('🍽️ Other items')).toBeInTheDocument();
+    expect(screen.getByText('2× Leche Flan · Embutido')).toBeInTheDocument();
+  });
+  it('shows no card when there are none', () => {
+    renderModal(order());
+    expect(screen.queryByText('🍽️ Other items')).not.toBeInTheDocument();
+  });
+});

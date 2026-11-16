@@ -35,7 +35,7 @@ export default function OrderFormModal({ isOpen, onClose, onSave, editOrder = nu
     repeatAvailable, applyRepeatLast, repeatOrderCount,
     addCustomItem, updateCustomItem, removeCustomItem, setMenuItemQty,
     isDateBlocked,
-  } = useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave, blockedSet });
+  } = useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave, blockedSet, menuItems });
 
   // How busy this delivery slot already is. Reported, never enforced — see lib/deliveryLoad:
   // the app can't know how many drivers are free, so it hands mom the fact while the customer

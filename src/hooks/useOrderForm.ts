@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fuzzyMatch, calcTotal, orderSubtotal, discountAmount, lastOrderFor, isAutoRush, requiresDeposit, depositFor, lumpiaSplit, lumpiaFromCounts } from '../lib/utils';
 import { supabase } from '../lib/supabase';
-import { setMenuQty } from '../lib/menu';
+import { kitchenMenu, lineQty, menuLine, setMenuQty } from '../lib/menu';
 import type { MenuItem, Order, OrderForm } from '../types';
 
 const initialForm: OrderForm = {
@@ -22,9 +22,11 @@ interface UseOrderFormProps {
   initialDate?: string | null;
   onSave: (order: Order) => void;
   blockedSet?: ReadonlySet<string>;
+  /** The Menu tab's items, so "repeat last" can bring menu items along at today's price. */
+  menuItems?: MenuItem[];
 }
 
-export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave, blockedSet }: UseOrderFormProps) {
+export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave, blockedSet, menuItems = [] }: UseOrderFormProps) {
   const [form, setForm] = useState<OrderForm>(initialForm);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -104,6 +106,15 @@ export function useOrderForm({ isOpen, editOrder, allOrders, initialDate, onSave
       lumpia: repeatSource.lumpia ? structuredClone(repeatSource.lumpia) : f.lumpia,
       pancit: repeatSource.pancit ? structuredClone(repeatSource.pancit) : f.pancit,
       delivery_type: repeatSource.delivery_type || f.delivery_type,
+      // Menu items come along at TODAY's price (it's a new order), and only those still on the menu. Typed one-offs
+      // stay behind, as before: they were one-off. (2026-11-16, docs/November/ticket-orders-menu-items.md)
+      custom_items: [
+        ...(f.custom_items || []).filter(c => !c.menu_item_id),
+        ...(repeatSource.custom_items || []).flatMap(c => {
+          const item = c.menu_item_id ? kitchenMenu(menuItems).find(m => m.id === c.menu_item_id) : undefined;
+          return item ? [menuLine(item, lineQty(c))] : [];
+        }),
+      ],
       preferences: f.preferences || repeatSource.preferences || '',
     }));
   };
